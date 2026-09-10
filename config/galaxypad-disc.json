@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "supportState": "exact-input-identified",
+  "container": {
+    "format": "WBFS",
+    "sizeBytes": 3508535296,
+    "sha1": "925af5b6b84ad1ca279c3a5633fdb38821e071bd",
+    "sha256": "bd0d3d4bc1376a8614fd8f4fee5df86be6bc676e9d617944918fda79ed9e3589"
+  },
+  "disc": {
+    "titleId": "RMGE01",
+    "region": "NTSC-USA",
+    "discNumber": 0,
+    "revision": 0,
+    "wiiMagic": "0x5d1c9ea3",
+    "ios": 33,
+    "virtualSizeBytes": 4699979776,
+    "partitions": [
+      {
+        "index": "0.0",
+        "type": "DATA",
+        "offset": "0x0f800000",
+        "endOffset": "0x1173c0000",
+        "signed": true,
+        "encrypted": true,
+        "scrubbed": true
+      }
+    ]
+  },
+  "extraction": {
+    "fileCount": 2386,
+    "manifestAlgorithm": "sorted-relative-path-and-file-sha256",
+    "manifestSha256": "da223690a51c93308b2746fad38966edf62bf313ea1ff32ce659997844893630",
+    "independentExtractionsMatched": true
+  },
+  "executables": [
+    {
+      "path": "sys/main.dol",
+      "sizeBytes": 6283264,
+      "sha1": "9a71008ae1ee9010e267fa67d1f0b0d4f0e895dd",
+      "sha256": "2c680585a8f58e1cc9c5521b579057f12b124ff0ef409e470a57606c50a93c09",
+      "role": "primary"
+    },
+    {
+      "path": "files/ModuleData/HomeButtonMenuWrapperRSO.rso",
+      "sizeBytes": 194816,
+      "sha1": "20cdb6b3fcbba6ab486780be2e12675f93644598",
+      "sha256": "13dd2229f88b5af0f18875b3db15f4d3a52ea583085606a50e4b760a2e68194e",
+      "role": "dynamic-home-menu-rso"
+    }
+  ],
+  "executableMetadata": [
+    {
+      "path": "files/ModuleData/product.sel",
+      "sizeBytes": 5600,
+      "sha256": "c37a0ff9bf9b86f8d46b0ac5c360f747add24178c2a81951ad4ecd06a65d6730",
+      "role": "home-menu-rso-symbol-selection-data-not-standalone-code"
+    }
+  ],
+  "petari": {
+    "exactMapCompatible": false,
+    "reason": "Petari pins RMGK01 main.dol SHA-1 25c5959534b3c21246c6c7e42021b916b41fb578; this input is RMGE01 with a different hash"
+  }
+}

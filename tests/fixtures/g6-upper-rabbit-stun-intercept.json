@@ -1,0 +1,47 @@
+[
+  {
+    "action": "pointer",
+    "x": 0.22,
+    "y": 0.02
+  },
+  {
+    "action": "wait",
+    "seconds": 0.05
+  },
+  {
+    "action": "tap",
+    "button": "B",
+    "hold": 0.12
+  },
+  {
+    "action": "wait",
+    "seconds": 0.08
+  },
+  {
+    "action": "nunchuk",
+    "x": 0.70,
+    "y": -0.70
+  },
+  {
+    "action": "wait",
+    "seconds": 0.55
+  },
+  {
+    "action": "tap",
+    "button": "SPIN",
+    "hold": 0.18
+  },
+  {
+    "action": "wait",
+    "seconds": 0.25
+  },
+  {
+    "action": "nunchuk",
+    "x": 0.0,
+    "y": 0.0
+  },
+  {
+    "action": "wait",
+    "seconds": 0.10
+  }
+]

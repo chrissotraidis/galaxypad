@@ -1,0 +1,4 @@
+[
+  {"action": "tap", "button": "A", "hold": 0.50},
+  {"action": "wait", "seconds": 3}
+]

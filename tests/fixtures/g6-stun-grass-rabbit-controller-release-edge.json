@@ -1,0 +1,9 @@
+[
+  {"action": "release", "button": "B"},
+  {"action": "wait", "seconds": 0.12},
+  {"action": "pointer", "x": 0.122, "y": -0.438},
+  {"action": "press", "button": "B"},
+  {"action": "wait", "seconds": 0.30},
+  {"action": "release", "button": "B"},
+  {"action": "wait", "seconds": 0.05}
+]

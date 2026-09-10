@@ -1,0 +1,11 @@
+[
+  {
+    "action": "pointer",
+    "x": 0.22,
+    "y": 0.02
+  },
+  {
+    "action": "wait",
+    "seconds": 0.25
+  }
+]

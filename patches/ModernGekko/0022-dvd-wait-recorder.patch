@@ -1,0 +1,97 @@
+diff --git a/src/runtime/dolphin_runtime.cpp b/src/runtime/dolphin_runtime.cpp
+--- a/src/runtime/dolphin_runtime.cpp
++++ b/src/runtime/dolphin_runtime.cpp
+@@ -589,6 +589,8 @@
+ 
+   GalaxyPadDiagnostics::Reset();
+   m_impl->vi_timing.Configure(std::getenv("GALAXYPAD_VI_TIMING"));
++  Core::System::GetInstance().GetPerfMetrics().GetCPUDVDWaitTiming().Configure(
++      m_impl->vi_timing.Enabled());
+   const char* completion_path = std::getenv("GALAXYPAD_COMPLETION_TIMING");
+   std::uint64_t completion_deadline = 0;
+   constexpr std::uint64_t completion_threshold = 20'000'000;
+@@ -722,7 +724,8 @@
+               GalaxyPadDiagnostics::s_efb_peek_ns.load(std::memory_order_relaxed),
+               static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                   Core::System::GetInstance().GetPerfMetrics().GetCPUThrottleElapsed()).count()),
+-              Core::System::GetInstance().GetPerfMetrics().GetCPUIdleWaitTiming().ElapsedNs());
++              Core::System::GetInstance().GetPerfMetrics().GetCPUIdleWaitTiming().ElapsedNs(),
++              Core::System::GetInstance().GetPerfMetrics().GetCPUDVDWaitTiming().ElapsedNs());
+         GalaxyPadDiagnostics::RecordPhase("vi_end_field");
+       });
+   std::atomic_bool stop_title_thread = false;
+diff --git a/src/runtime/vi-timing-buffer.h b/src/runtime/vi-timing-buffer.h
+--- a/src/runtime/vi-timing-buffer.h
++++ b/src/runtime/vi-timing-buffer.h
+@@ -20,17 +20,18 @@
+     std::uint64_t efb_elapsed_ns{};
+     std::uint64_t throttle_elapsed_ns{};
+     std::uint64_t idle_wait_elapsed_ns{};
++    std::uint64_t dvd_wait_elapsed_ns{};
+   };
+ 
+   void Record(std::uint64_t wall_ns, std::uint64_t cpu_ns, bool cpu_valid,
+               std::uint64_t efb_ns = 0, std::uint64_t throttle_ns = 0,
+-              std::uint64_t idle_ns = 0) noexcept {
++              std::uint64_t idle_ns = 0, std::uint64_t dvd_ns = 0) noexcept {
+     if (size_ == Capacity) {
+       if (dropped_ != std::numeric_limits<std::uint64_t>::max())
+         ++dropped_;
+       return;
+     }
+-    samples_[size_++] = {wall_ns, cpu_ns, cpu_valid, efb_ns, throttle_ns, idle_ns};
++    samples_[size_++] = {wall_ns, cpu_ns, cpu_valid, efb_ns, throttle_ns, idle_ns, dvd_ns};
+   }
+ 
+   void Reset() noexcept { size_ = 0; dropped_ = 0; }
+diff --git a/src/runtime/vi-timing-recorder.h b/src/runtime/vi-timing-recorder.h
+--- a/src/runtime/vi-timing-recorder.h
++++ b/src/runtime/vi-timing-recorder.h
+@@ -28,13 +28,14 @@
+       return;
+     const auto sample = clock();
+     buffer_->Record(sample.wall_ns, sample.thread_cpu_ns, sample.cpu_clock_valid,
+-                    sample.efb_elapsed_ns, sample.throttle_elapsed_ns, sample.idle_wait_elapsed_ns);
++                    sample.efb_elapsed_ns, sample.throttle_elapsed_ns, sample.idle_wait_elapsed_ns,
++                    sample.dvd_wait_elapsed_ns);
+   }
+ 
+   bool Enabled() const noexcept { return buffer_ && !finished_; }
+ 
+   void Record(std::uint64_t efb_ns = 0, std::uint64_t throttle_ns = 0,
+-              std::uint64_t idle_ns = 0) noexcept {
++              std::uint64_t idle_ns = 0, std::uint64_t dvd_ns = 0) noexcept {
+     RecordWithClock([=]() noexcept {
+       const auto wall = std::chrono::steady_clock::now().time_since_epoch();
+       timespec cpu{};
+@@ -47,7 +48,7 @@
+               std::chrono::duration_cast<std::chrono::nanoseconds>(wall).count()),
+           valid ? static_cast<std::uint64_t>(cpu.tv_sec) * 1'000'000'000 +
+                       static_cast<std::uint64_t>(cpu.tv_nsec) : 0,
+-          valid, efb_ns, throttle_ns, idle_ns};
++          valid, efb_ns, throttle_ns, idle_ns, dvd_ns};
+     });
+   }
+ 
+@@ -59,17 +60,18 @@
+     std::FILE* file = std::fopen(path_.c_str(), "wx");
+     if (!file)
+       return result_ = Result::OpenFailed;
+-    bool ok = std::fprintf(file, "# dropped=%llu\nwall_ns,thread_cpu_ns,cpu_clock_valid,efb_elapsed_ns,throttle_elapsed_ns,idle_wait_elapsed_ns\n",
++    bool ok = std::fprintf(file, "# dropped=%llu\nwall_ns,thread_cpu_ns,cpu_clock_valid,efb_elapsed_ns,throttle_elapsed_ns,idle_wait_elapsed_ns,dvd_wait_elapsed_ns\n",
+                            static_cast<unsigned long long>(buffer_->Dropped())) >= 0;
+     for (std::size_t i = 0; i < buffer_->Size() && ok; ++i) {
+       const auto& sample = buffer_->Data()[i];
+-      ok = std::fprintf(file, "%llu,%llu,%u,%llu,%llu,%llu\n",
++      ok = std::fprintf(file, "%llu,%llu,%u,%llu,%llu,%llu,%llu\n",
+                         static_cast<unsigned long long>(sample.wall_ns),
+                         static_cast<unsigned long long>(sample.thread_cpu_ns),
+                         sample.cpu_clock_valid ? 1u : 0u,
+                         static_cast<unsigned long long>(sample.efb_elapsed_ns),
+                         static_cast<unsigned long long>(sample.throttle_elapsed_ns),
+-                        static_cast<unsigned long long>(sample.idle_wait_elapsed_ns)) >= 0;
++                        static_cast<unsigned long long>(sample.idle_wait_elapsed_ns),
++                        static_cast<unsigned long long>(sample.dvd_wait_elapsed_ns)) >= 0;
+     }
+     if (std::fclose(file) != 0)
+       ok = false;

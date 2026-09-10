@@ -1,0 +1,18 @@
+diff --git a/Source/Core/DolphinNoGUI/PlatformMacos.mm b/Source/Core/DolphinNoGUI/PlatformMacos.mm
+--- a/Source/Core/DolphinNoGUI/PlatformMacos.mm
++++ b/Source/Core/DolphinNoGUI/PlatformMacos.mm
+@@ -344,6 +344,14 @@ void PlatformMacOS::ProcessEvents()
+ 
+ void PlatformMacOS::UpdateWindowPosition()
+ {
++  // Paused frames retain their last FPS title. Make the actual core state
++  // explicit, including pauses caused outside the native menu.
++  NSString* subtitle = Core::GetState(Core::System::GetInstance()) == Core::State::Paused ?
++                           @"Paused — Misc > Toggle pause to resume" :
++                           @"";
++  if (![[m_window subtitle] isEqualToString:subtitle])
++    [m_window setSubtitle:subtitle];
++
+   if (m_window_fullscreen)
+     return;
+ 

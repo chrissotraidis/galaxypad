@@ -1,0 +1,13 @@
+[
+  {"action": "wait", "seconds": 40},
+  {"action": "tap", "button": "A", "hold": 0.2},
+  {"action": "wait", "seconds": 8},
+  {"action": "press", "button": "A"},
+  {"action": "press", "button": "B"},
+  {"action": "wait", "seconds": 2},
+  {"action": "release", "button": "B"},
+  {"action": "release", "button": "A"},
+  {"action": "wait", "seconds": 8},
+  {"action": "pointer", "x": -0.25, "y": -0.32},
+  {"action": "wait", "seconds": 60}
+]

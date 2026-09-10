@@ -1,0 +1,14 @@
+diff --git a/src/runtime/mod_loader.cpp b/src/runtime/mod_loader.cpp
+--- a/src/runtime/mod_loader.cpp
++++ b/src/runtime/mod_loader.cpp
+@@ -585,6 +585,10 @@ bool ModManager::Dispatch(CPUState *state, std::uint32_t address) {
+       *state = saved;
+     }
+   }
++  // Runtime-start callbacks and dynamic returns above are observable even when
++  // this address cannot be a static hook or patch.
++  if (address < m_impl->static_address_min || address > m_impl->static_address_max)
++    return false;
+   const auto hooks = m_impl->hooks.find(address);
+   if (hooks != m_impl->hooks.end()) {
+     for (ModernGekkoModFunction function : hooks->second.entry) {

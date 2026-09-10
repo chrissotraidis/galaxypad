@@ -1,0 +1,15 @@
+[
+  {"action": "nunchuk", "x": 1.0, "y": 0.0},
+  {"action": "tap", "button": "SPIN", "hold": 0.14},
+  {"action": "wait", "seconds": 0.22},
+  {"action": "tap", "button": "SPIN", "hold": 0.14},
+  {"action": "wait", "seconds": 0.22},
+  {"action": "tap", "button": "SPIN", "hold": 0.14},
+  {"action": "wait", "seconds": 0.22},
+  {"action": "tap", "button": "SPIN", "hold": 0.14},
+  {"action": "wait", "seconds": 0.22},
+  {"action": "tap", "button": "SPIN", "hold": 0.14},
+  {"action": "wait", "seconds": 0.22},
+  {"action": "nunchuk", "x": 0.0, "y": 0.0},
+  {"action": "wait", "seconds": 0.10}
+]

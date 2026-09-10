@@ -1,0 +1,32 @@
+--- a/src/core/cpu_interpreter_float.c
++++ b/src/core/cpu_interpreter_float.c
+@@ -736,6 +736,14 @@
+ }
+ 
+ void ppc_ps_add_op(CPUState* cpu, u8 d, u8 a, u8 b) {
++    if (isfinite(cpu->fpr[a]) && isfinite(cpu->ps1[a]) &&
++        isfinite(cpu->fpr[b]) && isfinite(cpu->ps1[b])) {
++        f32 ps0 = force_single(cpu, cpu->fpr[a] + cpu->fpr[b]);
++        f32 ps1 = force_single(cpu, cpu->ps1[a] + cpu->ps1[b]);
++        ps_write_both(cpu, d, ps0, ps1);
++        set_fprf(cpu, classify_f32(ps0));
++        return;
++    }
+     f32 ps0 = force_single(cpu, ni_add(cpu, cpu->fpr[a], cpu->fpr[b]).value);
+     f32 ps1 = force_single(cpu, ni_add(cpu, cpu->ps1[a], cpu->ps1[b]).value);
+     ps_write_both(cpu, d, ps0, ps1);
+@@ -743,6 +751,14 @@
+ }
+ 
+ void ppc_ps_sub_op(CPUState* cpu, u8 d, u8 a, u8 b) {
++    if (isfinite(cpu->fpr[a]) && isfinite(cpu->ps1[a]) &&
++        isfinite(cpu->fpr[b]) && isfinite(cpu->ps1[b])) {
++        f32 ps0 = force_single(cpu, cpu->fpr[a] - cpu->fpr[b]);
++        f32 ps1 = force_single(cpu, cpu->ps1[a] - cpu->ps1[b]);
++        ps_write_both(cpu, d, ps0, ps1);
++        set_fprf(cpu, classify_f32(ps0));
++        return;
++    }
+     f32 ps0 = force_single(cpu, ni_sub(cpu, cpu->fpr[a], cpu->fpr[b]).value);
+     f32 ps1 = force_single(cpu, ni_sub(cpu, cpu->ps1[a], cpu->ps1[b]).value);
+     ps_write_both(cpu, d, ps0, ps1);

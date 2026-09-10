@@ -1,0 +1,3 @@
+# Patch context and hash-pinned experimental payloads preserve upstream bytes.
+*.patch -whitespace
+patches/experiments/smc-outside-bounds.inc whitespace=-blank-at-eof

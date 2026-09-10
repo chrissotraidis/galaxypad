@@ -1,0 +1,81 @@
+diff --git a/tools/moderngekko_port.cpp b/tools/moderngekko_port.cpp
+--- a/tools/moderngekko_port.cpp
++++ b/tools/moderngekko_port.cpp
+@@ -41,6 +41,7 @@
+   std::string opt_level;
+   unsigned c_chunk_instructions = 4096;
+   std::string dispatch_lookup = "linear";
++  fs::path profile_use;
+ #if defined(MODERNGEKKO_DOLRECOMP_LLVM)
+   std::string backend = "llvm";
+ #else
+@@ -455,6 +456,21 @@
+     std::cerr << "DolRecomp compiler is unavailable: " << dolrecomp << '\n';
+     return std::nullopt;
+   }
++  std::optional<std::string> profile_hash;
++  if (!options.profile_use.empty())
++  {
++    if (compiler != "clang" || options.backend != "c")
++    {
++      std::cerr << "profile use requires the C backend and clang toolchain\n";
++      return std::nullopt;
++    }
++    profile_hash = moderngekko::HashFileSha256(options.profile_use);
++    if (!profile_hash)
++    {
++      std::cerr << "profile data is unavailable: " << options.profile_use << '\n';
++      return std::nullopt;
++    }
++  }
+ #if defined(__x86_64__) || defined(_M_X64)
+   constexpr std::string_view architecture = "x86_64";
+ #elif defined(__aarch64__) || defined(_M_ARM64)
+@@ -478,6 +494,8 @@
+ #if defined(__linux__)
+     flags += " -fuse-ld=lld";
+ #endif
++    if (profile_hash)
++      flags += " profile-use-sha256=" + *profile_hash;
+   }
+   else if (compiler == "gcc")
+   {
+@@ -527,6 +545,7 @@
+              << "backend=" << options.backend << '\n'
+              << "c_chunk_instructions=" << options.c_chunk_instructions << '\n'
+              << "dispatch_lookup=" << options.dispatch_lookup << '\n'
++             << "profile_use_sha256=" << (profile_hash ? *profile_hash : "none") << '\n'
+              << "patches=" << patches.fingerprint << '\n';
+     fs::create_directories(options.output / game.disc_id);
+     std::ofstream active(options.output / game.disc_id / "active-module.txt");
+@@ -608,6 +627,12 @@
+            : " -DRECOMPCORE_MODULE_OPT_LEVEL=" + options.opt_level) +
+       " -DCHASSIS_ABI_DIR=" +
+       Quote(source_root / "vendor/dolphin/Source/Core/Core/PowerPC/StaticRecomp");
++  if (profile_hash)
++  {
++    const std::string profile_flag = "-fprofile-instr-use=" + options.profile_use.string();
++    configure += " -DCMAKE_C_FLAGS=" + Quote(profile_flag) +
++                 " -DCMAKE_SHARED_LINKER_FLAGS=" + Quote(profile_flag);
++  }
+   if (!RunCommand(configure) ||
+       !RunCommand("cmake --build " + Quote(module_build) + " -j" +
+                   std::to_string(compile_jobs)))
+@@ -624,7 +649,7 @@
+ void Usage()
+ {
+   std::cerr << "usage: moderngekko-port inspect <game-root>\n"
+-               "       moderngekko-port build <game-root> [--backend c|llvm] [--toolchain auto|clang|gcc|msvc] [--opt-level 0-3] [--c-chunk-instructions 128-4096] [--dispatch-lookup linear|indexed] [--output path]\n"
++               "       moderngekko-port build <game-root> [--backend c|llvm] [--toolchain auto|clang|gcc|msvc] [--opt-level 0-3] [--c-chunk-instructions 128-4096] [--dispatch-lookup linear|indexed] [--profile-use path] [--output path]\n"
+                "       moderngekko-port run <game-root> [build options] [-- runner options]\n";
+ }
+ }  // namespace
+@@ -668,6 +693,8 @@
+     }
+     else if (arg == "--dispatch-lookup" && i + 1 < argc)
+       options.dispatch_lookup = argv[++i];
++    else if (arg == "--profile-use" && i + 1 < argc)
++      options.profile_use = fs::absolute(argv[++i]);
+     else if (arg == "--output" && i + 1 < argc)
+       options.output = argv[++i];
+     else if (command == "run")

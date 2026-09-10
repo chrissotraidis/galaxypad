@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+contents="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+export XDG_DATA_HOME="${HOME}/Library/Application Support"
+# Validated RMGE01 locked-cache byte path; preserve an explicit diagnostic opt-out.
+export GALAXYPAD_LC_BYTE_FAST="${GALAXYPAD_LC_BYTE_FAST:-1}"
+# Guarded paired-byte stores passed both timing orders and gameplay regression.
+export GALAXYPAD_LC_PAIR_FAST="${GALAXYPAD_LC_PAIR_FAST:-1}"
+user_dir="$XDG_DATA_HOME/GalaxyPad"
+mkdir -p "$user_dir/Config"
+if [[ ! -f "$user_dir/Config/Dolphin.ini" ]]; then
+  cp "$contents/Resources/default-Dolphin.ini" "$user_dir/Config/Dolphin.ini"
+fi
+if [[ ! -f "$user_dir/config.ini" ]]; then
+  cp "$contents/Resources/default-config.ini" "$user_dir/config.ini"
+fi
+if [[ ! -f "$user_dir/Config/WiimoteNew.ini" ]]; then
+  cp "$contents/Resources/default-WiimoteNew.ini" "$user_dir/Config/WiimoteNew.ini"
+fi
+
+if [[ $# -gt 0 ]]; then
+  exec "$contents/MacOS/GalaxyPadRunner" "$@"
+fi
+exec "$contents/MacOS/GalaxyPadFrontend"

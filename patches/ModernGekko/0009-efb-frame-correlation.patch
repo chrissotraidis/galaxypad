@@ -1,0 +1,45 @@
+diff --git a/include/moderngekko/runtime.hpp b/include/moderngekko/runtime.hpp
+--- a/include/moderngekko/runtime.hpp
++++ b/include/moderngekko/runtime.hpp
+@@ -74,6 +74,8 @@ struct RuntimeDiagnosticsSnapshot
+   std::uint32_t efb_last_x = 0;
+   std::uint32_t efb_last_y = 0;
+   std::uint32_t efb_last_depth = 0;
++  std::uint64_t efb_frames_with_peeks = 0;
++  std::uint64_t efb_max_peeks_per_frame = 0;
+   std::uint64_t input_samples = 0;
+   std::uint64_t input_button_samples = 0;
+   std::uint64_t input_button_transitions = 0;
+diff --git a/src/runtime/dolphin_runtime.cpp b/src/runtime/dolphin_runtime.cpp
+--- a/src/runtime/dolphin_runtime.cpp
++++ b/src/runtime/dolphin_runtime.cpp
+@@ -617,6 +617,7 @@ RuntimeRunResult Runtime::Run() {
+   });
+   m_impl->diagnostics_frame_hook =
+       GetVideoEvents().after_frame_event.Register([this](Core::System&) {
++        GalaxyPadDiagnostics::RecordPresentedFrame();
+         const Statistics::ThisFrame frame = g_stats.this_frame;
+         const auto now = std::chrono::steady_clock::now().time_since_epoch();
+         const auto now_ns = static_cast<std::uint64_t>(
+@@ -815,6 +816,8 @@ RuntimeDiagnosticsSnapshot Runtime::GetDiagnosticsSnapshot() const {
+       .efb_last_x = io.efb_last_x,
+       .efb_last_y = io.efb_last_y,
+       .efb_last_depth = io.efb_last_depth,
++      .efb_frames_with_peeks = io.efb_frames_with_peeks,
++      .efb_max_peeks_per_frame = io.efb_max_peeks_per_frame,
+       .input_samples = io.input_samples,
+       .input_button_samples = io.input_button_samples,
+       .input_button_transitions = io.input_button_transitions,
+diff --git a/tools/moderngekko_run.cpp b/tools/moderngekko_run.cpp
+--- a/tools/moderngekko_run.cpp
++++ b/tools/moderngekko_run.cpp
+@@ -441,7 +441,8 @@ int RunMain(int argc, char **argv) {
+             << " last_x=" << diagnostics.efb_last_x
+             << " last_y=" << diagnostics.efb_last_y
+             << " last_depth=0x" << std::hex << diagnostics.efb_last_depth
+-            << std::dec << '\n';
++            << std::dec << " frames_with_peeks=" << diagnostics.efb_frames_with_peeks
++            << " max_peeks_per_frame=" << diagnostics.efb_max_peeks_per_frame << '\n';
+   std::cout << "[moderngekko] input: samples=" << diagnostics.input_samples
+             << " button_samples=" << diagnostics.input_button_samples
+             << " transitions=" << diagnostics.input_button_transitions

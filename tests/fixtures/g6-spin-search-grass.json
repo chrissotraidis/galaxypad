@@ -1,0 +1,10 @@
+[
+  {"action": "tap", "button": "SPIN", "hold": 0.18},
+  {"action": "wait", "seconds": 0.30},
+  {"action": "tap", "button": "SPIN", "hold": 0.18},
+  {"action": "wait", "seconds": 0.30},
+  {"action": "tap", "button": "SPIN", "hold": 0.18},
+  {"action": "wait", "seconds": 0.30},
+  {"action": "tap", "button": "SPIN", "hold": 0.18},
+  {"action": "wait", "seconds": 0.30}
+]

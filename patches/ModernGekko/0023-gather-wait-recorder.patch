@@ -1,0 +1,413 @@
+diff --git a/src/runtime/vi-timing-buffer.h b/src/runtime/vi-timing-buffer.h
+--- a/src/runtime/vi-timing-buffer.h
++++ b/src/runtime/vi-timing-buffer.h
+@@ -21,17 +21,18 @@
+     std::uint64_t throttle_elapsed_ns{};
+     std::uint64_t idle_wait_elapsed_ns{};
+     std::uint64_t dvd_wait_elapsed_ns{};
+-  };
+-
+-  void Record(std::uint64_t wall_ns, std::uint64_t cpu_ns, bool cpu_valid,
+-              std::uint64_t efb_ns = 0, std::uint64_t throttle_ns = 0,
+-              std::uint64_t idle_ns = 0, std::uint64_t dvd_ns = 0) noexcept {
+-    if (size_ == Capacity) {
+-      if (dropped_ != std::numeric_limits<std::uint64_t>::max())
+-        ++dropped_;
+-      return;
+-    }
+-    samples_[size_++] = {wall_ns, cpu_ns, cpu_valid, efb_ns, throttle_ns, idle_ns, dvd_ns};
++    std::uint64_t gather_wait_elapsed_ns{};
++  };
++
++  void Record(std::uint64_t wall_ns, std::uint64_t cpu_ns, bool cpu_valid,
++              std::uint64_t efb_ns = 0, std::uint64_t throttle_ns = 0,
++              std::uint64_t idle_ns = 0, std::uint64_t dvd_ns = 0, std::uint64_t gather_ns = 0) noexcept {
++    if (size_ == Capacity) {
++      if (dropped_ != std::numeric_limits<std::uint64_t>::max())
++        ++dropped_;
++      return;
++    }
++    samples_[size_++] = {wall_ns, cpu_ns, cpu_valid, efb_ns, throttle_ns, idle_ns, dvd_ns, gather_ns};
+   }
+ 
+   void Reset() noexcept { size_ = 0; dropped_ = 0; }
+diff --git a/src/runtime/vi-timing-recorder.h b/src/runtime/vi-timing-recorder.h
+--- a/src/runtime/vi-timing-recorder.h
++++ b/src/runtime/vi-timing-recorder.h
+@@ -29,49 +29,50 @@
+     const auto sample = clock();
+     buffer_->Record(sample.wall_ns, sample.thread_cpu_ns, sample.cpu_clock_valid,
+                     sample.efb_elapsed_ns, sample.throttle_elapsed_ns, sample.idle_wait_elapsed_ns,
+-                    sample.dvd_wait_elapsed_ns);
+-  }
+-
+-  bool Enabled() const noexcept { return buffer_ && !finished_; }
+-
+-  void Record(std::uint64_t efb_ns = 0, std::uint64_t throttle_ns = 0,
+-              std::uint64_t idle_ns = 0, std::uint64_t dvd_ns = 0) noexcept {
+-    RecordWithClock([=]() noexcept {
+-      const auto wall = std::chrono::steady_clock::now().time_since_epoch();
+-      timespec cpu{};
+-      bool valid = false;
+-#ifdef CLOCK_THREAD_CPUTIME_ID
+-      valid = clock_gettime(CLOCK_THREAD_CPUTIME_ID, &cpu) == 0;
+-#endif
+-      return Buffer::Sample{
+-          static_cast<std::uint64_t>(
+-              std::chrono::duration_cast<std::chrono::nanoseconds>(wall).count()),
+-          valid ? static_cast<std::uint64_t>(cpu.tv_sec) * 1'000'000'000 +
+-                      static_cast<std::uint64_t>(cpu.tv_nsec) : 0,
+-          valid, efb_ns, throttle_ns, idle_ns, dvd_ns};
+-    });
+-  }
+-
+-  // Caller MUST join the writer first. Idempotent; never overwrite an existing file.
+-  Result FlushAfterJoin() noexcept {
+-    if (finished_ || !buffer_)
+-      return result_;
+-    finished_ = true;
+-    std::FILE* file = std::fopen(path_.c_str(), "wx");
+-    if (!file)
+-      return result_ = Result::OpenFailed;
+-    bool ok = std::fprintf(file, "# dropped=%llu\nwall_ns,thread_cpu_ns,cpu_clock_valid,efb_elapsed_ns,throttle_elapsed_ns,idle_wait_elapsed_ns,dvd_wait_elapsed_ns\n",
+-                           static_cast<unsigned long long>(buffer_->Dropped())) >= 0;
+-    for (std::size_t i = 0; i < buffer_->Size() && ok; ++i) {
+-      const auto& sample = buffer_->Data()[i];
+-      ok = std::fprintf(file, "%llu,%llu,%u,%llu,%llu,%llu,%llu\n",
+-                        static_cast<unsigned long long>(sample.wall_ns),
+-                        static_cast<unsigned long long>(sample.thread_cpu_ns),
+-                        sample.cpu_clock_valid ? 1u : 0u,
+-                        static_cast<unsigned long long>(sample.efb_elapsed_ns),
+-                        static_cast<unsigned long long>(sample.throttle_elapsed_ns),
+-                        static_cast<unsigned long long>(sample.idle_wait_elapsed_ns),
+-                        static_cast<unsigned long long>(sample.dvd_wait_elapsed_ns)) >= 0;
++                    sample.dvd_wait_elapsed_ns, sample.gather_wait_elapsed_ns);
++  }
++
++  bool Enabled() const noexcept { return buffer_ && !finished_; }
++
++  void Record(std::uint64_t efb_ns = 0, std::uint64_t throttle_ns = 0,
++              std::uint64_t idle_ns = 0, std::uint64_t dvd_ns = 0, std::uint64_t gather_ns = 0) noexcept {
++    RecordWithClock([=]() noexcept {
++      const auto wall = std::chrono::steady_clock::now().time_since_epoch();
++      timespec cpu{};
++      bool valid = false;
++#ifdef CLOCK_THREAD_CPUTIME_ID
++      valid = clock_gettime(CLOCK_THREAD_CPUTIME_ID, &cpu) == 0;
++#endif
++      return Buffer::Sample{
++          static_cast<std::uint64_t>(
++              std::chrono::duration_cast<std::chrono::nanoseconds>(wall).count()),
++          valid ? static_cast<std::uint64_t>(cpu.tv_sec) * 1'000'000'000 +
++                      static_cast<std::uint64_t>(cpu.tv_nsec) : 0,
++          valid, efb_ns, throttle_ns, idle_ns, dvd_ns, gather_ns};
++    });
++  }
++
++  // Caller MUST join the writer first. Idempotent; never overwrite an existing file.
++  Result FlushAfterJoin() noexcept {
++    if (finished_ || !buffer_)
++      return result_;
++    finished_ = true;
++    std::FILE* file = std::fopen(path_.c_str(), "wx");
++    if (!file)
++      return result_ = Result::OpenFailed;
++    bool ok = std::fprintf(file, "# dropped=%llu\nwall_ns,thread_cpu_ns,cpu_clock_valid,efb_elapsed_ns,throttle_elapsed_ns,idle_wait_elapsed_ns,dvd_wait_elapsed_ns,gather_wait_elapsed_ns\n",
++                           static_cast<unsigned long long>(buffer_->Dropped())) >= 0;
++    for (std::size_t i = 0; i < buffer_->Size() && ok; ++i) {
++      const auto& sample = buffer_->Data()[i];
++      ok = std::fprintf(file, "%llu,%llu,%u,%llu,%llu,%llu,%llu,%llu\n",
++                        static_cast<unsigned long long>(sample.wall_ns),
++                        static_cast<unsigned long long>(sample.thread_cpu_ns),
++                        sample.cpu_clock_valid ? 1u : 0u,
++                        static_cast<unsigned long long>(sample.efb_elapsed_ns),
++                        static_cast<unsigned long long>(sample.throttle_elapsed_ns),
++                        static_cast<unsigned long long>(sample.idle_wait_elapsed_ns),
++                        static_cast<unsigned long long>(sample.dvd_wait_elapsed_ns),
++                        static_cast<unsigned long long>(sample.gather_wait_elapsed_ns)) >= 0;
+     }
+     if (std::fclose(file) != 0)
+       ok = false;
+diff --git a/src/runtime/dolphin_runtime.cpp b/src/runtime/dolphin_runtime.cpp
+--- a/src/runtime/dolphin_runtime.cpp
++++ b/src/runtime/dolphin_runtime.cpp
+@@ -591,141 +591,144 @@
+   m_impl->vi_timing.Configure(std::getenv("GALAXYPAD_VI_TIMING"));
+   Core::System::GetInstance().GetPerfMetrics().GetCPUDVDWaitTiming().Configure(
+       m_impl->vi_timing.Enabled());
+-  const char* completion_path = std::getenv("GALAXYPAD_COMPLETION_TIMING");
+-  std::uint64_t completion_deadline = 0;
+-  constexpr std::uint64_t completion_threshold = 20'000'000;
+-  bool completion_config_valid = true;
+-  if (completion_path && *completion_path) {
+-    const auto now = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+-        std::chrono::steady_clock::now().time_since_epoch()).count());
+-    completion_config_valid = galaxypad::CompletionArmDeadline(
+-        std::getenv("GALAXYPAD_COMPLETION_ARM_DELAY_MS"), now, completion_deadline);
+-    std::fprintf(stderr, "[moderngekko] completion-arm: valid=%u not_before_ns=%llu threshold_ns=%llu\n",
+-                 completion_config_valid ? 1u : 0u,
+-                 static_cast<unsigned long long>(completion_deadline),
+-                 static_cast<unsigned long long>(completion_threshold));
+-  }
+-  galaxypad::completion_recorder.Configure(completion_path, completion_deadline,
+-      completion_config_valid ? completion_threshold : 0);
+-  Core::System::GetInstance().GetPerfMetrics().GetCPUIdleWaitTiming().Configure(
+-      m_impl->vi_timing.Enabled() || galaxypad::completion_recorder.Enabled());
+-  m_impl->diagnostic_frame_count = 0;
+-  m_impl->diagnostic_first_frame_ns = std::numeric_limits<std::uint64_t>::max();
+-  m_impl->diagnostic_last_frame_ns = 0;
+-  m_impl->diagnostic_frame_max_gap_ns = 0;
+-  m_impl->diagnostic_frame_gaps_ge_20ms = 0;
+-  m_impl->diagnostic_frame_gaps_ge_33ms = 0;
+-  m_impl->diagnostic_frame_gaps_ge_50ms = 0;
+-  m_impl->diagnostic_frame_gaps_ge_100ms = 0;
+-
+-  std::unique_ptr<BootParameters> boot;
+-  {
+-    std::lock_guard lock(s_runtime_mutex);
+-    const std::filesystem::path& boot_path = m_impl->config.disc_image.empty() ?
+-        m_impl->metadata.main_dol : m_impl->config.disc_image;
+-    if (s_boot_session_data)
+-      boot = BootParameters::GenerateFromFile(
+-          boot_path.string(), std::move(*s_boot_session_data));
+-    else
+-      boot = BootParameters::GenerateFromFile(boot_path.string());
+-    s_boot_session_data.reset();
+-  }
+-  if (!boot) {
+-    m_impl->running = false;
+-    return {RuntimeExitReason::BootFailed,
+-            RuntimeError{RuntimeErrorCode::BootFailed,
+-                         "Dolphin rejected the extracted disc"}};
+-  }
+-  m_impl->state_hook =
+-      Core::AddOnStateChangedCallback([this](Core::State state) {
+-        if (state == Core::State::Running)
+-          SetGMSE01HeatwaveSuppressed(
+-              m_impl->gmse01_heatwave_suppressed.load(std::memory_order_relaxed));
+-        else if (state == Core::State::Uninitialized && m_impl->platform)
+-          m_impl->platform->Stop();
+-      });
+-  if (!BootManager::BootCore(Core::System::GetInstance(), std::move(boot),
+-                             m_impl->platform->GetWindowSystemInfo())) {
+-    m_impl->running = false;
+-    return {RuntimeExitReason::BootFailed,
+-            RuntimeError{RuntimeErrorCode::BootFailed,
+-                         "Dolphin could not boot sys/main.dol"}};
+-  }
+-  m_impl->booted = true;
+-  std::thread startup_patch_thread([this] {
+-    while (m_impl->running.load(std::memory_order_relaxed) &&
+-           Core::GetState(Core::System::GetInstance()) == Core::State::Starting)
+-      std::this_thread::sleep_for(std::chrono::milliseconds(4));
+-    if (Core::GetState(Core::System::GetInstance()) == Core::State::Running)
+-      SetGMSE01HeatwaveSuppressed(
+-          m_impl->gmse01_heatwave_suppressed.load(std::memory_order_relaxed));
+-  });
+-  m_impl->diagnostics_frame_hook =
+-      GetVideoEvents().after_frame_event.Register([this](Core::System&) {
+-        GalaxyPadDiagnostics::RecordPresentedFrame();
+-        const Statistics::ThisFrame frame = g_stats.this_frame;
+-        const auto now = std::chrono::steady_clock::now().time_since_epoch();
+-        const auto now_ns = static_cast<std::uint64_t>(
+-            std::chrono::duration_cast<std::chrono::nanoseconds>(now).count());
+-        std::uint64_t unset = std::numeric_limits<std::uint64_t>::max();
+-        m_impl->diagnostic_first_frame_ns.compare_exchange_strong(
+-            unset, now_ns, std::memory_order_relaxed);
+-        const std::uint64_t previous =
+-            m_impl->diagnostic_last_frame_ns.exchange(now_ns, std::memory_order_relaxed);
+-        if (previous != 0 && now_ns >= previous) {
+-          const std::uint64_t gap_ns = now_ns - previous;
+-          GalaxyPadDiagnostics::UpdateMaximum(m_impl->diagnostic_frame_max_gap_ns, gap_ns);
+-          if (gap_ns >= 20'000'000)
+-            m_impl->diagnostic_frame_gaps_ge_20ms.fetch_add(1, std::memory_order_relaxed);
+-          if (gap_ns >= 33'000'000)
+-            m_impl->diagnostic_frame_gaps_ge_33ms.fetch_add(1, std::memory_order_relaxed);
+-          if (gap_ns >= 50'000'000)
+-            m_impl->diagnostic_frame_gaps_ge_50ms.fetch_add(1, std::memory_order_relaxed);
+-          if (gap_ns >= 100'000'000)
+-            m_impl->diagnostic_frame_gaps_ge_100ms.fetch_add(1, std::memory_order_relaxed);
+-        }
+-        m_impl->diagnostic_frame_count.fetch_add(1, std::memory_order_relaxed);
+-        m_impl->diagnostic_projection_hash.store(HashProjection(g_stats),
+-                                                 std::memory_order_relaxed);
+-        m_impl->diagnostic_draw_calls.store(frame.num_draw_calls,
+-                                            std::memory_order_relaxed);
+-        m_impl->diagnostic_primitives.store(frame.num_prims + frame.num_dl_prims,
+-                                            std::memory_order_relaxed);
+-        m_impl->diagnostic_bp_loads.store(frame.num_bp_loads + frame.num_bp_loads_in_dl,
+-                                          std::memory_order_relaxed);
+-        m_impl->diagnostic_cp_loads.store(frame.num_cp_loads + frame.num_cp_loads_in_dl,
+-                                          std::memory_order_relaxed);
+-        m_impl->diagnostic_xf_loads.store(frame.num_xf_loads + frame.num_xf_loads_in_dl,
+-                                          std::memory_order_relaxed);
+-        m_impl->diagnostic_shader_changes.store(frame.num_shader_changes,
+-                                                std::memory_order_relaxed);
+-        m_impl->diagnostic_textures_created.store(g_stats.num_textures_created,
+-                                                  std::memory_order_relaxed);
+-        m_impl->diagnostic_textures_alive.store(g_stats.num_textures_alive,
+-                                                std::memory_order_relaxed);
+-        m_impl->diagnostic_vertex_shaders_created.store(g_stats.num_vertex_shaders_created,
+-                                                        std::memory_order_relaxed);
+-        m_impl->diagnostic_pixel_shaders_created.store(g_stats.num_pixel_shaders_created,
+-                                                       std::memory_order_relaxed);
+-        m_impl->diagnostic_scissor_count.store(
+-            static_cast<std::uint32_t>(g_stats.scissors.size()),
+-            std::memory_order_relaxed);
+-      });
+-  m_impl->diagnostics_before_frame_hook = GetVideoEvents().before_frame_event.Register(
+-      [] { GalaxyPadDiagnostics::RecordPhase("frame_begin"); });
+-  m_impl->diagnostics_before_present_hook = GetVideoEvents().before_present_event.Register(
+-      [](PresentInfo&) { GalaxyPadDiagnostics::RecordPhase("present_queue"); });
+-  m_impl->diagnostics_after_present_hook = GetVideoEvents().after_present_event.Register(
+-      [](PresentInfo&) { GalaxyPadDiagnostics::RecordPhase("present_done"); });
+-  m_impl->diagnostics_vi_hook = GetVideoEvents().vi_end_field_event.Register(
+-      [this] {
+-        if (m_impl->vi_timing.Enabled())
+-          m_impl->vi_timing.Record(
+-              GalaxyPadDiagnostics::s_efb_peek_ns.load(std::memory_order_relaxed),
+-              static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+-                  Core::System::GetInstance().GetPerfMetrics().GetCPUThrottleElapsed()).count()),
+-              Core::System::GetInstance().GetPerfMetrics().GetCPUIdleWaitTiming().ElapsedNs(),
+-              Core::System::GetInstance().GetPerfMetrics().GetCPUDVDWaitTiming().ElapsedNs());
++  Core::System::GetInstance().GetPerfMetrics().GetCPUGatherWaitTiming().Configure(
++      m_impl->vi_timing.Enabled());
++  const char* completion_path = std::getenv("GALAXYPAD_COMPLETION_TIMING");
++  std::uint64_t completion_deadline = 0;
++  constexpr std::uint64_t completion_threshold = 20'000'000;
++  bool completion_config_valid = true;
++  if (completion_path && *completion_path) {
++    const auto now = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
++        std::chrono::steady_clock::now().time_since_epoch()).count());
++    completion_config_valid = galaxypad::CompletionArmDeadline(
++        std::getenv("GALAXYPAD_COMPLETION_ARM_DELAY_MS"), now, completion_deadline);
++    std::fprintf(stderr, "[moderngekko] completion-arm: valid=%u not_before_ns=%llu threshold_ns=%llu\n",
++                 completion_config_valid ? 1u : 0u,
++                 static_cast<unsigned long long>(completion_deadline),
++                 static_cast<unsigned long long>(completion_threshold));
++  }
++  galaxypad::completion_recorder.Configure(completion_path, completion_deadline,
++      completion_config_valid ? completion_threshold : 0);
++  Core::System::GetInstance().GetPerfMetrics().GetCPUIdleWaitTiming().Configure(
++      m_impl->vi_timing.Enabled() || galaxypad::completion_recorder.Enabled());
++  m_impl->diagnostic_frame_count = 0;
++  m_impl->diagnostic_first_frame_ns = std::numeric_limits<std::uint64_t>::max();
++  m_impl->diagnostic_last_frame_ns = 0;
++  m_impl->diagnostic_frame_max_gap_ns = 0;
++  m_impl->diagnostic_frame_gaps_ge_20ms = 0;
++  m_impl->diagnostic_frame_gaps_ge_33ms = 0;
++  m_impl->diagnostic_frame_gaps_ge_50ms = 0;
++  m_impl->diagnostic_frame_gaps_ge_100ms = 0;
++
++  std::unique_ptr<BootParameters> boot;
++  {
++    std::lock_guard lock(s_runtime_mutex);
++    const std::filesystem::path& boot_path = m_impl->config.disc_image.empty() ?
++        m_impl->metadata.main_dol : m_impl->config.disc_image;
++    if (s_boot_session_data)
++      boot = BootParameters::GenerateFromFile(
++          boot_path.string(), std::move(*s_boot_session_data));
++    else
++      boot = BootParameters::GenerateFromFile(boot_path.string());
++    s_boot_session_data.reset();
++  }
++  if (!boot) {
++    m_impl->running = false;
++    return {RuntimeExitReason::BootFailed,
++            RuntimeError{RuntimeErrorCode::BootFailed,
++                         "Dolphin rejected the extracted disc"}};
++  }
++  m_impl->state_hook =
++      Core::AddOnStateChangedCallback([this](Core::State state) {
++        if (state == Core::State::Running)
++          SetGMSE01HeatwaveSuppressed(
++              m_impl->gmse01_heatwave_suppressed.load(std::memory_order_relaxed));
++        else if (state == Core::State::Uninitialized && m_impl->platform)
++          m_impl->platform->Stop();
++      });
++  if (!BootManager::BootCore(Core::System::GetInstance(), std::move(boot),
++                             m_impl->platform->GetWindowSystemInfo())) {
++    m_impl->running = false;
++    return {RuntimeExitReason::BootFailed,
++            RuntimeError{RuntimeErrorCode::BootFailed,
++                         "Dolphin could not boot sys/main.dol"}};
++  }
++  m_impl->booted = true;
++  std::thread startup_patch_thread([this] {
++    while (m_impl->running.load(std::memory_order_relaxed) &&
++           Core::GetState(Core::System::GetInstance()) == Core::State::Starting)
++      std::this_thread::sleep_for(std::chrono::milliseconds(4));
++    if (Core::GetState(Core::System::GetInstance()) == Core::State::Running)
++      SetGMSE01HeatwaveSuppressed(
++          m_impl->gmse01_heatwave_suppressed.load(std::memory_order_relaxed));
++  });
++  m_impl->diagnostics_frame_hook =
++      GetVideoEvents().after_frame_event.Register([this](Core::System&) {
++        GalaxyPadDiagnostics::RecordPresentedFrame();
++        const Statistics::ThisFrame frame = g_stats.this_frame;
++        const auto now = std::chrono::steady_clock::now().time_since_epoch();
++        const auto now_ns = static_cast<std::uint64_t>(
++            std::chrono::duration_cast<std::chrono::nanoseconds>(now).count());
++        std::uint64_t unset = std::numeric_limits<std::uint64_t>::max();
++        m_impl->diagnostic_first_frame_ns.compare_exchange_strong(
++            unset, now_ns, std::memory_order_relaxed);
++        const std::uint64_t previous =
++            m_impl->diagnostic_last_frame_ns.exchange(now_ns, std::memory_order_relaxed);
++        if (previous != 0 && now_ns >= previous) {
++          const std::uint64_t gap_ns = now_ns - previous;
++          GalaxyPadDiagnostics::UpdateMaximum(m_impl->diagnostic_frame_max_gap_ns, gap_ns);
++          if (gap_ns >= 20'000'000)
++            m_impl->diagnostic_frame_gaps_ge_20ms.fetch_add(1, std::memory_order_relaxed);
++          if (gap_ns >= 33'000'000)
++            m_impl->diagnostic_frame_gaps_ge_33ms.fetch_add(1, std::memory_order_relaxed);
++          if (gap_ns >= 50'000'000)
++            m_impl->diagnostic_frame_gaps_ge_50ms.fetch_add(1, std::memory_order_relaxed);
++          if (gap_ns >= 100'000'000)
++            m_impl->diagnostic_frame_gaps_ge_100ms.fetch_add(1, std::memory_order_relaxed);
++        }
++        m_impl->diagnostic_frame_count.fetch_add(1, std::memory_order_relaxed);
++        m_impl->diagnostic_projection_hash.store(HashProjection(g_stats),
++                                                 std::memory_order_relaxed);
++        m_impl->diagnostic_draw_calls.store(frame.num_draw_calls,
++                                            std::memory_order_relaxed);
++        m_impl->diagnostic_primitives.store(frame.num_prims + frame.num_dl_prims,
++                                            std::memory_order_relaxed);
++        m_impl->diagnostic_bp_loads.store(frame.num_bp_loads + frame.num_bp_loads_in_dl,
++                                          std::memory_order_relaxed);
++        m_impl->diagnostic_cp_loads.store(frame.num_cp_loads + frame.num_cp_loads_in_dl,
++                                          std::memory_order_relaxed);
++        m_impl->diagnostic_xf_loads.store(frame.num_xf_loads + frame.num_xf_loads_in_dl,
++                                          std::memory_order_relaxed);
++        m_impl->diagnostic_shader_changes.store(frame.num_shader_changes,
++                                                std::memory_order_relaxed);
++        m_impl->diagnostic_textures_created.store(g_stats.num_textures_created,
++                                                  std::memory_order_relaxed);
++        m_impl->diagnostic_textures_alive.store(g_stats.num_textures_alive,
++                                                std::memory_order_relaxed);
++        m_impl->diagnostic_vertex_shaders_created.store(g_stats.num_vertex_shaders_created,
++                                                        std::memory_order_relaxed);
++        m_impl->diagnostic_pixel_shaders_created.store(g_stats.num_pixel_shaders_created,
++                                                       std::memory_order_relaxed);
++        m_impl->diagnostic_scissor_count.store(
++            static_cast<std::uint32_t>(g_stats.scissors.size()),
++            std::memory_order_relaxed);
++      });
++  m_impl->diagnostics_before_frame_hook = GetVideoEvents().before_frame_event.Register(
++      [] { GalaxyPadDiagnostics::RecordPhase("frame_begin"); });
++  m_impl->diagnostics_before_present_hook = GetVideoEvents().before_present_event.Register(
++      [](PresentInfo&) { GalaxyPadDiagnostics::RecordPhase("present_queue"); });
++  m_impl->diagnostics_after_present_hook = GetVideoEvents().after_present_event.Register(
++      [](PresentInfo&) { GalaxyPadDiagnostics::RecordPhase("present_done"); });
++  m_impl->diagnostics_vi_hook = GetVideoEvents().vi_end_field_event.Register(
++      [this] {
++        if (m_impl->vi_timing.Enabled())
++          m_impl->vi_timing.Record(
++              GalaxyPadDiagnostics::s_efb_peek_ns.load(std::memory_order_relaxed),
++              static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
++                  Core::System::GetInstance().GetPerfMetrics().GetCPUThrottleElapsed()).count()),
++              Core::System::GetInstance().GetPerfMetrics().GetCPUIdleWaitTiming().ElapsedNs(),
++              Core::System::GetInstance().GetPerfMetrics().GetCPUDVDWaitTiming().ElapsedNs(),
++              Core::System::GetInstance().GetPerfMetrics().GetCPUGatherWaitTiming().ElapsedNs());
+         GalaxyPadDiagnostics::RecordPhase("vi_end_field");
+       });
+   std::atomic_bool stop_title_thread = false;

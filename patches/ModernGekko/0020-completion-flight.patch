@@ -1,0 +1,723 @@
+diff --git a/src/runtime/dolphin_runtime.cpp b/src/runtime/dolphin_runtime.cpp
+--- a/src/runtime/dolphin_runtime.cpp
++++ b/src/runtime/dolphin_runtime.cpp
+@@ -243,355 +243,370 @@
+       std::fprintf(stderr, "[moderngekko] vi-timing: export_result=%d (1=saved,2=open_failed,3=write_failed)\n",
+                    static_cast<int>(result));
+     const auto completion = galaxypad::completion_recorder.FlushAfterJoin();
+-    if (completion != galaxypad::CompletionRecorder::Result::Disabled)
+-      std::fprintf(stderr, "[moderngekko] completion-timing: export_result=%d (1=saved,2=open_failed,3=write_failed)\n",
+-                   static_cast<int>(completion));
+-  }
+-
+-  bool ui_initialized = false;
+-  bool controllers_initialized = false;
+-  std::atomic<bool> booted{false};
+-  std::atomic<bool> running{false};
+-  std::atomic<bool> gmse01_heatwave_suppressed{false};
+-  std::atomic<bool> gmse01_heatwave_patch_applied{false};
+-  std::atomic<std::uint64_t> diagnostic_frame_count{0};
+-  std::atomic<std::uint64_t> diagnostic_first_frame_ns{
+-      std::numeric_limits<std::uint64_t>::max()};
+-  std::atomic<std::uint64_t> diagnostic_last_frame_ns{0};
+-  std::atomic<std::uint64_t> diagnostic_frame_max_gap_ns{0};
+-  std::atomic<std::uint64_t> diagnostic_frame_gaps_ge_20ms{0};
+-  std::atomic<std::uint64_t> diagnostic_frame_gaps_ge_33ms{0};
+-  std::atomic<std::uint64_t> diagnostic_frame_gaps_ge_50ms{0};
+-  std::atomic<std::uint64_t> diagnostic_frame_gaps_ge_100ms{0};
+-  std::atomic<std::uint64_t> diagnostic_projection_hash{0};
+-  std::atomic<std::uint32_t> diagnostic_draw_calls{0};
+-  std::atomic<std::uint32_t> diagnostic_primitives{0};
+-  std::atomic<std::uint32_t> diagnostic_bp_loads{0};
+-  std::atomic<std::uint32_t> diagnostic_cp_loads{0};
+-  std::atomic<std::uint32_t> diagnostic_xf_loads{0};
+-  std::atomic<std::uint32_t> diagnostic_shader_changes{0};
+-  std::atomic<std::uint32_t> diagnostic_textures_created{0};
+-  std::atomic<std::uint32_t> diagnostic_textures_alive{0};
+-  std::atomic<std::uint32_t> diagnostic_vertex_shaders_created{0};
+-  std::atomic<std::uint32_t> diagnostic_pixel_shaders_created{0};
+-  std::atomic<std::uint32_t> diagnostic_scissor_count{0};
+-};
+-
+-namespace detail {
+-void SetExternalUICommon(bool external) {
+-  std::lock_guard lock(s_runtime_mutex);
+-  s_external_ui_common = external;
+-}
+-
+-void SetBootSessionData(std::unique_ptr<BootSessionData> boot_session_data) {
+-  std::lock_guard lock(s_runtime_mutex);
+-  s_boot_session_data = std::move(boot_session_data);
+-}
+-} // namespace detail
+-
+-ModuleSource ModuleSource::DynamicPath(std::filesystem::path path) {
+-  ModuleSource source;
+-  source.kind = Kind::DynamicPath;
+-  source.path = std::move(path);
+-  return source;
+-}
+-
+-ModuleSource
+-ModuleSource::AttachedDescriptor(const ModernGekkoModuleDesc *descriptor) {
+-  ModuleSource source;
+-  source.kind = Kind::AttachedDescriptor;
+-  source.descriptor = descriptor;
+-  return source;
+-}
+-
+-Runtime::Runtime(std::unique_ptr<Impl> impl) : m_impl(std::move(impl)) {}
+-
+-RuntimeCreateResult Runtime::Create(RuntimeConfig config) {
+-  std::lock_guard lock(s_runtime_mutex);
+-  if (s_runtime_active)
+-    return {
+-        {},
+-        RuntimeError{RuntimeErrorCode::AlreadyActive,
+-                     "only one ModernGekko runtime may be active per process"}};
+-
+-  GameInspectResult inspected = InspectGame(config.game_root);
+-  if (!inspected)
+-    return {{}, RuntimeError{RuntimeErrorCode::InvalidGame, inspected.error}};
+-
+-  if (!config.disc_image.empty()) {
+-    std::error_code ec;
+-    const auto disc_image = std::filesystem::weakly_canonical(config.disc_image, ec);
+-    if (ec || !std::filesystem::is_regular_file(disc_image))
+-      return {{}, RuntimeError{RuntimeErrorCode::InvalidGame,
+-                               "disc image is not a readable file"}};
+-    config.disc_image = disc_image;
+-  }
+-
+-  const ModernGekkoModuleRequirements requirements = {
+-      MODERNGEKKO_CPU_ABI_VERSION, static_cast<std::uint32_t>(sizeof(CPUState)),
+-      inspected.metadata->disc_id.c_str()};
+-  ModuleLibrary validation_library;
+-  ModuleLoadResult module_result{};
+-  if (config.module.kind == ModuleSource::Kind::DynamicPath)
+-    module_result =
+-        validation_library.Open(config.module.path.string(), requirements);
+-  else if (config.module.kind == ModuleSource::Kind::AttachedDescriptor)
+-    module_result =
+-        validation_library.Attach(config.module.descriptor, requirements);
+-  else if (!config.allow_interpreter)
+-    return {
+-        {},
+-        RuntimeError{
+-            RuntimeErrorCode::ModuleRequired,
+-            "no native module was supplied; use allow_interpreter explicitly"}};
+-
+-  if (config.module.kind != ModuleSource::Kind::None &&
+-      module_result.status != ModuleLoadStatus::Ok) {
+-    if (!config.allow_interpreter) {
+-      std::string message = "native module was rejected";
+-      if (module_result.status == ModuleLoadStatus::DescriptorRejected)
+-        message += ": " + std::string(moderngekko_module_status_string(
+-                              module_result.validation_status));
+-      return {
+-          {},
+-          RuntimeError{RuntimeErrorCode::ModuleRejected, std::move(message)}};
+-    }
+-    config.module = {};
+-  }
+-  validation_library.Close();
+-
+-  auto impl = std::make_unique<Impl>();
+-  impl->config = std::move(config);
+-  impl->metadata = std::move(*inspected.metadata);
+-  impl->title = impl->config.window_title.value_or(
+-      "ModernGekko - " + impl->metadata.game_name + " [" +
+-      impl->metadata.disc_id + "]");
+-  impl->mods = std::make_unique<ModManager>();
+-  const ModLoadReport mod_report = impl->mods->LoadDirectories(
+-      impl->config.mod_directories, impl->metadata.disc_id);
+-  for (const ModLoadIssue &issue : mod_report.issues)
+-    std::fprintf(stderr, "mod rejected: %s: %s\n", issue.source.c_str(),
+-                 issue.message.c_str());
+-  for (const LoadedModInfo &mod : mod_report.loaded)
+-    std::fprintf(stderr, "mod loaded: %s %s\n", mod.id.c_str(),
+-                 mod.version.c_str());
+-
+-  if (!s_external_ui_common) {
+-    UICommon::SetUserDirectory(impl->config.user_directory.string());
+-    UICommon::Init();
+-    impl->ui_initialized = true;
+-  }
+-
+-  if (impl->config.enable_gmse01_60fps ||
+-      impl->config.enable_gmse01_widescreen) {
+-    if (impl->metadata.disc_id != "GMSE01") {
+-      if (impl->ui_initialized)
+-        UICommon::Shutdown();
+-      return {{}, RuntimeError{RuntimeErrorCode::InvalidGame,
+-                               "GMSE01 boot codes are available only for GMSE01"}};
+-    }
+-
+-    Common::IniFile empty_local_ini;
+-    auto codes = Gecko::LoadCodes(SConfig::LoadDefaultGameIni("GMSE01", std::nullopt),
+-                                  empty_local_ini);
+-    const auto sixty_fps = std::ranges::find(codes, std::string("60FPS"),
+-                                             &Gecko::GeckoCode::name);
+-    const auto widescreen = std::ranges::find(codes, std::string("Widescreen"),
+-                                              &Gecko::GeckoCode::name);
+-    if ((impl->config.enable_gmse01_60fps && sixty_fps == codes.end()) ||
+-        (impl->config.enable_gmse01_widescreen && widescreen == codes.end())) {
+-      if (impl->ui_initialized)
+-        UICommon::Shutdown();
+-      return {{}, RuntimeError{RuntimeErrorCode::InitializationFailed,
+-                               "a requested bundled GMSE01 Gecko code is unavailable"}};
+-    }
+-
+-    for (auto& code : codes)
+-      code.enabled = (impl->config.enable_gmse01_60fps && &code == &*sixty_fps) ||
+-                     (impl->config.enable_gmse01_widescreen && &code == &*widescreen);
+-    Gecko::UpdateSyncedCodes(codes);
+-    Config::SetBase(Config::MAIN_ENABLE_CHEATS, true);
+-    Config::SetBase(Config::SESSION_CODE_SYNC_OVERRIDE, true);
+-    std::fprintf(
+-        stderr,
+-        "[moderngekko] GMSE01 boot codes enabled: widescreen=%d 60FPS=%d; "
+-        "StaticRecomp SMC/fallback counters follow at shutdown\n",
+-        impl->config.enable_gmse01_widescreen, impl->config.enable_gmse01_60fps);
+-  } else {
+-    // Runtime::Create can be called again in the same app process after a game
+-    // data import. Do not let a prior session's synchronized Gecko list or
+-    // cheat flags leak into a new supported-mode boot.
+-    const std::vector<Gecko::GeckoCode> no_codes;
+-    Gecko::UpdateSyncedCodes(no_codes);
+-    Config::SetBase(Config::MAIN_ENABLE_CHEATS, false);
+-    Config::SetBase(Config::SESSION_CODE_SYNC_OVERRIDE, false);
+-  }
+-  Config::SetBase(Config::MAIN_FULLSCREEN, impl->config.fullscreen);
+-
+-  if (impl->config.headless)
+-    impl->platform = Platform::CreateHeadlessPlatform();
+-#ifdef MODERNGEKKO_HAVE_IOS
+-  else
+-    impl->platform = Platform::CreateIOSPlatform();
+-#endif
+-#ifdef _WIN32
+-  else
+-    impl->platform = Platform::CreateWin32Platform();
+-#endif
+-#ifdef MODERNGEKKO_HAVE_COCOA
+-  else impl->platform = Platform::CreateMacOSPlatform();
+-#endif
+-#ifdef HAVE_X11
+-  else if (impl->config.window_system != WindowSystem::Wayland) impl->platform =
+-      Platform::CreateX11Platform();
+-#endif
+-#ifdef HAVE_WAYLAND
+-  else if (impl->config.window_system != WindowSystem::X11) impl->platform =
+-      Platform::CreateWaylandPlatform();
+-#endif
+-  if (!impl->platform || !impl->platform->Init()) {
+-    if (impl->ui_initialized)
+-      UICommon::Shutdown();
+-    return {{},
+-            RuntimeError{RuntimeErrorCode::PlatformUnavailable,
+-                         "the requested Dolphin host platform is unavailable"}};
+-  }
+-
+-#ifdef MODERNGEKKO_HAVE_IOS
+-  ModernGekkoSetIOSRenderSurface(impl->config.render_surface);
+-#endif
+-
+-  const WindowSystemInfo wsi = impl->platform->GetWindowSystemInfo();
+-  UICommon::InitControllers(wsi);
+-  impl->controllers_initialized = true;
+-  impl->platform->SetTitle(impl->title);
+-  SetDolphinLogCallback(impl->config.log_callback, impl->config.log_user_data);
+-
+-  Config::SetBase(Config::MAIN_CPU_CORE, PowerPC::CPUCore::StaticRecomp);
+-  // RMGE01's scheduler spins at this address while no guest thread is runnable.
+-  // Dolphin's dynamic cores detect this loop automatically; tell StaticRecomp's
+-  // existing idle skipper about the exact loop for the audited DOL only.
+-  constexpr std::string_view rmge01_dol_sha256 =
+-      "2c680585a8f58e1cc9c5521b579057f12b124ff0ef409e470a57606c50a93c09";
+-  constexpr u32 rmge01_idle_pc = 0x804AB358u;
+-  Config::SetBase(
+-      Config::MAIN_STATICRECOMP_IDLE_PC,
+-      impl->metadata.disc_id == "RMGE01" && impl->metadata.dol_sha256 == rmge01_dol_sha256 ?
+-          rmge01_idle_pc : 0u);
+-#ifdef MODERNGEKKO_HAVE_IOS
+-  // StaticRecomp's empty block cache only observes invalidations. It cannot
+-  // use Dolphin's 64 GiB JIT entry-point map, which iOS refuses to reserve.
+-  Config::SetBase(Config::MAIN_LARGE_ENTRY_POINTS_MAP, false);
+-#endif
+-  if (impl->config.emulated_cpu_clock_scale)
+-  {
+-    Config::SetBase(Config::MAIN_OVERCLOCK_ENABLE, true);
+-    Config::SetBase(Config::MAIN_OVERCLOCK, *impl->config.emulated_cpu_clock_scale);
+-  }
+-  if (!impl->config.graphics.backend.empty())
+-    Config::SetBase(Config::MAIN_GFX_BACKEND, impl->config.graphics.backend);
+-  else if (impl->config.headless)
+-    Config::SetBase(Config::MAIN_GFX_BACKEND, std::string("Null"));
+-  if (impl->config.graphics.internal_resolution_scale)
+-    Config::SetBase(Config::GFX_EFB_SCALE,
+-                    *impl->config.graphics.internal_resolution_scale);
+-  Config::SetBase(Config::GFX_SHADER_CACHE, true);
+-  Config::SetBase(Config::GFX_SHADER_COMPILATION_MODE,
+-                  ShaderCompilationMode::AsynchronousUberShaders);
+-  Config::SetBase(Config::GFX_WAIT_FOR_SHADERS_BEFORE_STARTING,
+-                  !impl->config.headless);
+-#ifdef MODERNGEKKO_HAVE_IOS
+-  // Dolphin's ARM64 vertex loader generates executable host code. iOS forbids
+-  // that JIT path, so use the portable software vertex loader.
+-  Config::SetBase(Config::GFX_VERTEX_LOADER_TYPE, VertexLoaderType::Software);
+-  // Favor uninterrupted playback over the lower-latency desktop default.
+-  Config::SetBase(Config::MAIN_AUDIO_BUFFER_SIZE, 120);
+-  Config::SetBase(Config::MAIN_AUDIO_FILL_GAPS, true);
+-#endif
+-  const std::vector<std::string> audio_backends =
+-      AudioCommon::GetSoundBackends();
+-  if (impl->config.headless && impl->config.audio.backend.empty()) {
+-    impl->config.audio.backend = BACKEND_NULLSOUND;
+-  } else if (impl->config.audio.backend.empty() ||
+-             !std::ranges::contains(audio_backends,
+-                                    impl->config.audio.backend)) {
+-    constexpr std::array preferred_backends = {
+-#ifdef MODERNGEKKO_HAVE_IOS
+-        BACKEND_COREAUDIO,
+-#endif
+-        BACKEND_CUBEB, BACKEND_PULSEAUDIO, BACKEND_ALSA};
+-    const auto preferred =
+-        std::ranges::find_if(preferred_backends, [&](const char *backend) {
+-          return std::ranges::contains(audio_backends, backend);
+-        });
+-    impl->config.audio.backend =
+-        preferred != preferred_backends.end() ? *preferred : BACKEND_NULLSOUND;
+-  }
+-  Config::SetBase(Config::MAIN_AUDIO_BACKEND, impl->config.audio.backend);
+-  Config::SetBase(Config::MAIN_INPUT_BACKGROUND_INPUT,
+-                  impl->config.input.background_input);
+-
+-  auto &jit = Core::System::GetInstance().GetJitInterface();
+-  StaticRecompModuleSource recomp_source;
+-  if (impl->config.module.kind == ModuleSource::Kind::DynamicPath)
+-    recomp_source =
+-        StaticRecompModuleSource::Dynamic(impl->config.module.path.string());
+-  else if (impl->config.module.kind == ModuleSource::Kind::AttachedDescriptor)
+-    recomp_source = StaticRecompModuleSource::Attached(
+-        reinterpret_cast<const StaticRecompModuleDesc *>(
+-            impl->config.module.descriptor));
+-  if (!impl->mods->Empty()) {
+-    recomp_source.host_call = &ModManager::HostCall;
+-    recomp_source.host_call_contains = &ModManager::HostCallContains;
+-    recomp_source.host_call_range_contains =
+-        &ModManager::HostCallRangeContains;
+-    recomp_source.host_call_user = impl->mods.get();
+-  }
+-  jit.SetStaticRecompModuleSource(std::move(recomp_source));
+-
+-  s_runtime_active = true;
+-  s_platform = impl->platform.get();
+-  s_window_title = impl->title;
+-  s_show_fps_in_title = impl->config.show_fps_in_title;
+-  return {std::unique_ptr<Runtime>(new Runtime(std::move(impl))), {}};
+-}
+-
+-Runtime::~Runtime() {
+-  RequestStop();
+-  if (m_impl->booted) {
+-    m_impl->diagnostics_frame_hook = {};
+-    m_impl->diagnostics_before_frame_hook = {};
+-    m_impl->diagnostics_before_present_hook = {};
+-    m_impl->diagnostics_after_present_hook = {};
+-    m_impl->diagnostics_vi_hook = {};
+-    Core::Stop(Core::System::GetInstance());
+-    Core::Shutdown(Core::System::GetInstance());
+-    m_impl->FlushViTiming();
+-  }
+-  m_impl->state_hook = {};
+-  if (m_impl->controllers_initialized)
+-    UICommon::ShutdownControllers();
+-  if (m_impl->ui_initialized)
+-    UICommon::Shutdown();
+-  std::lock_guard lock(s_runtime_mutex);
+-  s_platform = nullptr;
+-  s_window_title.clear();
+-  s_show_fps_in_title = true;
+-  s_runtime_active = false;
+-  SetDolphinLogCallback(nullptr, nullptr);
+-}
+-
+-RuntimeRunResult Runtime::Run() {
+-  if (m_impl->running.exchange(true))
+-    return {RuntimeExitReason::BootFailed,
+-            RuntimeError{RuntimeErrorCode::InvalidState,
+-                         "runtime is already running"}};
+-
+-  GalaxyPadDiagnostics::Reset();
+-  m_impl->vi_timing.Configure(std::getenv("GALAXYPAD_VI_TIMING"));
+-  galaxypad::completion_recorder.Configure(std::getenv("GALAXYPAD_COMPLETION_TIMING"));
+-  Core::System::GetInstance().GetPerfMetrics().GetCPUIdleWaitTiming().Configure(
+-      m_impl->vi_timing.Enabled());
++    if (completion != galaxypad::CompletionFlightRecorder::Result::Disabled)
++      std::fprintf(stderr, "[moderngekko] completion-timing: export_result=%d (1=saved,2=open_failed,3=write_failed,4=invalid_config)\n",
++                   static_cast<int>(completion));
++  }
++
++  bool ui_initialized = false;
++  bool controllers_initialized = false;
++  std::atomic<bool> booted{false};
++  std::atomic<bool> running{false};
++  std::atomic<bool> gmse01_heatwave_suppressed{false};
++  std::atomic<bool> gmse01_heatwave_patch_applied{false};
++  std::atomic<std::uint64_t> diagnostic_frame_count{0};
++  std::atomic<std::uint64_t> diagnostic_first_frame_ns{
++      std::numeric_limits<std::uint64_t>::max()};
++  std::atomic<std::uint64_t> diagnostic_last_frame_ns{0};
++  std::atomic<std::uint64_t> diagnostic_frame_max_gap_ns{0};
++  std::atomic<std::uint64_t> diagnostic_frame_gaps_ge_20ms{0};
++  std::atomic<std::uint64_t> diagnostic_frame_gaps_ge_33ms{0};
++  std::atomic<std::uint64_t> diagnostic_frame_gaps_ge_50ms{0};
++  std::atomic<std::uint64_t> diagnostic_frame_gaps_ge_100ms{0};
++  std::atomic<std::uint64_t> diagnostic_projection_hash{0};
++  std::atomic<std::uint32_t> diagnostic_draw_calls{0};
++  std::atomic<std::uint32_t> diagnostic_primitives{0};
++  std::atomic<std::uint32_t> diagnostic_bp_loads{0};
++  std::atomic<std::uint32_t> diagnostic_cp_loads{0};
++  std::atomic<std::uint32_t> diagnostic_xf_loads{0};
++  std::atomic<std::uint32_t> diagnostic_shader_changes{0};
++  std::atomic<std::uint32_t> diagnostic_textures_created{0};
++  std::atomic<std::uint32_t> diagnostic_textures_alive{0};
++  std::atomic<std::uint32_t> diagnostic_vertex_shaders_created{0};
++  std::atomic<std::uint32_t> diagnostic_pixel_shaders_created{0};
++  std::atomic<std::uint32_t> diagnostic_scissor_count{0};
++};
++
++namespace detail {
++void SetExternalUICommon(bool external) {
++  std::lock_guard lock(s_runtime_mutex);
++  s_external_ui_common = external;
++}
++
++void SetBootSessionData(std::unique_ptr<BootSessionData> boot_session_data) {
++  std::lock_guard lock(s_runtime_mutex);
++  s_boot_session_data = std::move(boot_session_data);
++}
++} // namespace detail
++
++ModuleSource ModuleSource::DynamicPath(std::filesystem::path path) {
++  ModuleSource source;
++  source.kind = Kind::DynamicPath;
++  source.path = std::move(path);
++  return source;
++}
++
++ModuleSource
++ModuleSource::AttachedDescriptor(const ModernGekkoModuleDesc *descriptor) {
++  ModuleSource source;
++  source.kind = Kind::AttachedDescriptor;
++  source.descriptor = descriptor;
++  return source;
++}
++
++Runtime::Runtime(std::unique_ptr<Impl> impl) : m_impl(std::move(impl)) {}
++
++RuntimeCreateResult Runtime::Create(RuntimeConfig config) {
++  std::lock_guard lock(s_runtime_mutex);
++  if (s_runtime_active)
++    return {
++        {},
++        RuntimeError{RuntimeErrorCode::AlreadyActive,
++                     "only one ModernGekko runtime may be active per process"}};
++
++  GameInspectResult inspected = InspectGame(config.game_root);
++  if (!inspected)
++    return {{}, RuntimeError{RuntimeErrorCode::InvalidGame, inspected.error}};
++
++  if (!config.disc_image.empty()) {
++    std::error_code ec;
++    const auto disc_image = std::filesystem::weakly_canonical(config.disc_image, ec);
++    if (ec || !std::filesystem::is_regular_file(disc_image))
++      return {{}, RuntimeError{RuntimeErrorCode::InvalidGame,
++                               "disc image is not a readable file"}};
++    config.disc_image = disc_image;
++  }
++
++  const ModernGekkoModuleRequirements requirements = {
++      MODERNGEKKO_CPU_ABI_VERSION, static_cast<std::uint32_t>(sizeof(CPUState)),
++      inspected.metadata->disc_id.c_str()};
++  ModuleLibrary validation_library;
++  ModuleLoadResult module_result{};
++  if (config.module.kind == ModuleSource::Kind::DynamicPath)
++    module_result =
++        validation_library.Open(config.module.path.string(), requirements);
++  else if (config.module.kind == ModuleSource::Kind::AttachedDescriptor)
++    module_result =
++        validation_library.Attach(config.module.descriptor, requirements);
++  else if (!config.allow_interpreter)
++    return {
++        {},
++        RuntimeError{
++            RuntimeErrorCode::ModuleRequired,
++            "no native module was supplied; use allow_interpreter explicitly"}};
++
++  if (config.module.kind != ModuleSource::Kind::None &&
++      module_result.status != ModuleLoadStatus::Ok) {
++    if (!config.allow_interpreter) {
++      std::string message = "native module was rejected";
++      if (module_result.status == ModuleLoadStatus::DescriptorRejected)
++        message += ": " + std::string(moderngekko_module_status_string(
++                              module_result.validation_status));
++      return {
++          {},
++          RuntimeError{RuntimeErrorCode::ModuleRejected, std::move(message)}};
++    }
++    config.module = {};
++  }
++  validation_library.Close();
++
++  auto impl = std::make_unique<Impl>();
++  impl->config = std::move(config);
++  impl->metadata = std::move(*inspected.metadata);
++  impl->title = impl->config.window_title.value_or(
++      "ModernGekko - " + impl->metadata.game_name + " [" +
++      impl->metadata.disc_id + "]");
++  impl->mods = std::make_unique<ModManager>();
++  const ModLoadReport mod_report = impl->mods->LoadDirectories(
++      impl->config.mod_directories, impl->metadata.disc_id);
++  for (const ModLoadIssue &issue : mod_report.issues)
++    std::fprintf(stderr, "mod rejected: %s: %s\n", issue.source.c_str(),
++                 issue.message.c_str());
++  for (const LoadedModInfo &mod : mod_report.loaded)
++    std::fprintf(stderr, "mod loaded: %s %s\n", mod.id.c_str(),
++                 mod.version.c_str());
++
++  if (!s_external_ui_common) {
++    UICommon::SetUserDirectory(impl->config.user_directory.string());
++    UICommon::Init();
++    impl->ui_initialized = true;
++  }
++
++  if (impl->config.enable_gmse01_60fps ||
++      impl->config.enable_gmse01_widescreen) {
++    if (impl->metadata.disc_id != "GMSE01") {
++      if (impl->ui_initialized)
++        UICommon::Shutdown();
++      return {{}, RuntimeError{RuntimeErrorCode::InvalidGame,
++                               "GMSE01 boot codes are available only for GMSE01"}};
++    }
++
++    Common::IniFile empty_local_ini;
++    auto codes = Gecko::LoadCodes(SConfig::LoadDefaultGameIni("GMSE01", std::nullopt),
++                                  empty_local_ini);
++    const auto sixty_fps = std::ranges::find(codes, std::string("60FPS"),
++                                             &Gecko::GeckoCode::name);
++    const auto widescreen = std::ranges::find(codes, std::string("Widescreen"),
++                                              &Gecko::GeckoCode::name);
++    if ((impl->config.enable_gmse01_60fps && sixty_fps == codes.end()) ||
++        (impl->config.enable_gmse01_widescreen && widescreen == codes.end())) {
++      if (impl->ui_initialized)
++        UICommon::Shutdown();
++      return {{}, RuntimeError{RuntimeErrorCode::InitializationFailed,
++                               "a requested bundled GMSE01 Gecko code is unavailable"}};
++    }
++
++    for (auto& code : codes)
++      code.enabled = (impl->config.enable_gmse01_60fps && &code == &*sixty_fps) ||
++                     (impl->config.enable_gmse01_widescreen && &code == &*widescreen);
++    Gecko::UpdateSyncedCodes(codes);
++    Config::SetBase(Config::MAIN_ENABLE_CHEATS, true);
++    Config::SetBase(Config::SESSION_CODE_SYNC_OVERRIDE, true);
++    std::fprintf(
++        stderr,
++        "[moderngekko] GMSE01 boot codes enabled: widescreen=%d 60FPS=%d; "
++        "StaticRecomp SMC/fallback counters follow at shutdown\n",
++        impl->config.enable_gmse01_widescreen, impl->config.enable_gmse01_60fps);
++  } else {
++    // Runtime::Create can be called again in the same app process after a game
++    // data import. Do not let a prior session's synchronized Gecko list or
++    // cheat flags leak into a new supported-mode boot.
++    const std::vector<Gecko::GeckoCode> no_codes;
++    Gecko::UpdateSyncedCodes(no_codes);
++    Config::SetBase(Config::MAIN_ENABLE_CHEATS, false);
++    Config::SetBase(Config::SESSION_CODE_SYNC_OVERRIDE, false);
++  }
++  Config::SetBase(Config::MAIN_FULLSCREEN, impl->config.fullscreen);
++
++  if (impl->config.headless)
++    impl->platform = Platform::CreateHeadlessPlatform();
++#ifdef MODERNGEKKO_HAVE_IOS
++  else
++    impl->platform = Platform::CreateIOSPlatform();
++#endif
++#ifdef _WIN32
++  else
++    impl->platform = Platform::CreateWin32Platform();
++#endif
++#ifdef MODERNGEKKO_HAVE_COCOA
++  else impl->platform = Platform::CreateMacOSPlatform();
++#endif
++#ifdef HAVE_X11
++  else if (impl->config.window_system != WindowSystem::Wayland) impl->platform =
++      Platform::CreateX11Platform();
++#endif
++#ifdef HAVE_WAYLAND
++  else if (impl->config.window_system != WindowSystem::X11) impl->platform =
++      Platform::CreateWaylandPlatform();
++#endif
++  if (!impl->platform || !impl->platform->Init()) {
++    if (impl->ui_initialized)
++      UICommon::Shutdown();
++    return {{},
++            RuntimeError{RuntimeErrorCode::PlatformUnavailable,
++                         "the requested Dolphin host platform is unavailable"}};
++  }
++
++#ifdef MODERNGEKKO_HAVE_IOS
++  ModernGekkoSetIOSRenderSurface(impl->config.render_surface);
++#endif
++
++  const WindowSystemInfo wsi = impl->platform->GetWindowSystemInfo();
++  UICommon::InitControllers(wsi);
++  impl->controllers_initialized = true;
++  impl->platform->SetTitle(impl->title);
++  SetDolphinLogCallback(impl->config.log_callback, impl->config.log_user_data);
++
++  Config::SetBase(Config::MAIN_CPU_CORE, PowerPC::CPUCore::StaticRecomp);
++  // RMGE01's scheduler spins at this address while no guest thread is runnable.
++  // Dolphin's dynamic cores detect this loop automatically; tell StaticRecomp's
++  // existing idle skipper about the exact loop for the audited DOL only.
++  constexpr std::string_view rmge01_dol_sha256 =
++      "2c680585a8f58e1cc9c5521b579057f12b124ff0ef409e470a57606c50a93c09";
++  constexpr u32 rmge01_idle_pc = 0x804AB358u;
++  Config::SetBase(
++      Config::MAIN_STATICRECOMP_IDLE_PC,
++      impl->metadata.disc_id == "RMGE01" && impl->metadata.dol_sha256 == rmge01_dol_sha256 ?
++          rmge01_idle_pc : 0u);
++#ifdef MODERNGEKKO_HAVE_IOS
++  // StaticRecomp's empty block cache only observes invalidations. It cannot
++  // use Dolphin's 64 GiB JIT entry-point map, which iOS refuses to reserve.
++  Config::SetBase(Config::MAIN_LARGE_ENTRY_POINTS_MAP, false);
++#endif
++  if (impl->config.emulated_cpu_clock_scale)
++  {
++    Config::SetBase(Config::MAIN_OVERCLOCK_ENABLE, true);
++    Config::SetBase(Config::MAIN_OVERCLOCK, *impl->config.emulated_cpu_clock_scale);
++  }
++  if (!impl->config.graphics.backend.empty())
++    Config::SetBase(Config::MAIN_GFX_BACKEND, impl->config.graphics.backend);
++  else if (impl->config.headless)
++    Config::SetBase(Config::MAIN_GFX_BACKEND, std::string("Null"));
++  if (impl->config.graphics.internal_resolution_scale)
++    Config::SetBase(Config::GFX_EFB_SCALE,
++                    *impl->config.graphics.internal_resolution_scale);
++  Config::SetBase(Config::GFX_SHADER_CACHE, true);
++  Config::SetBase(Config::GFX_SHADER_COMPILATION_MODE,
++                  ShaderCompilationMode::AsynchronousUberShaders);
++  Config::SetBase(Config::GFX_WAIT_FOR_SHADERS_BEFORE_STARTING,
++                  !impl->config.headless);
++#ifdef MODERNGEKKO_HAVE_IOS
++  // Dolphin's ARM64 vertex loader generates executable host code. iOS forbids
++  // that JIT path, so use the portable software vertex loader.
++  Config::SetBase(Config::GFX_VERTEX_LOADER_TYPE, VertexLoaderType::Software);
++  // Favor uninterrupted playback over the lower-latency desktop default.
++  Config::SetBase(Config::MAIN_AUDIO_BUFFER_SIZE, 120);
++  Config::SetBase(Config::MAIN_AUDIO_FILL_GAPS, true);
++#endif
++  const std::vector<std::string> audio_backends =
++      AudioCommon::GetSoundBackends();
++  if (impl->config.headless && impl->config.audio.backend.empty()) {
++    impl->config.audio.backend = BACKEND_NULLSOUND;
++  } else if (impl->config.audio.backend.empty() ||
++             !std::ranges::contains(audio_backends,
++                                    impl->config.audio.backend)) {
++    constexpr std::array preferred_backends = {
++#ifdef MODERNGEKKO_HAVE_IOS
++        BACKEND_COREAUDIO,
++#endif
++        BACKEND_CUBEB, BACKEND_PULSEAUDIO, BACKEND_ALSA};
++    const auto preferred =
++        std::ranges::find_if(preferred_backends, [&](const char *backend) {
++          return std::ranges::contains(audio_backends, backend);
++        });
++    impl->config.audio.backend =
++        preferred != preferred_backends.end() ? *preferred : BACKEND_NULLSOUND;
++  }
++  Config::SetBase(Config::MAIN_AUDIO_BACKEND, impl->config.audio.backend);
++  Config::SetBase(Config::MAIN_INPUT_BACKGROUND_INPUT,
++                  impl->config.input.background_input);
++
++  auto &jit = Core::System::GetInstance().GetJitInterface();
++  StaticRecompModuleSource recomp_source;
++  if (impl->config.module.kind == ModuleSource::Kind::DynamicPath)
++    recomp_source =
++        StaticRecompModuleSource::Dynamic(impl->config.module.path.string());
++  else if (impl->config.module.kind == ModuleSource::Kind::AttachedDescriptor)
++    recomp_source = StaticRecompModuleSource::Attached(
++        reinterpret_cast<const StaticRecompModuleDesc *>(
++            impl->config.module.descriptor));
++  if (!impl->mods->Empty()) {
++    recomp_source.host_call = &ModManager::HostCall;
++    recomp_source.host_call_contains = &ModManager::HostCallContains;
++    recomp_source.host_call_range_contains =
++        &ModManager::HostCallRangeContains;
++    recomp_source.host_call_user = impl->mods.get();
++  }
++  jit.SetStaticRecompModuleSource(std::move(recomp_source));
++
++  s_runtime_active = true;
++  s_platform = impl->platform.get();
++  s_window_title = impl->title;
++  s_show_fps_in_title = impl->config.show_fps_in_title;
++  return {std::unique_ptr<Runtime>(new Runtime(std::move(impl))), {}};
++}
++
++Runtime::~Runtime() {
++  RequestStop();
++  if (m_impl->booted) {
++    m_impl->diagnostics_frame_hook = {};
++    m_impl->diagnostics_before_frame_hook = {};
++    m_impl->diagnostics_before_present_hook = {};
++    m_impl->diagnostics_after_present_hook = {};
++    m_impl->diagnostics_vi_hook = {};
++    Core::Stop(Core::System::GetInstance());
++    Core::Shutdown(Core::System::GetInstance());
++    m_impl->FlushViTiming();
++  }
++  m_impl->state_hook = {};
++  if (m_impl->controllers_initialized)
++    UICommon::ShutdownControllers();
++  if (m_impl->ui_initialized)
++    UICommon::Shutdown();
++  std::lock_guard lock(s_runtime_mutex);
++  s_platform = nullptr;
++  s_window_title.clear();
++  s_show_fps_in_title = true;
++  s_runtime_active = false;
++  SetDolphinLogCallback(nullptr, nullptr);
++}
++
++RuntimeRunResult Runtime::Run() {
++  if (m_impl->running.exchange(true))
++    return {RuntimeExitReason::BootFailed,
++            RuntimeError{RuntimeErrorCode::InvalidState,
++                         "runtime is already running"}};
++
++  GalaxyPadDiagnostics::Reset();
++  m_impl->vi_timing.Configure(std::getenv("GALAXYPAD_VI_TIMING"));
++  const char* completion_path = std::getenv("GALAXYPAD_COMPLETION_TIMING");
++  std::uint64_t completion_deadline = 0;
++  constexpr std::uint64_t completion_threshold = 20'000'000;
++  bool completion_config_valid = true;
++  if (completion_path && *completion_path) {
++    const auto now = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
++        std::chrono::steady_clock::now().time_since_epoch()).count());
++    completion_config_valid = galaxypad::CompletionArmDeadline(
++        std::getenv("GALAXYPAD_COMPLETION_ARM_DELAY_MS"), now, completion_deadline);
++    std::fprintf(stderr, "[moderngekko] completion-arm: valid=%u not_before_ns=%llu threshold_ns=%llu\n",
++                 completion_config_valid ? 1u : 0u,
++                 static_cast<unsigned long long>(completion_deadline),
++                 static_cast<unsigned long long>(completion_threshold));
++  }
++  galaxypad::completion_recorder.Configure(completion_path, completion_deadline,
++      completion_config_valid ? completion_threshold : 0);
++  Core::System::GetInstance().GetPerfMetrics().GetCPUIdleWaitTiming().Configure(
++      m_impl->vi_timing.Enabled() || galaxypad::completion_recorder.Enabled());
+   m_impl->diagnostic_frame_count = 0;
+   m_impl->diagnostic_first_frame_ns = std::numeric_limits<std::uint64_t>::max();
+   m_impl->diagnostic_last_frame_ns = 0;

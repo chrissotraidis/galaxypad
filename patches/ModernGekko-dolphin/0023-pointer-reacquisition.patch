@@ -1,0 +1,21 @@
+diff --git a/Source/Core/Core/HW/WiimoteEmu/Dynamics.cpp b/Source/Core/Core/HW/WiimoteEmu/Dynamics.cpp
+--- a/Source/Core/Core/HW/WiimoteEmu/Dynamics.cpp
++++ b/Source/Core/Core/HW/WiimoteEmu/Dynamics.cpp
+@@ -249,4 +249,7 @@
+-  // Just jump to the target position.
++  // Preserve visibility before replacing the old hidden position below.
++  const bool was_hidden = state->position.y < 0;
++
++  // Just jump to the target position.
+   state->position = {0, NEUTRAL_DISTANCE, -height};
+   state->velocity = {};
+   state->acceleration = {};
+@@ -257,7 +260,7 @@
+   const auto target_angle = Common::Vec3(pitch_scale * -cursor.y, 0, yaw_scale * -cursor.x);
+ 
+   // If cursor was hidden, jump to the target angle immediately.
+-  if (state->position.y < 0)
++  if (was_hidden)
+   {
+     state->angle = target_angle;
+     state->angular_velocity = {};

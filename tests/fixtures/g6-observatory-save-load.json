@@ -1,0 +1,18 @@
+[
+  {"action": "press", "button": "A"},
+  {"action": "press", "button": "B"},
+  {"action": "wait", "seconds": 0.25},
+  {"action": "release", "button": "A"},
+  {"action": "release", "button": "B"},
+  {"action": "wait", "seconds": 6},
+  {"action": "pointer", "x": -0.18, "y": -0.32},
+  {"action": "wait", "seconds": 0.5},
+  {"action": "tap", "button": "A", "hold": 0.15},
+  {"action": "wait", "seconds": 4},
+  {"action": "pointer", "x": 0.37, "y": -0.76},
+  {"action": "wait", "seconds": 0.5},
+  {"action": "tap", "button": "A", "hold": 0.15},
+  {"action": "wait", "seconds": 20},
+  {"action": "pointer", "x": 0, "y": 0},
+  {"action": "nunchuk", "x": 0, "y": 0}
+]

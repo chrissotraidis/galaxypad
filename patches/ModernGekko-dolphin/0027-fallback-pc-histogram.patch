@@ -1,0 +1,188 @@
+--- a/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore.h
++++ b/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore.h
+@@ -13,6 +13,7 @@
+ #include "Core/PowerPC/JitCommon/JitBase.h"
+ #include "Core/PowerPC/JitCommon/JitCache.h"
+ #include "Core/PowerPC/StaticRecomp/StaticRecompABI.h"
++#include "Core/PowerPC/StaticRecomp/FallbackHistogram.h"
+ #include "Core/PowerPC/StaticRecomp/StaticRecompModuleSource.h"
+ 
+ namespace Core
+@@ -172,6 +173,9 @@
+ 
+   u64 m_native_dispatches = 0;
+   u64 m_fallback_steps = 0;
++  std::unique_ptr<galaxypad::diagnostics::FallbackHistogram<>> m_fallback_histogram;
++  std::string m_fallback_start_file;
++  u32 m_fallback_start_poll = 0;
+   u64 m_native_exceptions = 0;
+   u64 m_hook_fallback_instructions = 0;
+   u64 m_timebase_cycle_remainder = 0;
+--- a/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore.cpp
++++ b/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore.cpp
+@@ -148,6 +148,21 @@
+   g_static_recomp_core = this;
+   RefreshConfig();
+   m_collect_dispatch_samples = std::getenv("STATICRECOMP_DISPATCH_SAMPLES") != nullptr;
++  const char* fallback_pcs = std::getenv("GALAXYPAD_FALLBACK_PCS");
++  m_fallback_histogram.reset();
++  m_fallback_start_file.clear();
++  m_fallback_start_poll = 0;
++  if (fallback_pcs && std::strcmp(fallback_pcs, "1") == 0)
++  {
++    const char* start_file = std::getenv("GALAXYPAD_FALLBACK_START_FILE");
++    if (start_file && *start_file)
++    {
++      m_fallback_start_file = start_file;
++      std::fprintf(stderr, "[galaxypad-fallback-pcs] waiting-for-start-marker\n");
++    }
++    else
++      m_fallback_histogram = std::make_unique<galaxypad::diagnostics::FallbackHistogram<>>();
++  }
+   const char* fallback_override = std::getenv("STATICRECOMP_FALLBACK_RANGES");
+   std::istringstream fallback_ranges(fallback_override ? fallback_override :
+                                                          Config::Get(Config::MAIN_STATICRECOMP_FALLBACK_RANGES));
+@@ -227,6 +242,18 @@
+                  static_cast<unsigned long long>(m_direct_boundary_checks),
+                  static_cast<unsigned long long>(m_direct_transfers));
+   g_static_recomp_core = nullptr;
++  if (m_fallback_histogram)
++  {
++    std::fprintf(stderr, "[galaxypad-fallback-pcs] total=%llu dropped=%llu\n",
++                 static_cast<unsigned long long>(m_fallback_histogram->total),
++                 static_cast<unsigned long long>(m_fallback_histogram->dropped));
++    for (const auto& entry : m_fallback_histogram->entries)
++      if (entry.count)
++        std::fprintf(stderr, "[galaxypad-fallback-pc] pc=%08x path=%u count=%llu\n",
++                     entry.pc, static_cast<unsigned>(entry.path),
++                     static_cast<unsigned long long>(entry.count));
++    m_fallback_histogram.reset();
++  }
+   std::fprintf(stderr,
+                "[staticrecomp] shutdown: native=%llu fallback=%llu native_exc=%llu hook_fb=%llu "
+                "smc_failed=%u verifications=%llu reverify_events=%llu bursts=%llu cycles=%llu\n",
+--- a/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Run.cpp
++++ b/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Run.cpp
+@@ -140,6 +140,21 @@
+   while (*state_ptr == CPU::State::Running)
+   {
+     core_timing.Advance();
++    // Diagnostic only: poll at timing-slice boundaries, never per guest step.
++    // Caller supplies a fresh absent path, then creates it after visual scene
++    // verification. Do not delete caller files or include startup in the census.
++    if (!m_fallback_start_file.empty() && (++m_fallback_start_poll & 1023u) == 0)
++    {
++      if (std::FILE* marker = std::fopen(m_fallback_start_file.c_str(), "rb"))
++      {
++        std::fclose(marker);
++        m_fallback_histogram = std::make_unique<galaxypad::diagnostics::FallbackHistogram<>>();
++        m_fallback_start_file.clear();
++        galaxypad::diagnostics::DumpExceptionVectors(stderr, memory.GetRAM(), memory.GetRamSizeReal());
++        std::fprintf(stderr, "[galaxypad-fallback-pcs] capture-start pc=%08x native=%llu\n",
++                     ppc.pc, static_cast<unsigned long long>(m_native_dispatches));
++      }
++    }
+     const std::string current_game_id = SConfig::GetInstance().GetGameID();
+     m_module_active = m_module && (current_game_id.empty() || current_game_id == m_module->game_id);
+ 
+@@ -272,6 +287,8 @@
+         // interrupts are delivered at slice start, as in Interpreter::Run.
+         if (m_module_active && IsForcedFallbackAddress(ppc.pc))
+         {
++          if (m_fallback_histogram)
++            m_fallback_histogram->Record(ppc.pc, galaxypad::diagnostics::FallbackPath::Forced);
+           ppc.downcount -= interpreter.SingleStepInner();
+           ++m_fallback_steps;
+         }
+@@ -283,6 +300,8 @@
+         {
+           do
+           {
++            if (m_fallback_histogram)
++              m_fallback_histogram->Record(ppc.pc, galaxypad::diagnostics::FallbackPath::Uncovered);
+             ppc.downcount -= interpreter.SingleStepInner();
+             ++m_fallback_steps;
+           } while (!(m_module_active && DispatchableAt(ppc.pc)) &&
+--- a/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Hooks.cpp
++++ b/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Hooks.cpp
+@@ -483,6 +483,8 @@
+   core->SyncOut();
+   ppc.pc = cia;
+   ppc.npc = cia + 4;
++  if (core->m_fallback_histogram)
++    core->m_fallback_histogram->Record(cia, galaxypad::diagnostics::FallbackPath::InstructionHook);
+   ppc.downcount -= system.GetInterpreter().SingleStepInner();
+   core->SyncIn();
+ }
+--- /dev/null
++++ b/Source/Core/Core/PowerPC/StaticRecomp/FallbackHistogram.h
+@@ -0,0 +1,69 @@
++// Diagnostic-only, CPU-thread-owned interpreter-step census.
++#pragma once
++#include <array>
++#include <cstddef>
++#include <cstdint>
++#include <cstdio>
++
++namespace galaxypad::diagnostics
++{
++enum class FallbackPath : uint32_t { Uncovered, Forced, InstructionHook };
++
++// CPU-thread physical RAM snapshot, not an instruction-cache observation.
++inline void DumpExceptionVectors(std::FILE* output, const uint8_t* ram, size_t size)
++{
++  if (!output || !ram || size < 0xd00)
++    return;
++  for (uint32_t base : {0x500u, 0x800u, 0x900u, 0xc00u})
++  {
++    std::fprintf(output, "[galaxypad-vector-ram] base=%08x bytes=", base);
++    for (size_t offset = 0; offset < 256; ++offset)
++      std::fprintf(output, "%02x", static_cast<unsigned>(ram[base + offset]));
++    std::fputc('\n', output);
++  }
++}
++
++template <size_t Capacity = 32768> struct FallbackHistogram
++{
++  static_assert(Capacity && (Capacity & (Capacity - 1)) == 0);
++  struct Entry
++  {
++    uint32_t pc = 0;
++    FallbackPath path = FallbackPath::Uncovered;
++    uint64_t count = 0;
++  };
++  std::array<Entry, Capacity> entries{};
++  uint64_t total = 0;
++  uint64_t dropped = 0;
++
++  // No allocation, guest-memory reads, output or unbounded collision scans.
++  // Keep PC aliases distinct; normalization belongs in offline analysis.
++  void Record(uint32_t pc, FallbackPath path)
++  {
++    ++total;
++    uint32_t hash = (pc >> 2) ^ (static_cast<uint32_t>(path) * 0x9e3779b9u);
++    hash ^= hash >> 16;
++    hash *= 0x7feb352du;
++    hash ^= hash >> 15;
++    hash *= 0x846ca68bu;
++    hash ^= hash >> 16;
++    const size_t index = hash & (Capacity - 1);
++    constexpr size_t probes = Capacity < 16 ? Capacity : 16;
++    for (size_t probe = 0; probe < probes; ++probe)
++    {
++      auto& entry = entries[(index + probe) & (Capacity - 1)];
++      if (!entry.count)
++      {
++        entry = {pc, path, 1};
++        return;
++      }
++      if (entry.pc == pc && entry.path == path)
++      {
++        ++entry.count;
++        return;
++      }
++    }
++    ++dropped;
++  }
++};
++}

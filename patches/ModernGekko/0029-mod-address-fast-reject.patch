@@ -1,0 +1,51 @@
+diff --git a/src/runtime/mod_loader.cpp b/src/runtime/mod_loader.cpp
+--- a/src/runtime/mod_loader.cpp
++++ b/src/runtime/mod_loader.cpp
+@@ -127,6 +127,8 @@
+   std::unordered_map<std::string, ModernGekkoModFunction> exports;
+   std::unordered_map<std::uint32_t, ModernGekkoModFunction> patches;
+   std::unordered_map<std::uint32_t, Hooks> hooks;
++  std::uint32_t static_address_min = UINT32_MAX;
++  std::uint32_t static_address_max = 0;
+   std::unordered_map<std::string, std::vector<ModernGekkoModFunction>>
+       callbacks;
+   std::vector<ModernGekkoModFunction *> import_slots;
+@@ -408,6 +410,8 @@
+         continue;
+       }
+       m_impl->patches[patch.address] = patch.function;
++      m_impl->static_address_min = std::min(m_impl->static_address_min, patch.address);
++      m_impl->static_address_max = std::max(m_impl->static_address_max, patch.address);
+     }
+     for (std::uint32_t i = 0; i < desc->num_hooks; ++i) {
+       const auto &hook = desc->hooks[i];
+@@ -417,6 +421,8 @@
+         continue;
+       }
+       auto &hooks = m_impl->hooks[hook.address];
++      m_impl->static_address_min = std::min(m_impl->static_address_min, hook.address);
++      m_impl->static_address_max = std::max(m_impl->static_address_max, hook.address);
+       if (hook.kind == MODERNGEKKO_MOD_HOOK_ENTRY)
+         hooks.entry.push_back(hook.function);
+       else
+@@ -549,6 +555,8 @@
+   m_impl->callbacks.clear();
+   m_impl->hooks.clear();
+   m_impl->patches.clear();
++  m_impl->static_address_min = UINT32_MAX;
++  m_impl->static_address_max = 0;
+   m_impl->exports.clear();
+   m_impl->mods_by_id.clear();
+   m_impl->loaded.clear();
+@@ -625,7 +633,10 @@
+ }
+ 
+ bool ModManager::HandlesAddress(std::uint32_t address) const {
+-  if (m_impl->patches.contains(address) || m_impl->hooks.contains(address))
++  // Most translated blocks cannot be static hooks. Pending return addresses
++  // are dynamic and must still be checked even outside this inclusive range.
++  if (address >= m_impl->static_address_min && address <= m_impl->static_address_max &&
++      (m_impl->patches.contains(address) || m_impl->hooks.contains(address)))
+     return true;
+   return std::ranges::any_of(m_impl->pending_returns,
+                              [address](const Impl::PendingReturn &pending) {

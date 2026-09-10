@@ -1,0 +1,6 @@
+[
+  {"action":"nunchuk","x":0.0,"y":1.0},
+  {"action":"wait","seconds":0.18},
+  {"action":"nunchuk","x":0.0,"y":0.0},
+  {"action":"wait","seconds":0.08}
+]

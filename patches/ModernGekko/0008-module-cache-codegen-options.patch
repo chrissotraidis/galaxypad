@@ -1,0 +1,99 @@
+diff --git a/tools/moderngekko_port.cpp b/tools/moderngekko_port.cpp
+index 10ea4a6..a6f2447 100644
+--- a/tools/moderngekko_port.cpp
++++ b/tools/moderngekko_port.cpp
+@@ -39,6 +39,8 @@ struct BuildOptions
+   // value is forwarded as RECOMPCORE_MODULE_OPT_LEVEL and folded into the
+   // cache key, so an -O3 module cannot collide with an -O2 one.
+   std::string opt_level;
++  unsigned c_chunk_instructions = 4096;
++  std::string dispatch_lookup = "linear";
+ #if defined(MODERNGEKKO_DOLRECOMP_LLVM)
+   std::string backend = "llvm";
+ #else
+@@ -464,6 +466,9 @@ std::optional<fs::path> Build(const char* argv0, const fs::path& root,
+   // CMAKE_C_FLAGS_RELEASE, so this is the level that actually reaches the
+   // per-translation-unit compiles.
+   const std::string opt = options.opt_level.empty() ? std::string("2") : options.opt_level;
++  const std::string codegen_options =
++      "c-chunk-instructions=" + std::to_string(options.c_chunk_instructions) +
++      "|dispatch-lookup=" + options.dispatch_lookup;
+   std::string flags;
+   if (compiler == "clang")
+   {
+@@ -488,8 +493,8 @@ std::optional<fs::path> Build(const char* argv0, const fs::path& root,
+       std::to_string(MODERNGEKKO_MODULE_ABI_VERSION) + "|cpu-abi=" +
+       std::to_string(MODERNGEKKO_CPU_ABI_VERSION) + "|" + compiler_identity + "|" +
+       std::string(architecture) + "|" + flags + "|backend=" + options.backend +
+-      "|patches=" + patches.fingerprint + "|dolrecomp_binary=" +
+-      *dolrecomp_hash;
++      "|" + codegen_options + "|patches=" + patches.fingerprint +
++      "|dolrecomp_binary=" + *dolrecomp_hash;
+   std::ostringstream key_tail;
+   key_tail << std::hex << std::setfill('0') << std::setw(16) << Fnv1a(identity);
+   const std::string cache_key = game.dol_sha256 + "-" + key_tail.str();
+@@ -520,6 +525,8 @@ std::optional<fs::path> Build(const char* argv0, const fs::path& root,
+              << "architecture=" << architecture << '\n'
+              << "flags=" << flags << '\n'
+              << "backend=" << options.backend << '\n'
++             << "c_chunk_instructions=" << options.c_chunk_instructions << '\n'
++             << "dispatch_lookup=" << options.dispatch_lookup << '\n'
+              << "patches=" << patches.fingerprint << '\n';
+     fs::create_directories(options.output / game.disc_id);
+     std::ofstream active(options.output / game.disc_id / "active-module.txt");
+@@ -544,7 +551,10 @@ std::optional<fs::path> Build(const char* argv0, const fs::path& root,
+     std::cout << "applied " << patches.entries.size() << " default DOL patches\n";
+   }
+   const fs::path generated_parent = artifact / "dolrecomp-output";
+-  std::string generate = Quote(dolrecomp) + " -j" +
++  std::string generate = "cmake -E env DOLRECOMP_C_CHUNK_INSTRUCTIONS=" +
++                         std::to_string(options.c_chunk_instructions) +
++                         " DOLRECOMP_DISPATCH_LOOKUP=" + options.dispatch_lookup + " " +
++                         Quote(dolrecomp) + " -j" +
+                          std::to_string(std::max(1u, std::thread::hardware_concurrency())) +
+                          " --backend=" + options.backend + " ";
+   if (game.platform == moderngekko::GamePlatform::GameCube)
+@@ -614,7 +624,7 @@ std::optional<fs::path> Build(const char* argv0, const fs::path& root,
+ void Usage()
+ {
+   std::cerr << "usage: moderngekko-port inspect <game-root>\n"
+-               "       moderngekko-port build <game-root> [--backend c|llvm] [--toolchain auto|clang|gcc|msvc] [--opt-level 0-3] [--output path]\n"
++               "       moderngekko-port build <game-root> [--backend c|llvm] [--toolchain auto|clang|gcc|msvc] [--opt-level 0-3] [--c-chunk-instructions 128-4096] [--dispatch-lookup linear|indexed] [--output path]\n"
+                "       moderngekko-port run <game-root> [build options] [-- runner options]\n";
+ }
+ }  // namespace
+@@ -643,6 +653,21 @@ int main(int argc, char** argv)
+       options.backend = argv[++i];
+     else if (arg == "--opt-level" && i + 1 < argc)
+       options.opt_level = argv[++i];
++    else if (arg == "--c-chunk-instructions" && i + 1 < argc)
++    {
++      const std::string value = argv[++i];
++      const auto parsed = std::from_chars(value.data(), value.data() + value.size(),
++                                          options.c_chunk_instructions);
++      if (parsed.ec != std::errc{} || parsed.ptr != value.data() + value.size() ||
++          options.c_chunk_instructions < 128 || options.c_chunk_instructions > 4096)
++      {
++        std::cerr << "C chunk instructions must be an integer from 128 to 4096: "
++                  << value << '\n';
++        return 2;
++      }
++    }
++    else if (arg == "--dispatch-lookup" && i + 1 < argc)
++      options.dispatch_lookup = argv[++i];
+     else if (arg == "--output" && i + 1 < argc)
+       options.output = argv[++i];
+     else if (command == "run")
+@@ -660,6 +685,12 @@ int main(int argc, char** argv)
+     std::cerr << "unknown backend: " << options.backend << '\n';
+     return 2;
+   }
++  if (options.dispatch_lookup != "linear" && options.dispatch_lookup != "indexed")
++  {
++    std::cerr << "dispatch lookup must be linear or indexed: "
++              << options.dispatch_lookup << '\n';
++    return 2;
++  }
+   if (!options.opt_level.empty() &&
+       (options.opt_level.size() != 1 || options.opt_level[0] < '0' || options.opt_level[0] > '3'))
+   {

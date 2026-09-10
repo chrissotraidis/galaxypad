@@ -1,0 +1,39 @@
+diff --git a/src/backend/c_cfg.c b/src/backend/c_cfg.c
+--- a/src/backend/c_cfg.c
++++ b/src/backend/c_cfg.c
+@@ -294,13 +294,11 @@
+-    for (u32 i = 0; i < count; ++i) {
+-        if (!cfg->leaders[i])
+-            continue;
+-        for (u32 j = i; j < count; ++j) {
+-            cfg->block_cycles[i] += instruction_cycles(&insts[j]);
+-            if (instruction_ends_block(&insts[j]) || j + 1u == count ||
+-                cfg->leaders[j + 1u]) {
+-                break;
+-            }
+-        }
++    // Every instruction is a legal external dispatcher entry. Retain the
++    // suffix charge at nonleaders as well as the whole charge at leaders.
++    for (u32 remaining = count; remaining != 0; --remaining) {
++        const u32 i = remaining - 1u;
++        cfg->block_cycles[i] = instruction_cycles(&insts[i]);
++        if (!instruction_ends_block(&insts[i]) && i + 1u < count &&
++            !cfg->leaders[i + 1u])
++            cfg->block_cycles[i] += cfg->block_cycles[i + 1u];
+     }
+ 
+     for (u32 last = 0; last < count; ++last) {
+diff --git a/src/backend/emitter.c b/src/backend/emitter.c
+--- a/src/backend/emitter.c
++++ b/src/backend/emitter.c
+@@ -1924,4 +1924,10 @@
+     fprintf(out, "    switch (ctx->pc) {\n");
+     for (u32 i = 0; i < count; i++) {
++        if (!cfg.leaders[i] && cfg.block_cycles[i] != 0) {
++            fprintf(out, "    case 0x%08Xu: ctx->downcount -= %u; goto label_%08X;\n",
++                    insts[i].address, cfg.block_cycles[i], insts[i].address);
++            continue;
++        }
++        // Internal gotos/fallthrough bypass this external-entry charge.
+         fprintf(out, "    case 0x%08Xu: goto label_%08X;\n",
+                 insts[i].address, insts[i].address);

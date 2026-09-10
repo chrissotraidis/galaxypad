@@ -1,0 +1,188 @@
+--- a/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Run.cpp
++++ b/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Run.cpp
+@@ -11,9 +11,11 @@
+ #include "Core/Config/MainSettings.h"
+ #include "Core/Config/ConfigManager.h"
+ #include "Core/HW/SystemTimers.h"
++#include "Core/PowerPC/StaticRecomp/RunCost.h"
+ 
+ #include <cstdio>
+ #include <cstdlib>
++#include <cstring>
+ #include <memory>
+ 
+ namespace
+@@ -137,9 +139,26 @@
+     return;
+   }
+ 
++  // Opt-in phase-selected CPU-time attribution, not per-instruction timing.
++  std::unique_ptr<galaxypad::diagnostics::RunCost> run_cost;
++  const char* cost_enabled = std::getenv("GALAXYPAD_RUN_COST");
++  const char* cost_marker = std::getenv("GALAXYPAD_RUN_COST_START_FILE");
++  std::string cost_start_file = cost_enabled && std::strcmp(cost_enabled, "1") == 0 &&
++      cost_marker && *cost_marker ? cost_marker : "";
++  u32 cost_poll = 0;
+   while (*state_ptr == CPU::State::Running)
+   {
+     core_timing.Advance();
++    if (!cost_start_file.empty() && (++cost_poll & 1023u) == 0)
++    {
++      if (std::FILE* marker = std::fopen(cost_start_file.c_str(), "rb"))
++      {
++        std::fclose(marker);
++        run_cost = std::make_unique<galaxypad::diagnostics::RunCost>();
++        cost_start_file.clear();
++        std::fprintf(stderr, "[galaxypad-run-cost] capture-start pc=%08x\n", ppc.pc);
++      }
++    }
+     // Diagnostic only: poll at timing-slice boundaries, never per guest step.
+     // Caller supplies a fresh absent path, then creates it after visual scene
+     // verification. Do not delete caller files or include startup in the census.
+@@ -165,6 +184,8 @@
+       if (m_module_active && DispatchableAt(ppc.pc) &&
+           !(m_guest.host_call && IsHostCallAddress(ppc.pc)))
+       {
++        galaxypad::diagnostics::RunCost::Scope cost_span(
++            run_cost.get(), galaxypad::diagnostics::RunLane::Native);
+         SyncIn();
+         ++m_bursts;
+         do
+@@ -258,6 +279,10 @@
+       }
+       else
+       {
++        // Includes host-call routing, forced fallback and interpreter/JIT work.
++        // It is deliberately NOT labeled pure interpreter or vector execution.
++        galaxypad::diagnostics::RunCost::Scope cost_span(
++            run_cost.get(), galaxypad::diagnostics::RunLane::NonNativeRouting);
+         if (m_guest.host_call && IsHostCallAddress(ppc.pc))
+         {
+           SyncIn();
+@@ -311,6 +336,8 @@
+       }
+     } while (ppc.downcount > 0 && *state_ptr == CPU::State::Running);
+   }
++  if (run_cost)
++    run_cost->Report(stderr); // Still on CPU thread; all branch scopes have ended.
+ }
+ 
+ void StaticRecompCore::SingleStep()
+--- /dev/null
++++ b/Source/Core/Core/PowerPC/StaticRecomp/RunCost.h
+@@ -0,0 +1,115 @@
++#pragma once
++
++#include <array>
++#include <cstdint>
++#include <cstdio>
++#include <ctime>
++
++namespace galaxypad::diagnostics
++{
++inline std::uint64_t ThreadCpuNs()
++{
++#if defined(CLOCK_THREAD_CPUTIME_ID)
++  timespec time{};
++  if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &time) == 0)
++    return std::uint64_t(time.tv_sec) * 1000000000 + time.tv_nsec;
++#endif
++  return 0; // Unsupported/failed clocks invalidate measurement; never use wall time.
++}
++
++enum class RunLane : unsigned { Native, NonNativeRouting };
++
++class RunCost
++{
++public:
++  using Clock = std::uint64_t (*)();
++  struct Totals
++  {
++    std::uint64_t spans = 0, selected = 0, completed = 0, ns = 0, maximum_ns = 0;
++    long double squared_ns = 0;
++  };
++
++  explicit RunCost(Clock clock = ThreadCpuNs) : m_clock(clock), m_start(clock()) {}
++  RunCost(const RunCost&) = delete;
++  RunCost& operator=(const RunCost&) = delete;
++
++  class Scope
++  {
++  public:
++    Scope(RunCost* owner, RunLane lane) : m_owner(owner), m_lane(lane)
++    {
++      if (!owner)
++        return;
++      auto& totals = owner->lanes[unsigned(lane)];
++      ++totals.spans;
++      auto& random = owner->m_random;
++      random ^= random << 13;
++      random ^= random >> 17;
++      random ^= random << 5;
++      m_selected = (random & 255u) == 0; // Approximate 1/256 inclusion, not periodic.
++      if (m_selected)
++      {
++        ++totals.selected;
++        m_start = owner->m_clock();
++      }
++    }
++    Scope(const Scope&) = delete;
++    Scope& operator=(const Scope&) = delete;
++    ~Scope()
++    {
++      if (!m_selected)
++        return;
++      const auto end = m_owner->m_clock();
++      if (!m_start || end < m_start)
++      {
++        ++m_owner->clock_errors;
++        return;
++      }
++      const auto elapsed = end - m_start;
++      auto& totals = m_owner->lanes[unsigned(m_lane)];
++      ++totals.completed;
++      totals.ns += elapsed;
++      totals.squared_ns += static_cast<long double>(elapsed) * elapsed;
++      if (elapsed > totals.maximum_ns)
++        totals.maximum_ns = elapsed;
++    }
++  private:
++    RunCost* m_owner;
++    RunLane m_lane;
++    bool m_selected = false;
++    std::uint64_t m_start = 0;
++  };
++
++  // Call on the SAME CPU thread after every scope has ended, before Run returns.
++  void Report(std::FILE* output)
++  {
++    const auto end = m_clock();
++    if (!m_start || end < m_start)
++      ++clock_errors;
++    const auto total = m_start && end >= m_start ? end - m_start : 0;
++    if (!output)
++      return;
++    std::fprintf(output, "[galaxypad-run-cost] cpu_ns=%llu clock_errors=%llu inclusion=256\n",
++                 static_cast<unsigned long long>(total),
++                 static_cast<unsigned long long>(clock_errors));
++    for (unsigned i = 0; i < lanes.size(); ++i)
++    {
++      const auto& lane = lanes[i];
++      std::fprintf(output, "[galaxypad-run-cost-lane] lane=%u spans=%llu selected=%llu "
++                   "completed=%llu ns=%llu squared_ns=%.0Lf maximum_ns=%llu\n", i,
++                   static_cast<unsigned long long>(lane.spans),
++                   static_cast<unsigned long long>(lane.selected),
++                   static_cast<unsigned long long>(lane.completed),
++                   static_cast<unsigned long long>(lane.ns), lane.squared_ns,
++                   static_cast<unsigned long long>(lane.maximum_ns));
++    }
++  }
++
++  std::array<Totals, 2> lanes{};
++  std::uint64_t clock_errors = 0;
++private:
++  Clock m_clock;
++  std::uint64_t m_start;
++  std::uint32_t m_random = 0x9e3779b9;
++};
++} // namespace galaxypad::diagnostics

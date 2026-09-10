@@ -1,0 +1,211 @@
+diff --git a/Source/Core/AudioCommon/CubebStream.cpp b/Source/Core/AudioCommon/CubebStream.cpp
+index 0cdf7f3b99..05c12bc69a 100644
+--- a/Source/Core/AudioCommon/CubebStream.cpp
++++ b/Source/Core/AudioCommon/CubebStream.cpp
+@@ -3,10 +3,12 @@
+ 
+ #include "AudioCommon/CubebStream.h"
+ 
++#include <cmath>
+ #include <cubeb/cubeb.h>
+ 
+ #include "AudioCommon/CubebUtils.h"
+ #include "Common/CommonTypes.h"
++#include "Common/GalaxyPadDiagnostics.h"
+ #include "Common/Logging/Log.h"
+ #include "Core/Config/MainSettings.h"
+ #include "Core/System.h"
+@@ -24,15 +26,45 @@ long CubebStream::DataCallback(cubeb_stream* stream, void* user_data, const void
+   const auto* const self = static_cast<CubebStream*>(user_data);
+ 
+   if (self->m_stereo)
++  {
+     self->m_mixer->Mix(static_cast<short*>(output_buffer), num_frames);
++    const auto* samples = static_cast<const short*>(output_buffer);
++    std::uint64_t nonzero_frames = 0;
++    std::uint32_t peak = 0;
++    for (long frame = 0; frame < num_frames; ++frame)
++    {
++      const std::uint32_t left = static_cast<std::uint32_t>(std::abs(static_cast<int>(samples[2 * frame])));
++      const std::uint32_t right =
++          static_cast<std::uint32_t>(std::abs(static_cast<int>(samples[2 * frame + 1])));
++      const std::uint32_t frame_peak = std::max(left, right);
++      nonzero_frames += frame_peak != 0;
++      peak = std::max(peak, frame_peak);
++    }
++    GalaxyPadDiagnostics::RecordAudio(num_frames, nonzero_frames, peak);
++  }
+   else
++  {
+     self->m_mixer->MixSurround(static_cast<float*>(output_buffer), num_frames);
++    const auto* samples = static_cast<const float*>(output_buffer);
++    std::uint64_t nonzero_frames = 0;
++    std::uint32_t peak = 0;
++    for (long frame = 0; frame < num_frames; ++frame)
++    {
++      float frame_peak = 0.0f;
++      for (std::size_t channel = 0; channel < 6; ++channel)
++        frame_peak = std::max(frame_peak, std::abs(samples[6 * frame + channel]));
++      nonzero_frames += frame_peak > 0.0f;
++      peak = std::max(peak, static_cast<std::uint32_t>(std::min(frame_peak, 1.0f) * 32767.0f));
++    }
++    GalaxyPadDiagnostics::RecordAudio(num_frames, nonzero_frames, peak);
++  }
+ 
+   return num_frames;
+ }
+ 
+ void CubebStream::StateCallback(cubeb_stream* stream, void* user_data, cubeb_state state)
+ {
++  GalaxyPadDiagnostics::RecordAudioState(static_cast<std::size_t>(state));
+ }
+ 
+ long CubebStream::WiimoteDataCallback(cubeb_stream* stream, void* user_data,
+diff --git a/Source/Core/AudioCommon/Mixer.cpp b/Source/Core/AudioCommon/Mixer.cpp
+index a3a89d59be..2e93fd968c 100644
+--- a/Source/Core/AudioCommon/Mixer.cpp
++++ b/Source/Core/AudioCommon/Mixer.cpp
+@@ -4,6 +4,7 @@
+ #include "AudioCommon/Mixer.h"
+ 
+ #include <algorithm>
++#include <chrono>
+ #include <cmath>
+ #include <cstring>
+ #include <span>
+@@ -11,6 +12,7 @@
+ #include "AudioCommon/Enums.h"
+ #include "Common/ChunkFile.h"
+ #include "Common/CommonTypes.h"
++#include "Common/GalaxyPadDiagnostics.h"
+ #include "Common/Logging/Log.h"
+ #include "Common/MathUtil.h"
+ #include "Common/Swap.h"
+@@ -556,11 +558,14 @@ void Mixer::MixerFifo::Enqueue()
+       0.0000216492f, 0.0000113187f, 0.0000050749f, 0.0000016272f};
+ 
+   const std::size_t head = m_queue_head.load(std::memory_order_acquire);
++  const std::size_t tail = m_queue_tail.load(std::memory_order_acquire);
+ 
+   // Check if we run out of space in the circular queue. (rare)
+   const std::size_t next_head = (head + 1) & GRANULE_QUEUE_MASK;
+-  if (next_head == m_queue_tail.load(std::memory_order_acquire))
++  if (next_head == tail)
+   {
++    if (this == &m_mixer->m_dma_mixer)
++      GalaxyPadDiagnostics::RecordDmaQueueFullDrop();
+     WARN_LOG_FMT(AUDIO,
+                  "Granule Queue has completely filled and audio samples are being dropped. "
+                  "This should not happen unless the audio backend has stopped requesting audio.");
+@@ -574,6 +579,13 @@ void Mixer::MixerFifo::Enqueue()
+     m_queue[head][i] = m_next_buffer[(i + start_index) & GRANULE_MASK] * GRANULE_WINDOW[i];
+ 
+   m_queue_head.store(next_head, std::memory_order_release);
++  if (this == &m_mixer->m_dma_mixer)
++  {
++    const auto now = std::chrono::steady_clock::now().time_since_epoch();
++    GalaxyPadDiagnostics::RecordDmaEnqueue(
++        (next_head - tail) & GRANULE_QUEUE_MASK,
++        std::chrono::duration_cast<std::chrono::nanoseconds>(now).count());
++  }
+   m_queue_fading.store(false, std::memory_order_relaxed);
+   m_queue_looping.store(false, std::memory_order_relaxed);
+ }
+@@ -587,6 +599,8 @@ bool Mixer::MixerFifo::Dequeue(Granule* granule)
+   // Checks to see if the queue has gotten too long.
+   if (granule_queue_size < ((head - tail) & GRANULE_QUEUE_MASK))
+   {
++    if (this == &m_mixer->m_dma_mixer)
++      GalaxyPadDiagnostics::RecordDmaBacklogDrop();
+     // Jump the playhead to half the queue size behind the head.
+     const std::size_t gap = (granule_queue_size >> 1) + 1;
+     tail = (head - gap) & GRANULE_QUEUE_MASK;
+@@ -596,6 +610,9 @@ bool Mixer::MixerFifo::Dequeue(Granule* granule)
+   std::size_t next_tail = (tail + 1) & GRANULE_QUEUE_MASK;
+   if (next_tail == head)
+   {
++    const bool is_running = Core::GetState(Core::System::GetInstance()) == Core::State::Running;
++    if (this == &m_mixer->m_dma_mixer && is_running)
++      GalaxyPadDiagnostics::RecordDmaUnderrun();
+ #if defined(__IPHONE_OS_VERSION_MIN_REQUIRED)
+     // Preserve the true queue position on iOS so the adaptive rate above can
+     // recover. Rewinding into old granules makes music sound selectively
+@@ -611,7 +628,6 @@ bool Mixer::MixerFifo::Dequeue(Granule* granule)
+ #endif
+ 
+     // Only fill gaps when running to prevent stutter on pause.
+-    const bool is_running = Core::GetState(Core::System::GetInstance()) == Core::State::Running;
+     if (m_mixer->m_config_fill_audio_gaps && is_running)
+     {
+       // Jump the playhead to half the queue size behind the head.
+diff --git a/Source/Core/Core/HW/WiimoteEmu/WiimoteEmu.cpp b/Source/Core/Core/HW/WiimoteEmu/WiimoteEmu.cpp
+index 3350787c64..410e844596 100644
+--- a/Source/Core/Core/HW/WiimoteEmu/WiimoteEmu.cpp
++++ b/Source/Core/Core/HW/WiimoteEmu/WiimoteEmu.cpp
+@@ -16,6 +16,7 @@
+ #include "Common/CommonTypes.h"
+ #include "Common/Config/Config.h"
+ #include "Common/FileUtil.h"
++#include "Common/GalaxyPadDiagnostics.h"
+ #include "Common/Logging/Log.h"
+ #include "Common/MathUtil.h"
+ 
+@@ -435,6 +436,14 @@ void Wiimote::BuildDesiredWiimoteState(DesiredWiimoteState* target_state,
+   static_cast<Extension*>(
+       m_attachments->GetAttachmentList()[m_attachments->GetSelectedAttachment()].get())
+       ->BuildDesiredExtensionState(&target_state->extension);
++
++  if (m_bt_device_index == 0)
++  {
++    const CameraPoint& point = target_state->camera_points[0];
++    const bool visible = point.position.x != 0xffff && point.position.y != 0xffff;
++    GalaxyPadDiagnostics::RecordInput(target_state->buttons.hex, visible, point.position.x,
++                                      point.position.y);
++  }
+ }
+ 
+ u8 Wiimote::GetWiimoteDeviceIndex() const
+diff --git a/Source/Core/VideoCommon/EFBInterface.cpp b/Source/Core/VideoCommon/EFBInterface.cpp
+index 9221f5d114..32c88c5657 100644
+--- a/Source/Core/VideoCommon/EFBInterface.cpp
++++ b/Source/Core/VideoCommon/EFBInterface.cpp
+@@ -4,9 +4,11 @@
+ #include "VideoCommon/EFBInterface.h"
+ 
+ #include <algorithm>
++#include <chrono>
+ #include <memory>
+ 
+ #include "Common/MsgHandler.h"
++#include "Common/GalaxyPadDiagnostics.h"
+ 
+ #include "Core/Config/ConfigManager.h"
+ #include "Core/System.h"
+@@ -64,7 +66,12 @@ u32 EFBInterfaceBase::PeekColor(u16 x, u16 y)
+   if (ShouldSkipAccess(x, y))
+     return 0;
+ 
++  const auto start = std::chrono::steady_clock::now();
+   u32 color = PeekColorInternal(x, y);
++  const auto elapsed = std::chrono::steady_clock::now() - start;
++  GalaxyPadDiagnostics::RecordEFB(
++      false, x, y, color,
++      std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count());
+ 
+   // check what to do with the alpha channel (GX_PokeAlphaRead)
+   PixelEngine::AlphaReadMode alpha_read_mode =
+@@ -124,7 +131,13 @@ u32 EFBInterfaceBase::PeekDepth(u16 x, u16 y)
+   if (ShouldSkipAccess(x, y))
+     return 0;
+ 
+-  return PeekDepthInternal(x, y);
++  const auto start = std::chrono::steady_clock::now();
++  const u32 depth = PeekDepthInternal(x, y);
++  const auto elapsed = std::chrono::steady_clock::now() - start;
++  GalaxyPadDiagnostics::RecordEFB(
++      true, x, y, depth,
++      std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count());
++  return depth;
+ }
+ 
+ void HardwareEFBInterface::PokeColor(u16 x, u16 y, u32 poke_data)

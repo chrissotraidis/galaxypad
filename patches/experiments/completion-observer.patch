@@ -1,0 +1,21 @@
+diff --git a/Source/Core/Common/BlockingLoop.h b/Source/Core/Common/BlockingLoop.h
+--- a/Source/Core/Common/BlockingLoop.h
++++ b/Source/Core/Common/BlockingLoop.h
+@@ -125,4 +125,8 @@
+   template <class F>
+-  void Run(F payload, int64_t timeout = 0)
++  void Run(F payload, int64_t timeout = 0,
++           void (*notification_observer)(void*, bool) noexcept = nullptr,
++           void* observer_context = nullptr)
+   {
++    // Worker-thread observations only; true=before Set, false=after Set.
++    // DONE may already be visible to a waiter. No exact publication-time claim.
+     // Asserts that Prepare is called at least once before we enter the loop.
+@@ -158,3 +162,7 @@
+         // triggered so that we'll skip the next waiting call quite fast.
++        if (notification_observer)
++          notification_observer(observer_context, true);
+         m_done_event.Set();
++        if (notification_observer)
++          notification_observer(observer_context, false);
+         [[fallthrough]];

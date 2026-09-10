@@ -1,0 +1,13 @@
+[
+  {"action": "nunchuk", "x": -0.70, "y": -0.70},
+  {"action": "wait", "seconds": 0.22},
+  {"action": "press", "button": "Z"},
+  {"action": "wait", "seconds": 0.06},
+  {"action": "tap", "button": "A", "hold": 0.10},
+  {"action": "wait", "seconds": 0.30},
+  {"action": "tap", "button": "SPIN", "hold": 0.16},
+  {"action": "wait", "seconds": 0.32},
+  {"action": "release", "button": "Z"},
+  {"action": "nunchuk", "x": 0.0, "y": 0.0},
+  {"action": "wait", "seconds": 0.05}
+]

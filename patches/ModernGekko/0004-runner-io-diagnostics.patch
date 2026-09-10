@@ -1,0 +1,158 @@
+diff --git a/include/moderngekko/runtime.hpp b/include/moderngekko/runtime.hpp
+index fd9c1a1..f179eee 100644
+--- a/include/moderngekko/runtime.hpp
++++ b/include/moderngekko/runtime.hpp
+@@ -36,6 +36,39 @@ struct RuntimeDiagnosticsSnapshot
+   std::uint32_t vertex_shaders_created = 0;
+   std::uint32_t pixel_shaders_created = 0;
+   std::uint32_t scissor_count = 0;
++  std::uint64_t audio_callbacks = 0;
++  std::uint64_t audio_frames = 0;
++  std::uint64_t audio_nonzero_frames = 0;
++  std::uint32_t audio_peak = 0;
++  std::uint64_t audio_started = 0;
++  std::uint64_t audio_stopped = 0;
++  std::uint64_t audio_drained = 0;
++  std::uint64_t audio_errors = 0;
++  std::uint64_t dma_enqueues = 0;
++  std::uint64_t dma_underruns = 0;
++  std::uint64_t dma_backlog_drops = 0;
++  std::uint64_t dma_queue_full_drops = 0;
++  std::uint64_t dma_queue_min = 0;
++  std::uint64_t dma_queue_max = 0;
++  std::uint64_t dma_producer_max_gap_ns = 0;
++  std::uint64_t dma_first_underrun_enqueue = 0;
++  std::uint64_t dma_last_underrun_enqueue = 0;
++  std::uint64_t dma_first_backlog_enqueue = 0;
++  std::uint64_t dma_last_backlog_enqueue = 0;
++  std::uint64_t efb_color_peeks = 0;
++  std::uint64_t efb_depth_peeks = 0;
++  std::uint64_t efb_peek_ns = 0;
++  std::uint64_t efb_max_peek_ns = 0;
++  std::uint32_t efb_last_x = 0;
++  std::uint32_t efb_last_y = 0;
++  std::uint32_t efb_last_depth = 0;
++  std::uint64_t input_samples = 0;
++  std::uint64_t input_button_samples = 0;
++  std::uint64_t input_button_transitions = 0;
++  std::uint64_t input_ir_visible_samples = 0;
++  std::uint32_t input_last_buttons = 0;
++  std::uint32_t input_last_ir_x = 0xffff;
++  std::uint32_t input_last_ir_y = 0xffff;
+ };
+ 
+ struct ModuleSource
+diff --git a/src/runtime/dolphin_runtime.cpp b/src/runtime/dolphin_runtime.cpp
+index 72c1df8..dc53f07 100644
+--- a/src/runtime/dolphin_runtime.cpp
++++ b/src/runtime/dolphin_runtime.cpp
+@@ -2,6 +2,7 @@
+ 
+ #include "AudioCommon/AudioCommon.h"
+ #include "Common/Config/Config.h"
++#include "Common/GalaxyPadDiagnostics.h"
+ #include "Common/IniFile.h"
+ #include "Common/HookableEvent.h"
+ #include "Common/Logging/Log.h"
+@@ -542,6 +543,8 @@ RuntimeRunResult Runtime::Run() {
+             RuntimeError{RuntimeErrorCode::InvalidState,
+                          "runtime is already running"}};
+ 
++  GalaxyPadDiagnostics::Reset();
++
+   std::unique_ptr<BootParameters> boot;
+   {
+     std::lock_guard lock(s_runtime_mutex);
+@@ -697,6 +700,7 @@ void Runtime::SetGMSE01HeatwaveSuppressed(bool suppressed) {
+ }
+ 
+ RuntimeDiagnosticsSnapshot Runtime::GetDiagnosticsSnapshot() const {
++  const GalaxyPadDiagnostics::Snapshot io = GalaxyPadDiagnostics::GetSnapshot();
+   return {
+       .frame_count = m_impl->diagnostic_frame_count.load(std::memory_order_relaxed),
+       .projection_hash = m_impl->diagnostic_projection_hash.load(std::memory_order_relaxed),
+@@ -714,6 +718,39 @@ RuntimeDiagnosticsSnapshot Runtime::GetDiagnosticsSnapshot() const {
+       .pixel_shaders_created =
+           m_impl->diagnostic_pixel_shaders_created.load(std::memory_order_relaxed),
+       .scissor_count = m_impl->diagnostic_scissor_count.load(std::memory_order_relaxed),
++      .audio_callbacks = io.audio_callbacks,
++      .audio_frames = io.audio_frames,
++      .audio_nonzero_frames = io.audio_nonzero_frames,
++      .audio_peak = io.audio_peak,
++      .audio_started = io.audio_started,
++      .audio_stopped = io.audio_stopped,
++      .audio_drained = io.audio_drained,
++      .audio_errors = io.audio_errors,
++      .dma_enqueues = io.dma_enqueues,
++      .dma_underruns = io.dma_underruns,
++      .dma_backlog_drops = io.dma_backlog_drops,
++      .dma_queue_full_drops = io.dma_queue_full_drops,
++      .dma_queue_min = io.dma_queue_min,
++      .dma_queue_max = io.dma_queue_max,
++      .dma_producer_max_gap_ns = io.dma_producer_max_gap_ns,
++      .dma_first_underrun_enqueue = io.dma_first_underrun_enqueue,
++      .dma_last_underrun_enqueue = io.dma_last_underrun_enqueue,
++      .dma_first_backlog_enqueue = io.dma_first_backlog_enqueue,
++      .dma_last_backlog_enqueue = io.dma_last_backlog_enqueue,
++      .efb_color_peeks = io.efb_color_peeks,
++      .efb_depth_peeks = io.efb_depth_peeks,
++      .efb_peek_ns = io.efb_peek_ns,
++      .efb_max_peek_ns = io.efb_max_peek_ns,
++      .efb_last_x = io.efb_last_x,
++      .efb_last_y = io.efb_last_y,
++      .efb_last_depth = io.efb_last_depth,
++      .input_samples = io.input_samples,
++      .input_button_samples = io.input_button_samples,
++      .input_button_transitions = io.input_button_transitions,
++      .input_ir_visible_samples = io.input_ir_visible_samples,
++      .input_last_buttons = io.input_last_buttons,
++      .input_last_ir_x = io.input_last_ir_x,
++      .input_last_ir_y = io.input_last_ir_y,
+   };
+ }
+ } // namespace moderngekko
+diff --git a/tools/moderngekko_run.cpp b/tools/moderngekko_run.cpp
+index cdcbd5d..335fc03 100644
+--- a/tools/moderngekko_run.cpp
++++ b/tools/moderngekko_run.cpp
+@@ -403,6 +403,40 @@ int RunMain(int argc, char **argv) {
+             << " textures_alive=" << diagnostics.textures_alive
+             << " vertex_shaders=" << diagnostics.vertex_shaders_created
+             << " pixel_shaders=" << diagnostics.pixel_shaders_created << '\n';
++  std::cout << "[moderngekko] audio: callbacks=" << diagnostics.audio_callbacks
++            << " frames=" << diagnostics.audio_frames
++            << " nonzero_frames=" << diagnostics.audio_nonzero_frames
++            << " peak=" << diagnostics.audio_peak
++            << " started=" << diagnostics.audio_started
++            << " stopped=" << diagnostics.audio_stopped
++            << " drained=" << diagnostics.audio_drained
++            << " errors=" << diagnostics.audio_errors << '\n';
++  std::cout << "[moderngekko] dma: enqueues=" << diagnostics.dma_enqueues
++            << " underruns=" << diagnostics.dma_underruns
++            << " backlog_drops=" << diagnostics.dma_backlog_drops
++            << " queue_full_drops=" << diagnostics.dma_queue_full_drops
++            << " queue_min=" << diagnostics.dma_queue_min
++            << " queue_max=" << diagnostics.dma_queue_max
++            << " producer_max_gap_ns=" << diagnostics.dma_producer_max_gap_ns
++            << " first_underrun_enqueue=" << diagnostics.dma_first_underrun_enqueue
++            << " last_underrun_enqueue=" << diagnostics.dma_last_underrun_enqueue
++            << " first_backlog_enqueue=" << diagnostics.dma_first_backlog_enqueue
++            << " last_backlog_enqueue=" << diagnostics.dma_last_backlog_enqueue << '\n';
++  std::cout << "[moderngekko] efb: color_peeks=" << diagnostics.efb_color_peeks
++            << " depth_peeks=" << diagnostics.efb_depth_peeks
++            << " total_ns=" << diagnostics.efb_peek_ns
++            << " max_ns=" << diagnostics.efb_max_peek_ns
++            << " last_x=" << diagnostics.efb_last_x
++            << " last_y=" << diagnostics.efb_last_y
++            << " last_depth=0x" << std::hex << diagnostics.efb_last_depth
++            << std::dec << '\n';
++  std::cout << "[moderngekko] input: samples=" << diagnostics.input_samples
++            << " button_samples=" << diagnostics.input_button_samples
++            << " transitions=" << diagnostics.input_button_transitions
++            << " ir_visible_samples=" << diagnostics.input_ir_visible_samples
++            << " last_buttons=0x" << std::hex << diagnostics.input_last_buttons
++            << std::dec << " last_ir_x=" << diagnostics.input_last_ir_x
++            << " last_ir_y=" << diagnostics.input_last_ir_y << '\n';
+   signal_watcher.request_stop();
+   if (result.error) {
+     std::cerr << "runtime failed: " << result.error->message << '\n';

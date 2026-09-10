@@ -1,0 +1,2 @@
+# Minimal pinned title database used only to prevent DolRecomp's missing-database fallback.
+RMGE01 = Super Mario Galaxy

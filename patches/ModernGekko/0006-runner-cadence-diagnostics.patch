@@ -1,0 +1,177 @@
+diff --git a/include/moderngekko/runtime.hpp b/include/moderngekko/runtime.hpp
+--- a/include/moderngekko/runtime.hpp
++++ b/include/moderngekko/runtime.hpp
+@@ -22,6 +22,12 @@ using RuntimeLogCallback = void (*)(RuntimeLogLevel level, const char* category,
+ struct RuntimeDiagnosticsSnapshot
+ {
+   std::uint64_t frame_count = 0;
++  std::uint64_t frame_active_ns = 0;
++  std::uint64_t frame_max_gap_ns = 0;
++  std::uint64_t frame_gaps_ge_20ms = 0;
++  std::uint64_t frame_gaps_ge_33ms = 0;
++  std::uint64_t frame_gaps_ge_50ms = 0;
++  std::uint64_t frame_gaps_ge_100ms = 0;
+   std::uint64_t projection_hash = 0;
+   std::uint32_t draw_calls = 0;
+   std::uint32_t primitives = 0;
+@@ -44,6 +50,7 @@ struct RuntimeDiagnosticsSnapshot
+   std::uint64_t audio_stopped = 0;
+   std::uint64_t audio_drained = 0;
+   std::uint64_t audio_errors = 0;
++  std::uint64_t audio_active_ns = 0;
+   std::uint64_t dma_enqueues = 0;
+   std::uint64_t dma_underruns = 0;
+   std::uint64_t dma_backlog_drops = 0;
+@@ -53,6 +60,11 @@ struct RuntimeDiagnosticsSnapshot
+   std::uint64_t dma_queue_min = 0;
+   std::uint64_t dma_queue_max = 0;
+   std::uint64_t dma_producer_max_gap_ns = 0;
++  std::uint64_t dma_active_ns = 0;
++  std::uint64_t dma_gaps_ge_10ms = 0;
++  std::uint64_t dma_gaps_ge_20ms = 0;
++  std::uint64_t dma_gaps_ge_50ms = 0;
++  std::uint64_t dma_gaps_ge_100ms = 0;
+   std::uint64_t dma_first_underrun_enqueue = 0;
+   std::uint64_t dma_last_underrun_enqueue = 0;
+   std::uint64_t dma_first_backlog_enqueue = 0;
+diff --git a/src/runtime/dolphin_runtime.cpp b/src/runtime/dolphin_runtime.cpp
+--- a/src/runtime/dolphin_runtime.cpp
++++ b/src/runtime/dolphin_runtime.cpp
+@@ -233,6 +233,14 @@ struct Runtime::Impl {
+   std::atomic<bool> gmse01_heatwave_suppressed{false};
+   std::atomic<bool> gmse01_heatwave_patch_applied{false};
+   std::atomic<std::uint64_t> diagnostic_frame_count{0};
++  std::atomic<std::uint64_t> diagnostic_first_frame_ns{
++      std::numeric_limits<std::uint64_t>::max()};
++  std::atomic<std::uint64_t> diagnostic_last_frame_ns{0};
++  std::atomic<std::uint64_t> diagnostic_frame_max_gap_ns{0};
++  std::atomic<std::uint64_t> diagnostic_frame_gaps_ge_20ms{0};
++  std::atomic<std::uint64_t> diagnostic_frame_gaps_ge_33ms{0};
++  std::atomic<std::uint64_t> diagnostic_frame_gaps_ge_50ms{0};
++  std::atomic<std::uint64_t> diagnostic_frame_gaps_ge_100ms{0};
+   std::atomic<std::uint64_t> diagnostic_projection_hash{0};
+   std::atomic<std::uint32_t> diagnostic_draw_calls{0};
+   std::atomic<std::uint32_t> diagnostic_primitives{0};
+@@ -544,5 +552,13 @@ RuntimeRunResult Runtime::Run() {
+ 
+   GalaxyPadDiagnostics::Reset();
++  m_impl->diagnostic_frame_count = 0;
++  m_impl->diagnostic_first_frame_ns = std::numeric_limits<std::uint64_t>::max();
++  m_impl->diagnostic_last_frame_ns = 0;
++  m_impl->diagnostic_frame_max_gap_ns = 0;
++  m_impl->diagnostic_frame_gaps_ge_20ms = 0;
++  m_impl->diagnostic_frame_gaps_ge_33ms = 0;
++  m_impl->diagnostic_frame_gaps_ge_50ms = 0;
++  m_impl->diagnostic_frame_gaps_ge_100ms = 0;
+ 
+   std::unique_ptr<BootParameters> boot;
+   {
+@@ -590,6 +606,26 @@ RuntimeRunResult Runtime::Run() {
+   m_impl->diagnostics_frame_hook =
+       GetVideoEvents().after_frame_event.Register([this](Core::System&) {
+         const Statistics::ThisFrame frame = g_stats.this_frame;
++        const auto now = std::chrono::steady_clock::now().time_since_epoch();
++        const auto now_ns = static_cast<std::uint64_t>(
++            std::chrono::duration_cast<std::chrono::nanoseconds>(now).count());
++        std::uint64_t unset = std::numeric_limits<std::uint64_t>::max();
++        m_impl->diagnostic_first_frame_ns.compare_exchange_strong(
++            unset, now_ns, std::memory_order_relaxed);
++        const std::uint64_t previous =
++            m_impl->diagnostic_last_frame_ns.exchange(now_ns, std::memory_order_relaxed);
++        if (previous != 0 && now_ns >= previous) {
++          const std::uint64_t gap_ns = now_ns - previous;
++          GalaxyPadDiagnostics::UpdateMaximum(m_impl->diagnostic_frame_max_gap_ns, gap_ns);
++          if (gap_ns >= 20'000'000)
++            m_impl->diagnostic_frame_gaps_ge_20ms.fetch_add(1, std::memory_order_relaxed);
++          if (gap_ns >= 33'000'000)
++            m_impl->diagnostic_frame_gaps_ge_33ms.fetch_add(1, std::memory_order_relaxed);
++          if (gap_ns >= 50'000'000)
++            m_impl->diagnostic_frame_gaps_ge_50ms.fetch_add(1, std::memory_order_relaxed);
++          if (gap_ns >= 100'000'000)
++            m_impl->diagnostic_frame_gaps_ge_100ms.fetch_add(1, std::memory_order_relaxed);
++        }
+         m_impl->diagnostic_frame_count.fetch_add(1, std::memory_order_relaxed);
+         m_impl->diagnostic_projection_hash.store(HashProjection(g_stats),
+                                                  std::memory_order_relaxed);
+@@ -701,8 +737,25 @@ void Runtime::SetGMSE01HeatwaveSuppressed(bool suppressed) {
+ 
+ RuntimeDiagnosticsSnapshot Runtime::GetDiagnosticsSnapshot() const {
+   const GalaxyPadDiagnostics::Snapshot io = GalaxyPadDiagnostics::GetSnapshot();
++  const std::uint64_t first_frame =
++      m_impl->diagnostic_first_frame_ns.load(std::memory_order_relaxed);
++  const std::uint64_t last_frame =
++      m_impl->diagnostic_last_frame_ns.load(std::memory_order_relaxed);
+   return {
+       .frame_count = m_impl->diagnostic_frame_count.load(std::memory_order_relaxed),
++      .frame_active_ns = first_frame != std::numeric_limits<std::uint64_t>::max() &&
++                                 last_frame >= first_frame ?
++                             last_frame - first_frame :
++                             0,
++      .frame_max_gap_ns = m_impl->diagnostic_frame_max_gap_ns.load(std::memory_order_relaxed),
++      .frame_gaps_ge_20ms =
++          m_impl->diagnostic_frame_gaps_ge_20ms.load(std::memory_order_relaxed),
++      .frame_gaps_ge_33ms =
++          m_impl->diagnostic_frame_gaps_ge_33ms.load(std::memory_order_relaxed),
++      .frame_gaps_ge_50ms =
++          m_impl->diagnostic_frame_gaps_ge_50ms.load(std::memory_order_relaxed),
++      .frame_gaps_ge_100ms =
++          m_impl->diagnostic_frame_gaps_ge_100ms.load(std::memory_order_relaxed),
+       .projection_hash = m_impl->diagnostic_projection_hash.load(std::memory_order_relaxed),
+       .draw_calls = m_impl->diagnostic_draw_calls.load(std::memory_order_relaxed),
+       .primitives = m_impl->diagnostic_primitives.load(std::memory_order_relaxed),
+@@ -729,6 +783,7 @@ RuntimeDiagnosticsSnapshot Runtime::GetDiagnosticsSnapshot() const {
+       .audio_stopped = io.audio_stopped,
+       .audio_drained = io.audio_drained,
+       .audio_errors = io.audio_errors,
++      .audio_active_ns = io.audio_active_ns,
+       .dma_enqueues = io.dma_enqueues,
+       .dma_underruns = io.dma_underruns,
+       .dma_backlog_drops = io.dma_backlog_drops,
+@@ -738,5 +793,10 @@ RuntimeDiagnosticsSnapshot Runtime::GetDiagnosticsSnapshot() const {
+       .dma_queue_max = io.dma_queue_max,
+       .dma_producer_max_gap_ns = io.dma_producer_max_gap_ns,
++      .dma_active_ns = io.dma_active_ns,
++      .dma_gaps_ge_10ms = io.dma_gaps_ge_10ms,
++      .dma_gaps_ge_20ms = io.dma_gaps_ge_20ms,
++      .dma_gaps_ge_50ms = io.dma_gaps_ge_50ms,
++      .dma_gaps_ge_100ms = io.dma_gaps_ge_100ms,
+       .dma_first_underrun_enqueue = io.dma_first_underrun_enqueue,
+       .dma_last_underrun_enqueue = io.dma_last_underrun_enqueue,
+       .dma_first_backlog_enqueue = io.dma_first_backlog_enqueue,
+diff --git a/tools/moderngekko_run.cpp b/tools/moderngekko_run.cpp
+--- a/tools/moderngekko_run.cpp
++++ b/tools/moderngekko_run.cpp
+@@ -391,6 +391,12 @@ int RunMain(int argc, char **argv) {
+   const moderngekko::RuntimeDiagnosticsSnapshot diagnostics =
+       created.runtime->GetDiagnosticsSnapshot();
+   std::cout << "[moderngekko] graphics: frames=" << diagnostics.frame_count
++            << " active_ns=" << diagnostics.frame_active_ns
++            << " max_gap_ns=" << diagnostics.frame_max_gap_ns
++            << " gaps_ge_20ms=" << diagnostics.frame_gaps_ge_20ms
++            << " gaps_ge_33ms=" << diagnostics.frame_gaps_ge_33ms
++            << " gaps_ge_50ms=" << diagnostics.frame_gaps_ge_50ms
++            << " gaps_ge_100ms=" << diagnostics.frame_gaps_ge_100ms
+             << " projection_hash=0x" << std::hex << diagnostics.projection_hash
+             << std::dec << " draws=" << diagnostics.draw_calls
+             << " primitives=" << diagnostics.primitives
+@@ -410,6 +416,7 @@ int RunMain(int argc, char **argv) {
+             << " stopped=" << diagnostics.audio_stopped
+             << " drained=" << diagnostics.audio_drained
+-            << " errors=" << diagnostics.audio_errors << '\n';
++            << " errors=" << diagnostics.audio_errors
++            << " active_ns=" << diagnostics.audio_active_ns << '\n';
+   std::cout << "[moderngekko] dma: enqueues=" << diagnostics.dma_enqueues
+             << " underruns=" << diagnostics.dma_underruns
+             << " backlog_drops=" << diagnostics.dma_backlog_drops
+@@ -420,6 +427,11 @@ int RunMain(int argc, char **argv) {
+             << " queue_min=" << diagnostics.dma_queue_min
+             << " queue_max=" << diagnostics.dma_queue_max
+             << " producer_max_gap_ns=" << diagnostics.dma_producer_max_gap_ns
++            << " active_ns=" << diagnostics.dma_active_ns
++            << " gaps_ge_10ms=" << diagnostics.dma_gaps_ge_10ms
++            << " gaps_ge_20ms=" << diagnostics.dma_gaps_ge_20ms
++            << " gaps_ge_50ms=" << diagnostics.dma_gaps_ge_50ms
++            << " gaps_ge_100ms=" << diagnostics.dma_gaps_ge_100ms
+             << " first_underrun_enqueue=" << diagnostics.dma_first_underrun_enqueue
+             << " last_underrun_enqueue=" << diagnostics.dma_last_underrun_enqueue
+             << " first_backlog_enqueue=" << diagnostics.dma_first_backlog_enqueue

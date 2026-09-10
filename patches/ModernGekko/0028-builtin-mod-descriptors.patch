@@ -1,0 +1,44 @@
+diff --git a/include/moderngekko/runtime.hpp b/include/moderngekko/runtime.hpp
+--- a/include/moderngekko/runtime.hpp
++++ b/include/moderngekko/runtime.hpp
+@@ -2,5 +2,6 @@
+ 
+ #include "moderngekko/game.hpp"
+ #include "moderngekko/module_abi.h"
++#include "moderngekko/mod_abi.h"
+ 
+ #include <cstdint>
+@@ -134,5 +135,8 @@
+   std::filesystem::path user_directory;
+   ModuleSource module;
+   std::vector<std::filesystem::path> mod_directories;
++  // App-linked descriptors only; storage/callbacks must outlive the Runtime.
++  // Mutually exclusive with mod_directories. Empty preserves normal loading.
++  std::vector<const ModernGekkoModDesc*> builtin_mods;
+   GraphicsSettings graphics;
+   AudioSettings audio;
+diff --git a/src/runtime/dolphin_runtime.cpp b/src/runtime/dolphin_runtime.cpp
+--- a/src/runtime/dolphin_runtime.cpp
++++ b/src/runtime/dolphin_runtime.cpp
+@@ -369,5 +369,19 @@
+   impl->mods = std::make_unique<ModManager>();
+-  const ModLoadReport mod_report = impl->mods->LoadDirectories(
+-      impl->config.mod_directories, impl->metadata.disc_id);
++  ModLoadReport mod_report;
++  if (impl->config.builtin_mods.empty()) {
++    mod_report = impl->mods->LoadDirectories(
++        impl->config.mod_directories, impl->metadata.disc_id);
++  } else {
++    if (!impl->config.mod_directories.empty())
++      return {{}, RuntimeError{RuntimeErrorCode::ModuleRejected,
++                               "Built-in mods cannot be mixed with mod directories"}};
++    std::vector<ModSource> sources;
++    for (const auto* descriptor : impl->config.builtin_mods)
++      sources.push_back(ModSource::AttachedDescriptor(descriptor, "built-in"));
++    mod_report = impl->mods->Load(sources, impl->metadata.disc_id);
++    if (!mod_report)
++      return {{}, RuntimeError{RuntimeErrorCode::ModuleRejected,
++                               "Built-in mod rejected: " + mod_report.issues.front().message}};
++  }
+   for (const ModLoadIssue &issue : mod_report.issues)
+     std::fprintf(stderr, "mod rejected: %s: %s\n", issue.source.c_str(),

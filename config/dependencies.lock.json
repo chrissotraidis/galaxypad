@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "selectedTrack": "sunpad-known-apple",
+  "repositories": {
+    "sunpad": {
+      "url": "https://github.com/chrissotraidis/sunpad.git",
+      "revision": "efd42ca45457af5950e0558c66703cb766959e11"
+    },
+    "modernGekko": {
+      "url": "https://github.com/ExpansionPak/ModernGekko.git",
+      "revision": "0514d9f03f8602809f66fc92fdca87d30e752997"
+    },
+    "modernGekkoTemplate": {
+      "url": "https://github.com/ExpansionPak/ModernGekko-Template.git",
+      "revision": "1ee85bb5e09c38f493a09f5fa6e9dc8228b23e42"
+    },
+    "dolRecomp": {
+      "url": "https://github.com/ExpansionPak/DolRecomp.git",
+      "revision": "fa0cf619e8d7eb8cba7eaf55267a12caaebb46aa"
+    },
+    "petari": {
+      "url": "https://github.com/SMGCommunity/Petari.git",
+      "revision": "845164b4faec4703002eb99b4b75ee1788204230"
+    }
+  },
+  "vendorRevisions": {
+    "modernGekkoRecompCoreDolphin": "13e492094902644b0d113c586300d358640f9e19"
+  },
+  "patches": {
+    "modernGekkoAppleRuntime": "aa06ac920002fc94f8f96f684309f291e6b8cb882c694f894a9226d100abadbe",
+    "recompCoreDolphinAppleRuntime": "b872dfe002d3d106af92f5dbc3dfcd3d20c43358e7681084ad41ee367cad214a"
+  },
+  "tools": {
+    "wit": {
+      "version": "3.05a-r8638",
+      "url": "https://wit.wiimm.de/download/wit-v3.05a-r8638-mac.tar.gz",
+      "sha256": "670fd1920eb0390ecdc2553942df71f0ced43c63c8e83588a23705b569d25213"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+diff --git a/src/runtime/dolphin_runtime.cpp b/src/runtime/dolphin_runtime.cpp
+index 10ba76f..9f15d19 100644
+--- a/src/runtime/dolphin_runtime.cpp
++++ b/src/runtime/dolphin_runtime.cpp
+@@ -229,6 +229,10 @@ struct Runtime::Impl {
+   std::unique_ptr<ModManager> mods;
+   Common::EventHook state_hook;
+   Common::EventHook diagnostics_frame_hook;
++  Common::EventHook diagnostics_before_frame_hook;
++  Common::EventHook diagnostics_before_present_hook;
++  Common::EventHook diagnostics_after_present_hook;
++  Common::EventHook diagnostics_vi_hook;
+   bool ui_initialized = false;
+   bool controllers_initialized = false;
+   std::atomic<bool> booted{false};
+@@ -540,6 +544,10 @@ Runtime::~Runtime() {
+   RequestStop();
+   if (m_impl->booted) {
+     m_impl->diagnostics_frame_hook = {};
++    m_impl->diagnostics_before_frame_hook = {};
++    m_impl->diagnostics_before_present_hook = {};
++    m_impl->diagnostics_after_present_hook = {};
++    m_impl->diagnostics_vi_hook = {};
+     Core::Stop(Core::System::GetInstance());
+     Core::Shutdown(Core::System::GetInstance());
+   }
+@@ -666,6 +674,14 @@ RuntimeRunResult Runtime::Run() {
+             static_cast<std::uint32_t>(g_stats.scissors.size()),
+             std::memory_order_relaxed);
+       });
++  m_impl->diagnostics_before_frame_hook = GetVideoEvents().before_frame_event.Register(
++      [] { GalaxyPadDiagnostics::RecordPhase("frame_begin"); });
++  m_impl->diagnostics_before_present_hook = GetVideoEvents().before_present_event.Register(
++      [](PresentInfo&) { GalaxyPadDiagnostics::RecordPhase("present_queue"); });
++  m_impl->diagnostics_after_present_hook = GetVideoEvents().after_present_event.Register(
++      [](PresentInfo&) { GalaxyPadDiagnostics::RecordPhase("present_done"); });
++  m_impl->diagnostics_vi_hook = GetVideoEvents().vi_end_field_event.Register(
++      [] { GalaxyPadDiagnostics::RecordPhase("vi_end_field"); });
+   std::atomic_bool stop_title_thread = false;
+   std::thread title_thread;
+   if (!m_impl->config.headless && m_impl->config.show_fps_in_title) {
+@@ -684,6 +700,10 @@ RuntimeRunResult Runtime::Run() {
+     title_thread.join();
+   m_impl->platform->SaveWindowGeometry();
+   m_impl->diagnostics_frame_hook = {};
++  m_impl->diagnostics_before_frame_hook = {};
++  m_impl->diagnostics_before_present_hook = {};
++  m_impl->diagnostics_after_present_hook = {};
++  m_impl->diagnostics_vi_hook = {};
+   Core::Stop(Core::System::GetInstance());
+   Core::Shutdown(Core::System::GetInstance());
+   m_impl->booted = false;

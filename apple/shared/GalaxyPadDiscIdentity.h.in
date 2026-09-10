@@ -1,0 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Generated from config/galaxypad-disc.json; no game bytes.
+#pragma once
+inline constexpr const char* GalaxyPadImageSHA256="@GALAXYPAD_IMAGE_SHA256@";
+inline constexpr const char* GalaxyPadDOLSHA256="@GALAXYPAD_DOL_SHA256@";
+inline constexpr unsigned long long GalaxyPadImageBytes=@GALAXYPAD_IMAGE_BYTES@ULL;

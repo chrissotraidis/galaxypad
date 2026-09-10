@@ -1,0 +1,332 @@
+diff --git a/ref/ModernGekko/vendor/dolphin/Source/Core/Common/GalaxyPadDiagnostics.h b/Source/Core/Common/GalaxyPadDiagnostics.h
+new file mode 100644
+index 0000000..84e68a1
+--- /dev/null
++++ b/Source/Core/Common/GalaxyPadDiagnostics.h
+@@ -0,0 +1,326 @@
++// Copyright 2026 GalaxyPad contributors
++// SPDX-License-Identifier: GPL-2.0-or-later
++
++#pragma once
++
++#include <algorithm>
++#include <array>
++#include <atomic>
++#include <chrono>
++#include <cstddef>
++#include <cstdint>
++#include <limits>
++
++namespace GalaxyPadDiagnostics
++{
++struct Snapshot
++{
++  std::uint64_t audio_callbacks = 0;
++  std::uint64_t audio_frames = 0;
++  std::uint64_t audio_nonzero_frames = 0;
++  std::uint32_t audio_peak = 0;
++  std::uint64_t audio_started = 0;
++  std::uint64_t audio_stopped = 0;
++  std::uint64_t audio_drained = 0;
++  std::uint64_t audio_errors = 0;
++  std::uint64_t audio_active_ns = 0;
++  std::uint64_t dma_enqueues = 0;
++  std::uint64_t dma_underruns = 0;
++  std::uint64_t dma_backlog_drops = 0;
++  std::uint64_t dma_queue_full_drops = 0;
++  std::uint64_t dma_queue_min = 0;
++  std::uint64_t dma_queue_max = 0;
++  std::uint64_t dma_producer_max_gap_ns = 0;
++  std::uint64_t dma_active_ns = 0;
++  std::uint64_t dma_gaps_ge_10ms = 0;
++  std::uint64_t dma_gaps_ge_20ms = 0;
++  std::uint64_t dma_gaps_ge_50ms = 0;
++  std::uint64_t dma_gaps_ge_100ms = 0;
++  std::uint64_t dma_first_underrun_enqueue = 0;
++  std::uint64_t dma_last_underrun_enqueue = 0;
++  std::uint64_t dma_first_backlog_enqueue = 0;
++  std::uint64_t dma_last_backlog_enqueue = 0;
++  std::uint64_t efb_color_peeks = 0;
++  std::uint64_t efb_depth_peeks = 0;
++  std::uint64_t efb_peek_ns = 0;
++  std::uint64_t efb_max_peek_ns = 0;
++  std::uint32_t efb_last_x = 0;
++  std::uint32_t efb_last_y = 0;
++  std::uint32_t efb_last_depth = 0;
++  std::uint64_t input_samples = 0;
++  std::uint64_t input_button_samples = 0;
++  std::uint64_t input_button_transitions = 0;
++  std::uint64_t input_ir_visible_samples = 0;
++  std::uint32_t input_last_buttons = 0;
++  std::uint32_t input_last_ir_x = 0xffff;
++  std::uint32_t input_last_ir_y = 0xffff;
++};
++
++inline std::atomic<std::uint64_t> s_audio_callbacks{};
++inline std::atomic<std::uint64_t> s_audio_frames{};
++inline std::atomic<std::uint64_t> s_audio_nonzero_frames{};
++inline std::atomic<std::uint32_t> s_audio_peak{};
++inline std::array<std::atomic<std::uint64_t>, 4> s_audio_states{};
++inline std::atomic<std::uint64_t> s_audio_first_callback_ns{
++    std::numeric_limits<std::uint64_t>::max()};
++inline std::atomic<std::uint64_t> s_audio_last_callback_ns{};
++inline std::atomic<std::uint64_t> s_dma_enqueues{};
++inline std::atomic<std::uint64_t> s_dma_underruns{};
++inline std::atomic<std::uint64_t> s_dma_backlog_drops{};
++inline std::atomic<std::uint64_t> s_dma_queue_full_drops{};
++inline std::atomic<std::uint64_t> s_dma_queue_min{std::numeric_limits<std::uint64_t>::max()};
++inline std::atomic<std::uint64_t> s_dma_queue_max{};
++inline std::atomic<std::uint64_t> s_dma_last_enqueue_ns{};
++inline std::atomic<std::uint64_t> s_dma_first_enqueue_ns{
++    std::numeric_limits<std::uint64_t>::max()};
++inline std::atomic<std::uint64_t> s_dma_producer_max_gap_ns{};
++inline std::atomic<std::uint64_t> s_dma_gaps_ge_10ms{};
++inline std::atomic<std::uint64_t> s_dma_gaps_ge_20ms{};
++inline std::atomic<std::uint64_t> s_dma_gaps_ge_50ms{};
++inline std::atomic<std::uint64_t> s_dma_gaps_ge_100ms{};
++inline std::atomic<std::uint64_t> s_dma_first_underrun_enqueue{
++    std::numeric_limits<std::uint64_t>::max()};
++inline std::atomic<std::uint64_t> s_dma_last_underrun_enqueue{};
++inline std::atomic<std::uint64_t> s_dma_first_backlog_enqueue{
++    std::numeric_limits<std::uint64_t>::max()};
++inline std::atomic<std::uint64_t> s_dma_last_backlog_enqueue{};
++inline std::atomic<std::uint64_t> s_efb_color_peeks{};
++inline std::atomic<std::uint64_t> s_efb_depth_peeks{};
++inline std::atomic<std::uint64_t> s_efb_peek_ns{};
++inline std::atomic<std::uint64_t> s_efb_max_peek_ns{};
++inline std::atomic<std::uint32_t> s_efb_last_x{};
++inline std::atomic<std::uint32_t> s_efb_last_y{};
++inline std::atomic<std::uint32_t> s_efb_last_depth{};
++inline std::atomic<std::uint64_t> s_input_samples{};
++inline std::atomic<std::uint64_t> s_input_button_samples{};
++inline std::atomic<std::uint64_t> s_input_button_transitions{};
++inline std::atomic<std::uint64_t> s_input_ir_visible_samples{};
++inline std::atomic<std::uint32_t> s_input_last_buttons{};
++inline std::atomic<std::uint32_t> s_input_last_ir_x{0xffff};
++inline std::atomic<std::uint32_t> s_input_last_ir_y{0xffff};
++
++inline void UpdateMaximum(std::atomic<std::uint64_t>& target, std::uint64_t value)
++{
++  std::uint64_t current = target.load(std::memory_order_relaxed);
++  while (current < value &&
++         !target.compare_exchange_weak(current, value, std::memory_order_relaxed))
++  {
++  }
++}
++
++inline void UpdateMaximum(std::atomic<std::uint32_t>& target, std::uint32_t value)
++{
++  std::uint32_t current = target.load(std::memory_order_relaxed);
++  while (current < value &&
++         !target.compare_exchange_weak(current, value, std::memory_order_relaxed))
++  {
++  }
++}
++
++inline void Reset()
++{
++  s_audio_callbacks = 0;
++  s_audio_frames = 0;
++  s_audio_nonzero_frames = 0;
++  s_audio_peak = 0;
++  for (auto& value : s_audio_states)
++    value = 0;
++  s_audio_first_callback_ns = std::numeric_limits<std::uint64_t>::max();
++  s_audio_last_callback_ns = 0;
++  s_dma_enqueues = 0;
++  s_dma_underruns = 0;
++  s_dma_backlog_drops = 0;
++  s_dma_queue_full_drops = 0;
++  s_dma_queue_min = std::numeric_limits<std::uint64_t>::max();
++  s_dma_queue_max = 0;
++  s_dma_last_enqueue_ns = 0;
++  s_dma_first_enqueue_ns = std::numeric_limits<std::uint64_t>::max();
++  s_dma_producer_max_gap_ns = 0;
++  s_dma_gaps_ge_10ms = 0;
++  s_dma_gaps_ge_20ms = 0;
++  s_dma_gaps_ge_50ms = 0;
++  s_dma_gaps_ge_100ms = 0;
++  s_dma_first_underrun_enqueue = std::numeric_limits<std::uint64_t>::max();
++  s_dma_last_underrun_enqueue = 0;
++  s_dma_first_backlog_enqueue = std::numeric_limits<std::uint64_t>::max();
++  s_dma_last_backlog_enqueue = 0;
++  s_efb_color_peeks = 0;
++  s_efb_depth_peeks = 0;
++  s_efb_peek_ns = 0;
++  s_efb_max_peek_ns = 0;
++  s_efb_last_x = 0;
++  s_efb_last_y = 0;
++  s_efb_last_depth = 0;
++  s_input_samples = 0;
++  s_input_button_samples = 0;
++  s_input_button_transitions = 0;
++  s_input_ir_visible_samples = 0;
++  s_input_last_buttons = 0;
++  s_input_last_ir_x = 0xffff;
++  s_input_last_ir_y = 0xffff;
++}
++
++inline void RecordAudio(std::uint64_t frames, std::uint64_t nonzero_frames, std::uint32_t peak)
++{
++  const auto now = std::chrono::steady_clock::now().time_since_epoch();
++  const auto now_ns =
++      static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(now).count());
++  std::uint64_t unset = std::numeric_limits<std::uint64_t>::max();
++  s_audio_first_callback_ns.compare_exchange_strong(unset, now_ns, std::memory_order_relaxed);
++  s_audio_last_callback_ns.store(now_ns, std::memory_order_relaxed);
++  s_audio_callbacks.fetch_add(1, std::memory_order_relaxed);
++  s_audio_frames.fetch_add(frames, std::memory_order_relaxed);
++  s_audio_nonzero_frames.fetch_add(nonzero_frames, std::memory_order_relaxed);
++  UpdateMaximum(s_audio_peak, peak);
++}
++
++inline void RecordAudioState(std::size_t state)
++{
++  if (state < s_audio_states.size())
++    s_audio_states[state].fetch_add(1, std::memory_order_relaxed);
++}
++
++inline void RecordDmaEnqueue(std::uint64_t queue_depth, std::uint64_t now_ns)
++{
++  s_dma_enqueues.fetch_add(1, std::memory_order_relaxed);
++  std::uint64_t unset = std::numeric_limits<std::uint64_t>::max();
++  s_dma_first_enqueue_ns.compare_exchange_strong(unset, now_ns, std::memory_order_relaxed);
++  UpdateMaximum(s_dma_queue_max, queue_depth);
++  std::uint64_t minimum = s_dma_queue_min.load(std::memory_order_relaxed);
++  while (queue_depth < minimum &&
++         !s_dma_queue_min.compare_exchange_weak(minimum, queue_depth, std::memory_order_relaxed))
++  {
++  }
++  const std::uint64_t previous = s_dma_last_enqueue_ns.exchange(now_ns, std::memory_order_relaxed);
++  if (previous != 0 && now_ns >= previous)
++  {
++    const std::uint64_t gap_ns = now_ns - previous;
++    UpdateMaximum(s_dma_producer_max_gap_ns, gap_ns);
++    if (gap_ns >= 10'000'000)
++      s_dma_gaps_ge_10ms.fetch_add(1, std::memory_order_relaxed);
++    if (gap_ns >= 20'000'000)
++      s_dma_gaps_ge_20ms.fetch_add(1, std::memory_order_relaxed);
++    if (gap_ns >= 50'000'000)
++      s_dma_gaps_ge_50ms.fetch_add(1, std::memory_order_relaxed);
++    if (gap_ns >= 100'000'000)
++      s_dma_gaps_ge_100ms.fetch_add(1, std::memory_order_relaxed);
++  }
++}
++
++inline void RecordDmaUnderrun()
++{
++  s_dma_underruns.fetch_add(1, std::memory_order_relaxed);
++  const std::uint64_t ordinal = s_dma_enqueues.load(std::memory_order_relaxed);
++  std::uint64_t unset = std::numeric_limits<std::uint64_t>::max();
++  s_dma_first_underrun_enqueue.compare_exchange_strong(unset, ordinal,
++                                                       std::memory_order_relaxed);
++  s_dma_last_underrun_enqueue.store(ordinal, std::memory_order_relaxed);
++}
++
++inline void RecordDmaBacklogDrop()
++{
++  s_dma_backlog_drops.fetch_add(1, std::memory_order_relaxed);
++  const std::uint64_t ordinal = s_dma_enqueues.load(std::memory_order_relaxed);
++  std::uint64_t unset = std::numeric_limits<std::uint64_t>::max();
++  s_dma_first_backlog_enqueue.compare_exchange_strong(unset, ordinal,
++                                                      std::memory_order_relaxed);
++  s_dma_last_backlog_enqueue.store(ordinal, std::memory_order_relaxed);
++}
++
++inline void RecordDmaQueueFullDrop()
++{
++  s_dma_queue_full_drops.fetch_add(1, std::memory_order_relaxed);
++}
++
++inline void RecordEFB(bool depth, std::uint32_t x, std::uint32_t y, std::uint32_t value,
++                      std::uint64_t elapsed_ns)
++{
++  (depth ? s_efb_depth_peeks : s_efb_color_peeks).fetch_add(1, std::memory_order_relaxed);
++  s_efb_peek_ns.fetch_add(elapsed_ns, std::memory_order_relaxed);
++  UpdateMaximum(s_efb_max_peek_ns, elapsed_ns);
++  s_efb_last_x.store(x, std::memory_order_relaxed);
++  s_efb_last_y.store(y, std::memory_order_relaxed);
++  if (depth)
++    s_efb_last_depth.store(value, std::memory_order_relaxed);
++}
++
++inline void RecordInput(std::uint32_t buttons, bool ir_visible, std::uint32_t ir_x,
++                        std::uint32_t ir_y)
++{
++  s_input_samples.fetch_add(1, std::memory_order_relaxed);
++  if (buttons != 0)
++    s_input_button_samples.fetch_add(1, std::memory_order_relaxed);
++  const std::uint32_t previous = s_input_last_buttons.exchange(buttons, std::memory_order_relaxed);
++  if (previous != buttons)
++    s_input_button_transitions.fetch_add(1, std::memory_order_relaxed);
++  if (ir_visible)
++    s_input_ir_visible_samples.fetch_add(1, std::memory_order_relaxed);
++  s_input_last_ir_x.store(ir_x, std::memory_order_relaxed);
++  s_input_last_ir_y.store(ir_y, std::memory_order_relaxed);
++}
++
++inline Snapshot GetSnapshot()
++{
++  const std::uint64_t audio_first = s_audio_first_callback_ns.load(std::memory_order_relaxed);
++  const std::uint64_t audio_last = s_audio_last_callback_ns.load(std::memory_order_relaxed);
++  const std::uint64_t dma_first = s_dma_first_enqueue_ns.load(std::memory_order_relaxed);
++  const std::uint64_t dma_last = s_dma_last_enqueue_ns.load(std::memory_order_relaxed);
++  return {
++      .audio_callbacks = s_audio_callbacks.load(std::memory_order_relaxed),
++      .audio_frames = s_audio_frames.load(std::memory_order_relaxed),
++      .audio_nonzero_frames = s_audio_nonzero_frames.load(std::memory_order_relaxed),
++      .audio_peak = s_audio_peak.load(std::memory_order_relaxed),
++      .audio_started = s_audio_states[0].load(std::memory_order_relaxed),
++      .audio_stopped = s_audio_states[1].load(std::memory_order_relaxed),
++      .audio_drained = s_audio_states[2].load(std::memory_order_relaxed),
++      .audio_errors = s_audio_states[3].load(std::memory_order_relaxed),
++      .audio_active_ns = audio_first != std::numeric_limits<std::uint64_t>::max() &&
++                                 audio_last >= audio_first ?
++                             audio_last - audio_first :
++                             0,
++      .dma_enqueues = s_dma_enqueues.load(std::memory_order_relaxed),
++      .dma_underruns = s_dma_underruns.load(std::memory_order_relaxed),
++      .dma_backlog_drops = s_dma_backlog_drops.load(std::memory_order_relaxed),
++      .dma_queue_full_drops = s_dma_queue_full_drops.load(std::memory_order_relaxed),
++      .dma_queue_min = s_dma_enqueues.load(std::memory_order_relaxed) == 0 ?
++                           0 :
++                           s_dma_queue_min.load(std::memory_order_relaxed),
++      .dma_queue_max = s_dma_queue_max.load(std::memory_order_relaxed),
++      .dma_producer_max_gap_ns =
++          s_dma_producer_max_gap_ns.load(std::memory_order_relaxed),
++      .dma_active_ns = dma_first != std::numeric_limits<std::uint64_t>::max() &&
++                               dma_last >= dma_first ?
++                           dma_last - dma_first :
++                           0,
++      .dma_gaps_ge_10ms = s_dma_gaps_ge_10ms.load(std::memory_order_relaxed),
++      .dma_gaps_ge_20ms = s_dma_gaps_ge_20ms.load(std::memory_order_relaxed),
++      .dma_gaps_ge_50ms = s_dma_gaps_ge_50ms.load(std::memory_order_relaxed),
++      .dma_gaps_ge_100ms = s_dma_gaps_ge_100ms.load(std::memory_order_relaxed),
++      .dma_first_underrun_enqueue =
++          s_dma_underruns.load(std::memory_order_relaxed) == 0 ?
++              0 :
++              s_dma_first_underrun_enqueue.load(std::memory_order_relaxed),
++      .dma_last_underrun_enqueue =
++          s_dma_last_underrun_enqueue.load(std::memory_order_relaxed),
++      .dma_first_backlog_enqueue =
++          s_dma_backlog_drops.load(std::memory_order_relaxed) == 0 ?
++              0 :
++              s_dma_first_backlog_enqueue.load(std::memory_order_relaxed),
++      .dma_last_backlog_enqueue = s_dma_last_backlog_enqueue.load(std::memory_order_relaxed),
++      .efb_color_peeks = s_efb_color_peeks.load(std::memory_order_relaxed),
++      .efb_depth_peeks = s_efb_depth_peeks.load(std::memory_order_relaxed),
++      .efb_peek_ns = s_efb_peek_ns.load(std::memory_order_relaxed),
++      .efb_max_peek_ns = s_efb_max_peek_ns.load(std::memory_order_relaxed),
++      .efb_last_x = s_efb_last_x.load(std::memory_order_relaxed),
++      .efb_last_y = s_efb_last_y.load(std::memory_order_relaxed),
++      .efb_last_depth = s_efb_last_depth.load(std::memory_order_relaxed),
++      .input_samples = s_input_samples.load(std::memory_order_relaxed),
++      .input_button_samples = s_input_button_samples.load(std::memory_order_relaxed),
++      .input_button_transitions = s_input_button_transitions.load(std::memory_order_relaxed),
++      .input_ir_visible_samples = s_input_ir_visible_samples.load(std::memory_order_relaxed),
++      .input_last_buttons = s_input_last_buttons.load(std::memory_order_relaxed),
++      .input_last_ir_x = s_input_last_ir_x.load(std::memory_order_relaxed),
++      .input_last_ir_y = s_input_last_ir_y.load(std::memory_order_relaxed),
++  };
++}
++}  // namespace GalaxyPadDiagnostics

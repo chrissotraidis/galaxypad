@@ -1,0 +1,19 @@
+diff --git a/src/runtime/dolphin_runtime.cpp b/src/runtime/dolphin_runtime.cpp
+--- a/src/runtime/dolphin_runtime.cpp
++++ b/src/runtime/dolphin_runtime.cpp
+@@ -469,5 +469,15 @@
+   SetDolphinLogCallback(impl->config.log_callback, impl->config.log_user_data);
+ 
++#if defined(__APPLE__) && defined(_M_ARM_64) && !defined(MODERNGEKKO_HAVE_IOS)
++  const char* reference_jit_env = std::getenv("GALAXYPAD_MACOS_REFERENCE_JIT");
++  const bool reference_jit = reference_jit_env && std::string_view(reference_jit_env) == "1";
++  Config::SetBase(Config::MAIN_CPU_CORE, reference_jit ? PowerPC::CPUCore::JITARM64 :
++                                                      PowerPC::CPUCore::StaticRecomp);
++  std::fprintf(stderr, "[galaxypad] diagnostic CPU selection: %s\n",
++               reference_jit ? "macOS ARM64 JIT reference (not mobile/AOT acceptance)" : "StaticRecomp");
++#else
+   Config::SetBase(Config::MAIN_CPU_CORE, PowerPC::CPUCore::StaticRecomp);
++#endif
++
+   // RMGE01's scheduler spins at this address while no guest thread is runnable.
+   // Dolphin's dynamic cores detect this loop automatically; tell StaticRecomp's

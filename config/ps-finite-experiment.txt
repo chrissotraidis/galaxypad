@@ -1,0 +1,12 @@
+game_id=RMGE01
+c_chunk_instructions=1024
+dispatch_lookup=indexed
+experiment=finite-paired-add-sub
+selected=false
+generated_source=accepted-cache-1a7fde44f42859a5
+base_module_sha256=6fba4629eb07e79132a344bc2d68bf9f62627478d5a7dc8a19e1af291942c916
+helper_base_sha256=3026eb10f63667a85dccb6e1fc7df1d2c299058cd636cae6b2c0ca7b02a4806c
+helper_candidate_sha256=707f6d0a1330e7ab5a9ee815cc9ba39a3f678f398e0b7fd4a27a9a8ca67b34ba
+patch_sha256=45cdbc809b05099eac50b52845f0ec6a9dccd7379a62cf7d00fc4651c90120b2
+profile_sha256=f39a3cedeb6c49f35c411356893c619dc347eb1b0bb5986687f25cf81e7d460d
+flags=compile:-O2 -flto=thin -fvisibility=hidden -ffp-contract=off -fno-fast-math link:-flto=thin

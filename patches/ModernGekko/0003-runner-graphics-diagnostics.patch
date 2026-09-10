@@ -1,0 +1,26 @@
+diff --git a/tools/moderngekko_run.cpp b/tools/moderngekko_run.cpp
+index a1fba9f..cdcbd5d 100644
+--- a/tools/moderngekko_run.cpp
++++ b/tools/moderngekko_run.cpp
+@@ -388,6 +388,21 @@ int RunMain(int argc, char **argv) {
+     }
+   });
+   const moderngekko::RuntimeRunResult result = created.runtime->Run();
++  const moderngekko::RuntimeDiagnosticsSnapshot diagnostics =
++      created.runtime->GetDiagnosticsSnapshot();
++  std::cout << "[moderngekko] graphics: frames=" << diagnostics.frame_count
++            << " projection_hash=0x" << std::hex << diagnostics.projection_hash
++            << std::dec << " draws=" << diagnostics.draw_calls
++            << " primitives=" << diagnostics.primitives
++            << " bp_loads=" << diagnostics.bp_loads
++            << " cp_loads=" << diagnostics.cp_loads
++            << " xf_loads=" << diagnostics.xf_loads
++            << " shader_changes=" << diagnostics.shader_changes
++            << " scissors=" << diagnostics.scissor_count
++            << " textures_created=" << diagnostics.textures_created
++            << " textures_alive=" << diagnostics.textures_alive
++            << " vertex_shaders=" << diagnostics.vertex_shaders_created
++            << " pixel_shaders=" << diagnostics.pixel_shaders_created << '\n';
+   signal_watcher.request_stop();
+   if (result.error) {
+     std::cerr << "runtime failed: " << result.error->message << '\n';

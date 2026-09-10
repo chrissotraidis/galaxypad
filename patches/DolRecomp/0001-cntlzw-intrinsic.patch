@@ -1,0 +1,16 @@
+diff --git a/src/backend/emitter.c b/src/backend/emitter.c
+--- a/src/backend/emitter.c
++++ b/src/backend/emitter.c
+@@ -993,8 +993,12 @@
+     case PPC_OP_CNTLZW:
+         fprintf(out, "    {\n");
+         fprintf(out, "        u32 v = ctx->gpr[%u];\n", inst->rS);
++        fprintf(out, "#if defined(__GNUC__) || defined(__clang__)\n");
++        fprintf(out, "        u32 n = v ? (u32)__builtin_clz(v) : 32u;\n");
++        fprintf(out, "#else\n");
+         fprintf(out, "        u32 n = 0;\n");
+         fprintf(out, "        while (n < 32 && ((v & (0x80000000u >> n)) == 0)) n++;\n");
++        fprintf(out, "#endif\n");
+         fprintf(out, "        ctx->gpr[%u] = n;\n", inst->rA);
+         emit_record_if_needed(out, inst, inst->rA);
+         fprintf(out, "    }\n");

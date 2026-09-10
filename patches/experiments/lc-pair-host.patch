@@ -1,0 +1,62 @@
+diff --git a/Source/Core/Core/PowerPC/MMU.h b/Source/Core/Core/PowerPC/MMU.h
+--- a/Source/Core/Core/PowerPC/MMU.h
++++ b/Source/Core/Core/PowerPC/MMU.h
+@@ -316,1 +316,2 @@
++  u8* TryGetLockedCachePair(u32 address);
+   bool TryWriteLockedCacheByte(u32 address, u8 value);
+diff --git a/Source/Core/Core/PowerPC/MMU_Tables.cpp b/Source/Core/Core/PowerPC/MMU_Tables.cpp
+--- a/Source/Core/Core/PowerPC/MMU_Tables.cpp
++++ b/Source/Core/Core/PowerPC/MMU_Tables.cpp
+@@ -42,1 +42,25 @@
++// Unselected experiment. Caller must exclude host/lockstep write journaling,
++// propagate guest MSR first, and use the returned pointer immediately only.
++u8* MMU::TryGetLockedCachePair(u32 address)
++{
++  if (m_power_pc.GetMemChecks().HasAny() || m_ppc_state.m_enable_dcache ||
++      StaticRecompLockstep::g_lc_write_journal || StaticRecompLockstep::g_hw_write_sink)
++    return nullptr;
++  // Reject page crossing and integer wrap before translating either byte.
++  if ((address & (BAT_PAGE_SIZE - 1)) == BAT_PAGE_SIZE - 1)
++    return nullptr;
++  if (m_ppc_state.msr.DR)
++  {
++    const u32 bat = m_dbat_table[address >> BAT_INDEX_SHIFT];
++    if ((bat & (BAT_MAPPED_BIT | BAT_PHYSICAL_BIT)) != (BAT_MAPPED_BIT | BAT_PHYSICAL_BIT))
++      return nullptr;
++    address = (bat & BAT_RESULT_MASK) | (address & (BAT_PAGE_SIZE - 1));
++  }
++  constexpr u32 base = 0xE0000000u;
++  const u32 size = m_memory.GetL1CacheSize();
++  if (!m_memory.GetL1Cache() || size < 2 || address < base || address - base > size - 2)
++    return nullptr;
++  return m_memory.GetL1Cache() + (address - base);
++}
++
+ bool MMU::TryWriteLockedCacheByte(u32 address, u8 value)
+diff --git a/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Hooks.cpp b/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Hooks.cpp
+--- a/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Hooks.cpp
++++ b/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Hooks.cpp
+@@ -202,4 +202,23 @@
+ void* StaticRecompCore::HookExternalPointer(CPUState* cpu, u32 ea, u32 size)
+ {
+   auto* core = static_cast<StaticRecompCore*>(cpu->external_user_data);
++  // Size zero negotiates an immediate two-byte write pointer. Old hosts
++  // reject it. Keep failure side-effect-free for the sequential fallback.
++  if (size == 0)
++  {
++    static const bool enabled = [] {
++      const char* setting = std::getenv("GALAXYPAD_LC_PAIR_FAST");
++      const char* tracing = std::getenv("GALAXYPAD_PIXEL_STORE_TRACE");
++      return setting && setting[0] == '1' && setting[1] == '\0' &&
++             !(tracing && tracing[0] == '1' && tracing[1] == '\0');
++    }();
++    if (!enabled || (ea >> 28) != 0xE ||
++        core->m_lockstep_verifier->m_ls_journaling ||
++        cpu->msr != core->m_system.GetPPCState().msr.Hex)
++      return nullptr;
++    // Do not bypass relocation lookup. A relocated pair uses the old path.
++    if (core->TranslateRelAddress(ea) != ea || core->TranslateRelAddress(ea + 1) != ea + 1)
++      return nullptr;
++    return core->m_system.GetMMU().TryGetLockedCachePair(ea);
++  }
+   auto& memory = core->m_system.GetMemory();

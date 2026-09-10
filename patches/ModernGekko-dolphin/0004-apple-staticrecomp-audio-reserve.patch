@@ -1,0 +1,50 @@
+diff --git a/Source/Core/AudioCommon/Mixer.cpp b/Source/Core/AudioCommon/Mixer.cpp
+--- a/Source/Core/AudioCommon/Mixer.cpp
++++ b/Source/Core/AudioCommon/Mixer.cpp
+@@ -87,26 +87,26 @@ void Mixer::MixerFifo::Mix(s16* samples, std::size_t num_samples)
+   m_granule_queue_size.store(buffer_size_granules, std::memory_order_relaxed);
+ 
+-#if defined(__IPHONE_OS_VERSION_MIN_REQUIRED)
++#if defined(__APPLE__)
+   // Static-recompiled games can deliver DSP samples a fraction slower than
+-  // wall clock during brief CPU/GPU contention. Keep the iOS DSP queue near
+-  // half full by making a very small resampling correction instead of
++  // wall clock during brief CPU/GPU contention. Keep the Apple DSP queue near
++  // its measured-gap reserve with a very small resampling correction instead of
+   // repeatedly draining it and fading whole parts of the mix away.
+   if (this == &m_mixer->m_dma_mixer)
+   {
+     const std::size_t queue_size = m_granule_queue_size.load(std::memory_order_relaxed);
+     const std::size_t head = m_queue_head.load(std::memory_order_acquire);
+     const std::size_t tail = m_queue_tail.load(std::memory_order_acquire);
+     const std::size_t queued = (head - tail) & GRANULE_QUEUE_MASK;
+-    const double target = static_cast<double>(std::max<std::size_t>(2, queue_size / 2));
++    const double target = static_cast<double>(
++        std::max<std::size_t>(2, queue_size * 4 / 5));
+ 
+-    // Do not begin draining a one-granule queue. Waiting for half of the
+-    // configured reserve costs roughly 60 ms at boot and gives the adaptive
+-    // resampler enough headroom to absorb normal frame-time variation.
++    // Do not begin draining a one-granule queue. Waiting for the target
++    // reserve gives the adaptive resampler enough headroom for frame-time variation.
+     if (m_prebuffering)
+     {
+       if (queued < static_cast<std::size_t>(target))
+         return;
+       m_prebuffering = false;
+     }
+ 
+     const double error = (static_cast<double>(queued) - target) / target;
+@@ -613,9 +613,9 @@ bool Mixer::MixerFifo::Dequeue(Granule* granule)
+     const bool is_running = Core::GetState(Core::System::GetInstance()) == Core::State::Running;
+     if (this == &m_mixer->m_dma_mixer && is_running)
+       GalaxyPadDiagnostics::RecordDmaUnderrun();
+-#if defined(__IPHONE_OS_VERSION_MIN_REQUIRED)
+-    // Preserve the true queue position on iOS so the adaptive rate above can
+-    // recover. Rewinding into old granules makes music sound selectively
++#if defined(__APPLE__)
++    // Preserve the true queue position on Apple platforms so the adaptive rate
++    // above can recover. Rewinding into old granules makes music sound selectively
+     // muted as Dolphin's gap filler repeatedly fades the replayed data.
+     if (this == &m_mixer->m_dma_mixer)
+     {

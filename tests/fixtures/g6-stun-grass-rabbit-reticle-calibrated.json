@@ -1,0 +1,6 @@
+[
+  {"action": "pointer", "x": 0.33, "y": -0.87},
+  {"action": "wait", "seconds": 0.10},
+  {"action": "tap", "button": "B", "hold": 0.12},
+  {"action": "wait", "seconds": 0.24}
+]
