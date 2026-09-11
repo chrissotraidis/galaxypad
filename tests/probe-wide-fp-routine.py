@@ -11,6 +11,7 @@ import re
 import shlex
 import subprocess
 import importlib.util
+import os
 
 root = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
@@ -49,8 +50,15 @@ out = args.output.resolve()
 out.mkdir(parents=True, exist_ok=False)
 vendor = root/'ref/ModernGekko/vendor/dolphin'
 core = vendor/'GXRuntime/src/core'
-chunks = list((root/'generated/modules-scale-r387/RMGE01').glob(
-    '*/dolrecomp-output/RMGE01_generated/chunks/*804B60A0.c'))
+configured_chunk = os.environ.get('GALAXYPAD_WIDE_FP_CHUNK')
+if configured_chunk:
+    chunks = [Path(configured_chunk).resolve()]
+else:
+    chunks = list((root/'generated/modules-scale-r387/RMGE01').glob(
+        '*/dolrecomp-output/RMGE01_generated/chunks/*804B60A0.c'))
+    if not chunks:
+        chunks = list((root/'generated/aot/device-fresh/RMGE01_generated/chunks').glob(
+            '*804B60A0.c'))
 assert len(chunks) == 1
 chunk = chunks[0]
 raw = chunk.read_bytes()
@@ -102,12 +110,24 @@ __attribute__((noinline)) void extracted(CPUState* ctx) {
 else:
     unit+='\nunsigned long probe_accepted(void) { return 0; }\n'
 (out/'routine.c').write_text(unit)
-graph = (chunk.parents[3]/'module-build/build.ninja').read_text()
+configured_graph = os.environ.get('GALAXYPAD_WIDE_FP_GRAPH')
+graph_path = Path(configured_graph).resolve() if configured_graph else chunk.parents[3]/'module-build/build.ninja'
+graph = graph_path.read_text()
 stanza = re.search(r'^build [^\n]+: C_COMPILER_[^\n]+ '+re.escape(str(chunk))+r'[^\n]*\n((?:  [^\n]*\n)*)', graph, re.M)
 assert stanza
 fields = dict(re.findall(r'^  (\w+) = (.*)$', stanza[1], re.M))
 flags = shlex.split(fields['DEFINES']+' '+fields['FLAGS']+' '+fields['INCLUDES'])
 assert all(f in flags for f in ('-flto=thin', '-DNDEBUG', '-ffp-contract=off', '-fno-fast-math'))
+host_flags = []
+skip_next = False
+for flag in flags:
+    if skip_next:
+        skip_next = False
+        continue
+    if flag in ('-isysroot',) or flag.startswith('-mios-'):
+        skip_next = flag == '-isysroot'
+        continue
+    host_flags.append(flag)
 commands = []
 objects = []
 inputs = {str(driver_path): hashlib.sha256(driver_path.read_bytes()).hexdigest()
@@ -117,7 +137,7 @@ inputs = {str(driver_path): hashlib.sha256(driver_path.read_bytes()).hexdigest()
                               *sorted(core.glob('cpu*.c'))]}
 for path in [*([] if whole_mode else [out/'routine.c']), *sorted(core.glob('cpu*.c'))]:
     obj = out/(path.stem+'.o')
-    command = ['clang', *flags, '-I'+str(core), '-c', str(path), '-o', str(obj)]
+    command = ['clang', *host_flags, '-I'+str(core), '-c', str(path), '-o', str(obj)]
     commands.append(command)
     subprocess.run(command, check=True)
     objects.append(str(obj))
@@ -173,7 +193,7 @@ void probe_configure(bool lazy,PPCMemWriteJournal journal,void* user) {
             counts='return norm_vector_fast;' if variant=='candidate' else 'return 0;'
             path.write_text(text+shim+'\n__attribute__((visibility("default"))) unsigned long probe_vector_fast(void) {'+counts+'}\n')
         obj=directory/'whole.o';library=directory/'whole.dylib'
-        command=['clang',*flags,'-I'+str(core),'-c',str(path),'-o',str(obj)]
+        command=['clang',*host_flags,'-I'+str(core),'-c',str(path),'-o',str(obj)]
         commands.append(command);subprocess.run(command,check=True)
         command=['clang','-arch','arm64','-mmacosx-version-min=14.0','-flto=thin',
                  '-dynamiclib','-Wl,-dead_strip','-Wl,-install_name,@rpath/whole.dylib',

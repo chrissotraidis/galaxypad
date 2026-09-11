@@ -1,4 +1,4 @@
-"""Compile private full Run objects with the cached Simulator core flags.
+"""Compile private full Run objects with cached target-core flags.
 
 No cached object, reference source, app, module selection, or save is changed.
 Retain disassembly and exact commands before deciding on a cost experiment.
@@ -13,10 +13,14 @@ import subprocess
 root = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--output', type=Path, required=True)
+parser.add_argument('--build', type=Path,
+                    help='Core build directory containing compile_commands.json '
+                         '(default: generated/build/ios-simulator-core)')
 args = parser.parse_args()
 out = args.output.resolve()
 out.mkdir(parents=True, exist_ok=False)
-build = root / 'generated/build/ios-simulator-core'
+build = (args.build if args.build is not None else
+         root / 'generated/build/ios-simulator-core').resolve()
 source = root / 'ref/ModernGekko/vendor/dolphin/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Run.cpp'
 entries = json.loads((build / 'compile_commands.json').read_text())
 entries = [entry for entry in entries if entry['file'] == str(source)]
@@ -24,7 +28,9 @@ assert len(entries) == 1
 entry = entries[0]
 command = shlex.split(entry['command'])
 assert '-O3' in command and '-DNDEBUG' in command
-assert '-mios-simulator-version-min=16.0' in command
+assert any(flag in command for flag in
+           ('-mios-simulator-version-min=16.0', '-miphoneos-version-min=16.0'))
+assert '-arch' in command and command[command.index('-arch') + 1] == 'arm64'
 assert '-fno-strict-aliasing' in command and '-fno-exceptions' in command
 sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
 original = source.read_text()
@@ -52,7 +58,8 @@ candidate = original[:start] + replacement + original[end:]
 cached_object = Path(entry['output'])
 inputs = [source, cached_object, build / 'compile_commands.json']
 before = {str(path): sha(path) for path in inputs}
-report = {'unchanged_inputs': before, 'original_command': command, 'variants': {}}
+report = {'build': str(build), 'unchanged_inputs': before,
+          'original_command': command, 'variants': {}}
 for name, text in [('control', original), ('candidate', candidate)]:
     src = out / (name + '.cpp')
     obj = out / (name + '.o')

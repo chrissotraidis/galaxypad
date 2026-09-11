@@ -25,9 +25,11 @@
 @property(nonatomic, copy) void (^nativeUIChanged)(void);
 @property(nonatomic, copy) void (^stopRequested)(void);
 @property(nonatomic, readonly) BOOL blocksGameplay;
+@property(nonatomic, readonly) BOOL nativeMenuVisible;
 @property(nonatomic) BOOL gameplayAvailable;
 - (void)setTouchControlsHidden:(BOOL)hidden animated:(BOOL)animated;
 - (void)refreshControllerVisibility;
+- (void)presentNativePause;
 - (void)applySettings;
 - (void)reset;
 @end

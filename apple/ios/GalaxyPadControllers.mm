@@ -7,6 +7,7 @@
 #include "../shared/GalaxyPadControllerSlots.h"
 #include "../shared/GalaxyPadControllerInput.h"
 #import "../shared/GalaxyPadControllerMappingStore.h"
+#import "../shared/GalaxyPadDiagnostics.h"
 
 @implementation GalaxyPadControllers {
   GalaxyPadControllerSlots _slots;
@@ -14,6 +15,8 @@
   GCController *_owner;
   NSTimer *_timer;
   CFTimeInterval _lastTick, _lastReconcile;
+  uint32_t _lastRawButtons;
+  BOOL _controllerNeutral;
 }
 - (void)start {
   NSAssert(NSThread.isMainThread, @"Controller API requires main thread");
@@ -43,7 +46,11 @@
   _owner.playerIndex=GCControllerPlayerIndexUnset;
   [NSNotificationCenter.defaultCenter removeObserver:self];
 }
-- (void)reset { _input.reset(); }
+- (void)reset {
+  _input.reset();
+  _lastRawButtons = 0;
+  _controllerNeutral = NO;
+}
 - (void)reloadMapping { _input.setMapping(GalaxyPadControllerMappingStore.mapping); }
 - (void)connectionChanged:(NSNotification *)notification {
   (void)notification;
@@ -65,6 +72,8 @@
   _owner.extendedGamepad.valueChangedHandler=nil;
   _owner.playerIndex=GCControllerPlayerIndexUnset;
   _owner=next;
+  GalaxyPadLog(@"controller ownership: connected=%d extended_controllers=%lu right_stick=pointer speed=1.2x right_stick_click=recenter RB=A RT=B LB=tilt Menu=hold_plus",
+    _owner != nil, (unsigned long)instances.size());
   [self reset];
   if (self.ownershipChanged) self.ownershipChanged();
   if (self.inputChanged) self.inputChanged({});
@@ -93,6 +102,40 @@
   if (!self.inputAllowed || !self.inputAllowed()) { [self reset]; return; }
   GCExtendedGamepad *pad=_owner.extendedGamepad;
   if (!pad) { [self reconcile]; return; }
+  const uint32_t rawButtons =
+      (pad.buttonA.isPressed ? 1u : 0u) |
+      (pad.buttonB.isPressed ? 2u : 0u) |
+      (pad.buttonX.isPressed ? 4u : 0u) |
+      (pad.buttonY.isPressed ? 8u : 0u) |
+      (pad.leftShoulder.isPressed ? 16u : 0u) |
+      (pad.rightShoulder.isPressed ? 32u : 0u) |
+      (pad.leftTrigger.isPressed ? 64u : 0u) |
+      (pad.rightTrigger.isPressed ? 128u : 0u) |
+      (pad.buttonMenu.isPressed ? 256u : 0u) |
+      (pad.buttonOptions.isPressed ? 512u : 0u) |
+      (pad.rightThumbstickButton.isPressed ? 1024u : 0u) |
+      (pad.dpad.up.isPressed ? 2048u : 0u) |
+      (pad.dpad.down.isPressed ? 4096u : 0u) |
+      (pad.dpad.left.isPressed ? 8192u : 0u) |
+      (pad.dpad.right.isPressed ? 16384u : 0u);
+  const BOOL neutral = rawButtons == 0 &&
+      pad.leftThumbstick.xAxis.value == 0 && pad.leftThumbstick.yAxis.value == 0 &&
+      pad.rightThumbstick.xAxis.value == 0 && pad.rightThumbstick.yAxis.value == 0;
+  if (rawButtons != _lastRawButtons) {
+    GalaxyPadLog(@"controller raw_buttons=%u menu=%d options=%d neutral=%d ready=%d",
+      rawButtons, (rawButtons & 256u) != 0, (rawButtons & 512u) != 0,
+      neutral, _controllerNeutral);
+  }
+  const BOOL menuRising = (rawButtons & 256u) && !(_lastRawButtons & 256u);
+  const BOOL optionsRising = (rawButtons & 512u) && !(_lastRawButtons & 512u);
+  if (neutral) _controllerNeutral = YES;
+  _lastRawButtons = rawButtons;
+  if (_controllerNeutral && (menuRising || optionsRising) && self.pauseRequested &&
+      (!self.inputAllowed || self.inputAllowed())) {
+    GalaxyPadLog(@"controller native pause requested source=%@",
+      menuRising ? @"Menu" : @"Options");
+    self.pauseRequested();
+  }
   galaxypad::ControllerSnapshot snapshot;
   snapshot.a=pad.buttonA.isPressed; snapshot.b=pad.buttonB.isPressed;
   snapshot.x=pad.buttonX.isPressed; snapshot.y=pad.buttonY.isPressed;

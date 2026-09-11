@@ -6,6 +6,7 @@
 #import "GalaxyPadGameOverlay.h"
 
 #import "../shared/GalaxyPadSettings.h"
+#import "../shared/GalaxyPadDiagnostics.h"
 #include "../shared/GalaxyPadControlSize.h"
 
 #import <GameController/GameController.h>
@@ -15,7 +16,7 @@
 #include <cmath>
 
 // UIControl's documented context-menu callbacks preserve UIButton's own menu
-// implementation while letting the game host clear input and pause its runtime.
+// implementation while letting the game host clear input without pausing its runtime.
 @interface GalaxyPadMenuButton : UIButton
 @property(nonatomic, copy) void (^visibilityChanged)(BOOL visible);
 @end
@@ -30,9 +31,10 @@
     willEndForConfiguration:(UIContextMenuConfiguration *)configuration
     animator:(id<UIContextMenuInteractionAnimating>)animator {
     [super contextMenuInteraction:interaction willEndForConfiguration:configuration animator:animator];
-    __weak GalaxyPadMenuButton *weakSelf = self;
-    void (^finish)(void) = ^{ if (weakSelf.visibilityChanged) weakSelf.visibilityChanged(NO); };
-    if (animator) [animator addCompletion:finish]; else finish();
+    // Release the gameplay gate when dismissal begins. On iPadOS the supplied
+    // animator completion is not guaranteed for every primary-action UIMenu
+    // dismissal, which otherwise leaves touch and controller input blocked.
+    if (self.visibilityChanged) self.visibilityChanged(NO);
 }
 @end
 
@@ -213,6 +215,12 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
 
 @implementation GalaxyPadGameOverlay {
     UIButton *_menuButton;          // the three-dot menu
+    UIButton *_pauseButton;
+    UIView *_pauseOverlay;
+    UIView *_pauseCard;
+    UILabel *_pauseTitleLabel;
+    UILabel *_pauseDetailLabel;
+    UIButton *_pauseBackButton;
     GalaxyPadReferenceStickView *_moveStick;
     GalaxyPadReferenceStickView *_tiltStick;
     GalaxyPadDPadEditorGroup *_experimentalDPadGroup;
@@ -237,6 +245,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     NSUInteger _accessibilityEpoch;
     BOOL _editingLayout;
     BOOL _menuVisible;
+    BOOL _pauseVisible;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -245,6 +254,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
         self.multipleTouchEnabled = YES;
         _gameplayAvailable = YES;
         [self buildMenuButton];
+        [self buildPauseMenu];
         [self buildTouchControls];
         [self buildSettingsPanel];
         [self applySettings];
@@ -306,6 +316,84 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     _menuButton.backgroundColor = UIColor.clearColor;
     _menuButton.layer.borderWidth = 0.0;
     [self addSubview:_menuButton];
+    _pauseButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButtonConfiguration *pause = [UIButtonConfiguration filledButtonConfiguration];
+    pause.title = @"Pause";
+    pause.image = [UIImage systemImageNamed:@"pause.fill"];
+    pause.imagePadding = 6;
+    pause.baseBackgroundColor = [UIColor colorWithWhite:0.06 alpha:0.72];
+    pause.baseForegroundColor = UIColor.whiteColor;
+    _pauseButton.configuration = pause;
+    _pauseButton.accessibilityIdentifier = @"galaxypad.pause";
+    _pauseButton.accessibilityLabel = @"Pause game";
+    [_pauseButton addTarget:self action:@selector(presentPause) forControlEvents:UIControlEventTouchUpInside];
+    [self addSubview:_pauseButton];
+}
+
+- (void)buildPauseMenu {
+    _pauseOverlay = [[UIView alloc] initWithFrame:self.bounds];
+    _pauseOverlay.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    _pauseOverlay.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.46];
+    _pauseOverlay.accessibilityViewIsModal = YES;
+    _pauseOverlay.hidden = YES;
+
+    _pauseCard = [[UIView alloc] initWithFrame:CGRectZero];
+    _pauseCard.backgroundColor = [UIColor colorWithWhite:0.06 alpha:0.96];
+    _pauseCard.layer.cornerRadius = 18.0;
+    _pauseCard.layer.borderWidth = 1.0;
+    _pauseCard.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.24].CGColor;
+    [_pauseOverlay addSubview:_pauseCard];
+
+    _pauseTitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    _pauseTitleLabel.text = @"Pause Menu";
+    _pauseTitleLabel.textColor = UIColor.whiteColor;
+    _pauseTitleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleTitle2];
+    _pauseTitleLabel.textAlignment = NSTextAlignmentCenter;
+    [_pauseCard addSubview:_pauseTitleLabel];
+
+    _pauseDetailLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    _pauseDetailLabel.text = @"Back to Game resumes this action.\nHold Start + for Galaxy’s original Wii pause screen, including Return to Observatory.";
+    _pauseDetailLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.78];
+    _pauseDetailLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+    _pauseDetailLabel.numberOfLines = 0;
+    _pauseDetailLabel.textAlignment = NSTextAlignmentCenter;
+    [_pauseCard addSubview:_pauseDetailLabel];
+
+    _pauseBackButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButtonConfiguration *back = [UIButtonConfiguration filledButtonConfiguration];
+    back.title = @"Back to Game";
+    back.image = [UIImage systemImageNamed:@"play.fill"];
+    back.imagePadding = 8.0;
+    back.baseBackgroundColor = [UIColor colorWithRed:0.20 green:0.55 blue:0.98 alpha:1.0];
+    back.baseForegroundColor = UIColor.whiteColor;
+    _pauseBackButton.configuration = back;
+    _pauseBackButton.accessibilityIdentifier = @"galaxypad.pause.back";
+    _pauseBackButton.accessibilityLabel = @"Back to Game";
+    [_pauseBackButton addTarget:self action:@selector(dismissPauseMenu) forControlEvents:UIControlEventTouchUpInside];
+    [_pauseCard addSubview:_pauseBackButton];
+    [self addSubview:_pauseOverlay];
+}
+
+- (void)presentPause {
+    if (!self.gameplayAvailable || _pauseVisible || _menuVisible || _editingLayout || !_settingsPanel.hidden) return;
+    [self reset];
+    _pauseVisible = YES;
+    _pauseOverlay.hidden = NO;
+    [self setNeedsLayout];
+    [self bringSubviewToFront:_pauseOverlay];
+    if (self.nativeUIChanged) self.nativeUIChanged();
+}
+
+- (void)presentNativePause {
+    [self presentPause];
+}
+
+- (void)dismissPauseMenu {
+    if (!_pauseVisible) return;
+    _pauseVisible = NO;
+    _pauseOverlay.hidden = YES;
+    [self clearTouchInput];
+    if (self.nativeUIChanged) self.nativeUIChanged();
 }
 
 - (UIMenu *)buildMenu {
@@ -313,8 +401,8 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     GalaxyPadSettings *settings = [GalaxyPadSettings sharedSettings];
 
     UIMenu *renderMenu = [UIMenu menuWithTitle:@"Render Resolution (Next Launch)" children:@[
-        [self renderAction:@"1× (Native)" scale:1],
-        [self renderAction:@"2×" scale:2],
+        [self renderAction:@"1× (Native, Recommended)" scale:1],
+        [self renderAction:@"2× (Higher GPU Cost)" scale:2],
         [self renderAction:@"3×" scale:3],
         [self renderAction:@"4×" scale:4],
     ]];
@@ -374,6 +462,18 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     // FPS is a display diagnostic, not a primary gameplay command. Do not copy
     // SunPad's experiment section when Galaxy has no delivered actions in it.
     displayMenu = [displayMenu menuByReplacingChildren:@[renderMenu, aspectMenu, fpsAction]];
+    UIAction *loggingAction = [UIAction actionWithTitle:@"Performance Logging (Next Launch)"
+      image:[UIImage systemImageNamed:@"waveform.path.ecg"] identifier:@"galaxypad.menu.performance-log"
+      handler:^(__kindof UIAction *action) {
+        (void)action;
+        NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+        BOOL enabled = [defaults boolForKey:@"GalaxyPadLogFrameRateWindows"];
+        [defaults setBool:!enabled forKey:@"GalaxyPadLogFrameRateWindows"];
+        [weakSelf refreshMenuButton];
+      }];
+    loggingAction.state = [NSUserDefaults.standardUserDefaults boolForKey:@"GalaxyPadLogFrameRateWindows"]
+      ? UIMenuElementStateOn : UIMenuElementStateOff;
+    displayMenu = [displayMenu menuByReplacingChildren:@[renderMenu, aspectMenu, fpsAction, loggingAction]];
 
     UIAction *reportProblemAction =
         [UIAction actionWithTitle:@"Report a Problem…"
@@ -638,7 +738,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     [self addButton:@"X" mask:galaxypad::Spin];
     [self addButton:@"Y" mask:galaxypad::C];
     [self addButton:@"Z" mask:galaxypad::Z];
-    [self addButton:@"+" mask:galaxypad::Plus];
+    [self addButton:@"Start +" mask:galaxypad::Plus];
     [self addButton:@"1" mask:galaxypad::One];
     [self addButton:@"2" mask:galaxypad::Two];
     [self addButton:@"−" mask:galaxypad::Minus];
@@ -713,6 +813,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     case galaxypad::Z: role = @"Crouch"; break;
     case galaxypad::C: role = @"Camera"; break;
     case galaxypad::Spin: role = @"Spin"; break;
+    case galaxypad::Plus: role = @"Hold for in-game pause menu"; break;
     default: break;
     }
     if (role) {
@@ -767,7 +868,9 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     [self publishInput];
     __weak GalaxyPadGameOverlay *weakSelf = self;
     __weak GalaxyPadGameButton *weakButton = button;
-    [NSTimer scheduledTimerWithTimeInterval:0.15 repeats:NO block:^(NSTimer *timer) {
+    // Galaxy requires a held pause button; leave margin for emulation slowdown.
+    const double duration = (mask & (galaxypad::Plus | galaxypad::Minus)) ? 0.75 : 0.15;
+    [NSTimer scheduledTimerWithTimeInterval:duration repeats:NO block:^(NSTimer *timer) {
         (void)timer;
         GalaxyPadGameOverlay *owner = weakSelf;
         if (!owner || !weakButton || epoch != owner->_accessibilityEpoch ||
@@ -816,27 +919,22 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     CGFloat controlScale = [GalaxyPadSettings sharedSettings].controlSizeScale;
     CGFloat scale = baseScale * controlScale;
     CGFloat margin = pad ? 34.0 : std::max<CGFloat>(8.0, 18.0 * baseScale);
-    CGFloat stick = (pad ? 144.0 : 126.0 * baseScale) * controlScale;
-    CGFloat small = (pad ? 52.0 : std::max<CGFloat>(44.0, 46.0 * baseScale)) * controlScale;
-    CGFloat medium = (pad ? 64.0 : 58.0 * baseScale) * controlScale;
-    CGFloat large = (pad ? 96.0 : 78.0 * baseScale) * controlScale;
-    // Edge-anchored iPad defaults leave the playfield clear and separate every
-    // touch target. Saved SunPad editor positions/scales still take precedence.
+    CGFloat stick = (pad ? 172.0 : 126.0 * baseScale) * controlScale;
+    CGFloat small = (pad ? 62.0 : std::max<CGFloat>(44.0, 46.0 * baseScale)) * controlScale;
+    CGFloat medium = (pad ? 76.0 : 58.0 * baseScale) * controlScale;
+    CGFloat large = (pad ? 104.0 : 78.0 * baseScale) * controlScale;
+    // Use the reviewed SunPad iPad geometry. User layout edits still take precedence.
     auto padFrame = [&](CGFloat x, CGFloat bottom, CGFloat w, CGFloat h) {
         return CGRectMake(CGRectGetMinX(safe) + x - w * 0.5,
                           CGRectGetMaxY(safe) - bottom - h * 0.5, w, h);
     };
     CGFloat right = CGRectGetWidth(safe);
-    // Galaxy's inventory occupies the lower outer corners. Keep the SunPad
-    // button arrangement, but inset defaults instead of covering those counters.
-    CGFloat actionRight = right - (pad ? 200.0 : 0.0);
 
     CGRect moveDefault = phone ?
         GalaxyPadFrameAtNormalizedCenter(safe, 0.1234722222, 0.7803490991, stick, stick) : pad ?
         GalaxyPadFrameAtNormalizedCenter(safe, 0.1310395315, 0.7905894519, stick, stick) :
         CGRectMake(CGRectGetMinX(safe) + margin,
                    CGRectGetMaxY(safe) - stick - margin, stick, stick);
-    if (pad) moveDefault.origin.x = CGRectGetMinX(safe) + right * 0.25 - stick * 0.5;
     [self placeControl:_moveStick
           defaultFrame:moveDefault
             identifier:@"move"];
@@ -858,7 +956,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     // moved. Keep the original phone fallback so the sparse captured layout
     // reconstructs the exact arrangement the user made.
     CGRect aDefault = pad ?
-        padFrame(actionRight - 126, 160, large, large) :
+        GalaxyPadFrameAtNormalizedCenter(safe, 0.8916544656, 0.7409513961, large, large) :
         CGRectMake(CGRectGetMaxX(safe) - margin - large,
                    CGRectGetMaxY(safe) - margin - camera - large - 18.0 * scale,
                    large, large);
@@ -867,16 +965,18 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
             identifier:@"A"];
     CGRect bDefault = phone ?
         GalaxyPadFrameAtNormalizedCenter(safe, 0.83, 0.6898648649, medium, medium) : pad ?
-        padFrame(actionRight - 220, 144, medium, medium) :
+        GalaxyPadFrameAtNormalizedCenter(safe, 0.8360175695, 0.8092037229, medium, medium) :
         CGRectMake(CGRectGetMinX(a.frame) - medium - 12.0 * scale,
                    CGRectGetMidY(a.frame) + 8.0, medium, medium);
+    // Keep the familiar diagonal cluster without overlapping rectangular hit areas.
+    if (pad) bDefault.origin.x = MIN(bDefault.origin.x, CGRectGetMinX(aDefault) - medium - 8.0);
     [self placeControl:b
           defaultFrame:bDefault
             identifier:@"B"];
     CGFloat spinSize = small;
     CGRect xDefault = phone ?
         GalaxyPadFrameAtNormalizedCenter(safe, 0.9034166667, 0.4258445946, small, small) : pad ?
-        padFrame(actionRight - 40, 238, spinSize, spinSize) :
+        GalaxyPadFrameAtNormalizedCenter(safe, 0.9593704246, 0.7156153051, spinSize, spinSize) :
         CGRectMake(CGRectGetMidX(a.frame) - small * 0.5,
                    CGRectGetMinY(a.frame) - small - 10.0 * scale, small, small);
     [self placeControl:x
@@ -884,7 +984,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
             identifier:@"Spin"];
     CGRect yDefault = phone ?
         GalaxyPadFrameAtNormalizedCenter(safe, 0.837, 0.5268581081, small, small) : pad ?
-        padFrame(actionRight - 40, 170, small, small) :
+        GalaxyPadFrameAtNormalizedCenter(safe, 0.9542459736, 0.7869700103, small, small) :
         CGRectMake(CGRectGetMinX(a.frame) - small - 8.0 * scale,
                    CGRectGetMinY(a.frame) - small + 8.0, small, small);
     [self placeControl:y
@@ -898,13 +998,13 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     CGRect lDefault = phone ?
         GalaxyPadFrameAtNormalizedCenter(safe, 0.36, 0.88,
                                       shoulderWidth, small) : pad ?
-        padFrame(118, 284, shoulderWidth, small) :
+        GalaxyPadFrameAtNormalizedCenter(safe, 0.1281112738, 0.6633919338, shoulderWidth, small) :
         CGRectMake(CGRectGetMinX(safe) + margin, shoulderY, shoulderWidth, small);
     [self placeControl:[self buttonWithMask:galaxypad::One]
           defaultFrame:lDefault
             identifier:@"1"];
     // Pair 1/2 horizontally; neither belongs in the top HUD or action cluster.
-    CGRect twoDefault = pad ? padFrame(198, 284, shoulderWidth, small)
+    CGRect twoDefault = pad ? CGRectOffset(lDefault, small + 12.0, 0)
                             : CGRectOffset(lDefault,small+12.0*scale,0);
     [self placeControl:[self buttonWithMask:galaxypad::Two]
           defaultFrame:twoDefault
@@ -914,7 +1014,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     CGRect rDefault = phone ?
         GalaxyPadFrameAtNormalizedCenter(safe, 0.56, 0.88,
                                       rightShoulderWidth, small) : pad ?
-        padFrame(right - 160, 310, rightShoulderWidth, small) :
+        GalaxyPadFrameAtNormalizedCenter(safe, 0.8960468521, 0.6478800414, rightShoulderWidth, small) :
         CGRectMake(CGRectGetMaxX(safe) - margin - rightShoulderWidth, shoulderY,
                    rightShoulderWidth, small);
     [self placeControl:rightShoulder
@@ -922,18 +1022,18 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
             identifier:@"−"];
     CGRect zDefault = phone ?
         GalaxyPadFrameAtNormalizedCenter(safe, 0.9712500000, 0.4350788288, small, small) : pad ?
-        padFrame(actionRight - 220, 224, small, small) :
+        GalaxyPadFrameAtNormalizedCenter(safe, 0.8275988287, 0.7213029990, small, small) :
         CGRectMake(CGRectGetMaxX(safe) - margin - shoulderWidth - small - 12.0 * scale,
                    shoulderY, small, small);
     [self placeControl:[self buttonWithMask:galaxypad::Z]
           defaultFrame:zDefault
             identifier:@"Z"];
-    CGFloat startWidth = small;
+    CGFloat startWidth = (pad ? 116.0 : 92.0 * baseScale) * controlScale;
     // Keep pause inward of the phone action cluster, not over central Mario,
     // title prompts or dialogue. Saved editor origins still take precedence.
     CGRect startDefault = phone ?
         GalaxyPadFrameAtNormalizedCenter(safe, 0.72, 0.62, startWidth, small) : pad ?
-        padFrame(right * 0.5, 60, startWidth, small) :
+        GalaxyPadFrameAtNormalizedCenter(safe, 0.8967789165, 0.5780765253, startWidth, small) :
         CGRectMake(CGRectGetMidX(safe) - startWidth * 0.5,
                    CGRectGetMinY(safe) + margin, startWidth, small);
     [self placeControl:[self buttonWithMask:galaxypad::Plus]
@@ -947,43 +1047,10 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
         // Saved editor origins continue to override this default.
         GalaxyPadFrameAtNormalizedCenter(safe, 0.0812777778, 0.43,
                                       3.0 * d, 3.0 * d) : pad ?
-        GalaxyPadFrameAtNormalizedCenter(safe, 0.41, 0.7947259566, 3.0*d, 3.0*d) :
+        GalaxyPadFrameAtNormalizedCenter(safe, 0.2686676428, 0.7947259566, 3.0*d, 3.0*d) :
         CGRectMake(dx, CGRectGetMidY(_moveStick.frame) - 1.5 * d, 3.0 * d, 3.0 * d);
     [self placeExperimentalDPadGroupWithDefaultFrame:defaultGroupFrame safeArea:safe];
-    // Use unused iPad letterboxing before covering Galaxy's lower dialogue.
-    // Compute from default geometry, so editing one control never moves another.
-    CGRect viewport = [self gameplayViewport];
-    if (pad && !CGRectIsEmpty(viewport)) {
-        CGFloat defaultBottom = MAX(CGRectGetMidY(moveDefault) + _moveStick.bounds.size.height * 0.5,
-            CGRectGetMidY(defaultGroupFrame) + _experimentalDPadGroup.bounds.size.height * 0.5);
-        CGFloat shift = galaxypad::bottomActionShift(CGRectGetMaxY(safe),
-            CGRectGetMaxY(viewport), defaultBottom);
-        NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-        if (![defaults dictionaryForKey:@"GalaxyPadControlOrigins"][@"move"])
-            _moveStick.center = CGPointMake(_moveStick.center.x, _moveStick.center.y + shift);
-        if (![defaults stringForKey:GalaxyPadExperimentalDPadOriginKey].length)
-            _experimentalDPadGroup.center = CGPointMake(_experimentalDPadGroup.center.x,
-                _experimentalDPadGroup.center.y + shift);
-        // Keep the SunPad face-button arrangement, but use the lower gutter
-        // instead of covering Galaxy's coin and Star Bit counters. Derive the
-        // limit from defaults, never a user's relocated control.
-        NSArray<GalaxyPadGameButton *> *actions = @[a, b, x, y,
-            [self buttonWithMask:galaxypad::Z]];
-        NSArray<NSString *> *actionIDs = @[@"A", @"B", @"Spin", @"C", @"Z"];
-        CGRect actionDefaults[] = {aDefault, bDefault, xDefault, yDefault, zDefault};
-        CGFloat actionBottom = 0;
-        for (NSUInteger i = 0; i < actions.count; ++i)
-            actionBottom = MAX(actionBottom, CGRectGetMidY(actionDefaults[i]) +
-                actions[i].bounds.size.height * 0.5);
-        CGFloat actionShift = galaxypad::bottomActionShift(CGRectGetMaxY(safe),
-            CGRectGetMaxY(viewport), actionBottom);
-        NSDictionary *origins = [defaults dictionaryForKey:@"GalaxyPadControlOrigins"];
-        for (NSUInteger i = 0; i < actions.count; ++i) {
-            if (!origins[actionIDs[i]])
-                actions[i].center = CGPointMake(actions[i].center.x,
-                    actions[i].center.y + actionShift);
-        }
-    }
+    // Preserve SunPad's hand-reachable iPad centers; saved editor positions win.
     [self layoutExperimentalDPadButtons];
 
     for (GalaxyPadGameButton *button in _buttons) {
@@ -992,10 +1059,25 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     }
 
     CGFloat settingsSide = 44.0;
-    CGFloat menuInset = 12.0;
+    // Keep the top controls clear of the iPad safe-area edge and the title HUD.
+    // This is a visual offset only; it does not change the gameplay viewport.
+    CGFloat menuInset = 20.0;
     _menuButton.frame = CGRectMake(CGRectGetMaxX(safe) - settingsSide - menuInset,
                                    CGRectGetMinY(safe) + menuInset,
                                    settingsSide, settingsSide);
+    _pauseButton.frame = CGRectMake(CGRectGetMinX(_menuButton.frame) - 108,
+                                   CGRectGetMinY(_menuButton.frame), 100, 44);
+    _pauseButton.hidden = !self.gameplayAvailable || _editingLayout;
+
+    _pauseOverlay.frame = self.bounds;
+    CGFloat pauseWidth = MIN(560.0, CGRectGetWidth(safe) - 80.0);
+    CGFloat pauseHeight = 260.0;
+    _pauseCard.frame = CGRectMake(CGRectGetMidX(safe) - pauseWidth * 0.5,
+                                  CGRectGetMidY(safe) - pauseHeight * 0.5,
+                                  pauseWidth, pauseHeight);
+    _pauseTitleLabel.frame = CGRectMake(24.0, 22.0, pauseWidth - 48.0, 38.0);
+    _pauseDetailLabel.frame = CGRectMake(34.0, 70.0, pauseWidth - 68.0, 82.0);
+    _pauseBackButton.frame = CGRectMake(34.0, pauseHeight - 72.0, pauseWidth - 68.0, 48.0);
 
     [self layoutSettingsPanelInSafeArea:safe];
     CGFloat editorWidth = MIN(560.0, CGRectGetWidth(safe) - 92.0);
@@ -1009,6 +1091,8 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     if (!_editorBar.hidden)
         [self bringSubviewToFront:_editorBar];
     [self bringSubviewToFront:_menuButton];
+    if (!_pauseOverlay.hidden)
+        [self bringSubviewToFront:_pauseOverlay];
 }
 
 - (CGFloat)experimentalDPadScale {
@@ -1727,12 +1811,14 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
         }
     }
 #endif
-    BOOL shouldHide = !_editingLayout &&
-        ([NSUserDefaults.standardUserDefaults boolForKey:@"GalaxyPadTouchControlsDisabled"] ||
-         (controllerConnected && [GalaxyPadSettings sharedSettings].hideTouchControlsWhenControllerConnected));
+    BOOL manuallyDisabled = [NSUserDefaults.standardUserDefaults boolForKey:@"GalaxyPadTouchControlsDisabled"];
+    BOOL autoHide = [GalaxyPadSettings sharedSettings].hideTouchControlsWhenControllerConnected;
+    BOOL shouldHide = !_editingLayout && (manuallyDisabled || (controllerConnected && autoHide));
     [self setTouchControlsHidden:shouldHide animated:YES];
     if (controllerConnected)
         [self clearTouchInput];
+    GalaxyPadLog(@"controller visibility connected=%d auto_hide=%d manually_disabled=%d hidden=%d",
+        controllerConnected, autoHide, manuallyDisabled, _touchControlsHidden);
 }
 
 - (void)refreshControllerVisibility {
@@ -1760,11 +1846,13 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     if (self.inputChanged) self.inputChanged(state);
 }
 - (void)reset { [self clearTouchInput]; }
-- (BOOL)blocksGameplay { return _menuVisible || _editingLayout || !_settingsPanel.hidden; }
+- (BOOL)blocksGameplay { return _menuVisible || _pauseVisible || _editingLayout || !_settingsPanel.hidden; }
+- (BOOL)nativeMenuVisible { return _menuVisible; }
 - (UIAlertController *)touchControlGuide {
     UIAlertController *guide = [UIAlertController alertControllerWithTitle:@"Touch Controls"
-      message:@"Left stick: move. A: jump / use. B: shoot Star Bits. X: spin. Y: camera. Z: crouch. +: pause.\n\n"
-               "Drag on the game to aim; press A or B separately. Hold A + B at the title screen.\n\n"
+      message:@"Left stick: move. A: jump / use / swim / grab Pull Stars. B: shoot Star Bits. X: spin. Y: reset camera. Z: crouch / dive. D-pad: camera view.\n\n"
+               "Drag on the game to aim; press A or B separately. Hold A + B at the title screen. Touch aim currently drives a virtual Wii Remote and may not align with your finger.\n\n"
+               "Hold Start + for Galaxy’s pause menu (longer during slowdowns). The top Pause button pauses immediately.\n\n"
                "Ball / ray: enable Show Tilt Stick in Controls (not device motion)."
       preferredStyle:UIAlertControllerStyleAlert];
     [guide addAction:[UIAlertAction actionWithTitle:@"Done" style:UIAlertActionStyleCancel handler:nil]];

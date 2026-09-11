@@ -51,8 +51,12 @@ public:
     } else {
       float dt=std::isfinite(seconds)?std::clamp(seconds,0.f,0.05f):0.f;
       if (rx!=0||ry!=0) pointerVisible_=true;
-      x_=std::clamp(x_+rx*dt*0.8f,0.f,1.f);
-      y_=std::clamp(y_-ry*dt*0.8f,0.f,1.f);
+      // The default right-stick cursor was noticeably sluggish on iPad at
+      // normal frame cadence. Keep the viewport clamp, but give the cursor a
+      // modest 1.2x response while leaving LB tilt behavior unchanged.
+      constexpr float pointerSpeed=1.2f;
+      x_=std::clamp(x_+rx*dt*pointerSpeed,0.f,1.f);
+      y_=std::clamp(y_-ry*dt*pointerSpeed,0.f,1.f);
     }
     if (pad.recenter) { x_=y_=0.5f; pointerVisible_=true; }
     out.pointerX=x_; out.pointerY=y_;

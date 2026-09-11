@@ -3,6 +3,7 @@
 // pattern. Galaxy owns this adaptation; no GMSE01 timing/patch/input carryover.
 #import "GalaxyPadCoreHost.h"
 #import "../shared/GalaxyPadSettings.h"
+#import "../shared/GalaxyPadDiagnostics.h"
 #import <AVFAudio/AVFAudio.h>
 #import <UIKit/UIKit.h>
 #include <memory>
@@ -78,9 +79,12 @@ void RequestSessionStop(const std::shared_ptr<Session>& session) {
       }
     });
 }
-void RuntimeLog(moderngekko::RuntimeLogLevel, const char *category,
+void RuntimeLog(moderngekko::RuntimeLogLevel level, const char *category,
                 const char *message, void *) {
-  NSLog(@"[GalaxyPad runtime:%s] %s", category ?: "runtime", message ?: "");
+  NSString *categoryString = category ? [NSString stringWithUTF8String:category] : @"runtime";
+  NSString *messageString = message ? [NSString stringWithUTF8String:message] : @"";
+  GalaxyPadLogRuntimeEvent(level == moderngekko::RuntimeLogLevel::Error ? @"error" : @"warning",
+    categoryString ?: @"runtime", messageString ?: @"");
 }
 }
 
@@ -93,7 +97,7 @@ void RuntimeLog(moderngekko::RuntimeLogLevel, const char *category,
   std::shared_ptr<Session> _session;
   dispatch_queue_t _worker;
   NSTimer *_lifecycleTimer;
-  BOOL _busy, _paused, _active, _menu, _interrupted, _audioActive;
+  BOOL _busy, _paused, _active, _nativeUIBlocked, _pauseRequested, _interrupted, _audioActive;
 }
 - (instancetype)initWithLayer:(CAMetalLayer *)layer {
   if ((self = [super init])) {
@@ -115,7 +119,7 @@ void RuntimeLog(moderngekko::RuntimeLogLevel, const char *category,
 }
 - (void)publishInput:(galaxypad::InputState)input source:(galaxypad::InputSource)source {
   NSAssert(NSThread.isMainThread, @"Host API requires main thread");
-  if (!_busy || !_session || !_active || _menu || _interrupted) return;
+  if (!_busy || !_session || !_active || _nativeUIBlocked || _interrupted) return;
   std::lock_guard lock(_session->mutex);
   if (!_session->stopping) _session->mixer->set(source, input);
 }
@@ -159,6 +163,18 @@ void RuntimeLog(moderngekko::RuntimeLogLevel, const char *category,
   // rolling estimates, not counters over the host's five-second frame window.
   const auto& metrics = Core::System::GetInstance().GetPerfMetrics();
   return {metrics.GetVPS(), metrics.GetSpeed()};
+}
+- (GalaxyPadRuntimeCounters)runtimeCounters {
+  NSAssert(NSThread.isMainThread, @"Host API requires main thread");
+  if (!_session) return {};
+  std::lock_guard lock(_session->mutex);
+  if (!_session->runtime) return {};
+  const auto snapshot = _session->runtime->GetDiagnosticsSnapshot();
+  return {snapshot.frame_max_gap_ns, snapshot.frame_gaps_ge_33ms,
+          snapshot.frame_gaps_ge_100ms, snapshot.efb_color_peeks,
+          snapshot.efb_depth_peeks, snapshot.efb_peek_ns,
+          snapshot.efb_max_peek_ns, snapshot.efb_frames_with_peeks,
+          snapshot.efb_max_peeks_per_frame};
 }
 - (void)requestDevelopmentCheckpoint {
 #if TARGET_OS_SIMULATOR
@@ -281,6 +297,7 @@ void RuntimeLog(moderngekko::RuntimeLogLevel, const char *category,
   auto session = _session;
   CAMetalLayer *layer = _layer;
   const int renderScale = (int)GalaxyPadSettings.sharedSettings.renderScale;
+  const int aspectRatioMode = (int)GalaxyPadSettings.sharedSettings.aspectRatioMode;
   const int initialVolume = (int)GalaxyPadSettings.sharedSettings.mainVolume;
   const bool initialMute = GalaxyPadSettings.sharedSettings.mainAudioMuted;
 #if TARGET_OS_SIMULATOR
@@ -342,6 +359,7 @@ void RuntimeLog(moderngekko::RuntimeLogLevel, const char *category,
       config.module = moderngekko::ModuleSource::DynamicPath(module.fileSystemRepresentation);
       config.graphics.backend = "Metal";
       config.graphics.internal_resolution_scale = renderScale;
+      config.graphics.aspect_ratio_mode = aspectRatioMode;
       config.render_surface = (__bridge void *)layer;
       config.show_fps_in_title = false;
       config.allow_interpreter = false;
@@ -542,13 +560,18 @@ void RuntimeLog(moderngekko::RuntimeLogLevel, const char *category,
 - (void)setApplicationActive:(BOOL)active {
   NSAssert(NSThread.isMainThread, @"Host API requires main thread");
   _active = active;
+  GalaxyPadLog(@"host lifecycle active=%d interrupted=%d ui_blocked=%d pause_requested=%d",
+    active, _interrupted, _nativeUIBlocked, _pauseRequested);
   if (!active) [self clearInput];
   if (active) _interrupted = NO; // setActive remains the recovery authority
   [self reconcileLifecycle];
 }
-- (void)setMenuPresented:(BOOL)presented {
+- (void)setNativeUIBlocked:(BOOL)blocked pauseRuntime:(BOOL)pauseRuntime {
   NSAssert(NSThread.isMainThread, @"Host API requires main thread");
-  _menu = presented;
+  _nativeUIBlocked = blocked;
+  _pauseRequested = pauseRuntime;
+  GalaxyPadLog(@"host lifecycle ui_blocked=%d pause_requested=%d active=%d interrupted=%d",
+    blocked, pauseRuntime, _active, _interrupted);
   [self clearInput];
   [self reconcileLifecycle];
 }
@@ -561,7 +584,7 @@ void RuntimeLog(moderngekko::RuntimeLogLevel, const char *category,
 }
 - (void)reconcileLifecycle {
   if (!_busy) return;
-  const bool pause = !_active || _menu || _interrupted;
+  const bool pause = !_active || _pauseRequested || _interrupted;
   if (pause) [self deactivateAudio];
   else if (!_audioActive) {
     NSError *error = nil;
@@ -613,12 +636,17 @@ void RuntimeLog(moderngekko::RuntimeLogLevel, const char *category,
   // Retry while starting; never infer paused from that return value alone.
   if (pause && state == Core::State::Running) _session->runtime->Pause();
   else if (!pause && state == Core::State::Paused) _session->runtime->Resume();
+  const BOOL wasPaused = _paused;
   _paused = Core::GetState(Core::System::GetInstance()) == Core::State::Paused;
+  if (wasPaused != _paused)
+    GalaxyPadLog(@"host lifecycle runtime_paused=%d active=%d ui_blocked=%d pause_requested=%d interrupted=%d",
+      _paused, _active, _nativeUIBlocked, _pauseRequested, _interrupted);
 }
 - (void)audioInterruption:(NSNotification *)notification {
   BOOL began = [notification.userInfo[AVAudioSessionInterruptionTypeKey] unsignedIntegerValue]
       == AVAudioSessionInterruptionTypeBegan;
   dispatch_async(dispatch_get_main_queue(), ^{
+    GalaxyPadLog(@"audio interruption began=%d", began);
     self->_interrupted = began;
     if (began) [self clearInput];
     if (began) self->_audioActive = NO;

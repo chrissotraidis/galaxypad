@@ -11,6 +11,41 @@ On a different checkout it will report that the candidate is missing. Transfer
 your private IPA separately from that Mac, or complete the documented local
 device build with your own verified game input. No release asset is uploaded.
 
+### Building a new device candidate without the old private cache
+
+After bootstrapping dependencies and verifying/extracting the exact supported
+image to `generated/extracted/run1`, a fresh checkout can compile an unprofiled
+module with `bash scripts/build-ios-device-fresh-module.sh`. This uses the pinned
+Broadway C recompiler, indexed 1,024-instruction chunks, the reviewed cycle fix,
+and the device module template. It does not require or replace the historical
+accepted module or PGO profile. It produces a new candidate whose performance
+and hardware behavior must be checked separately.
+
+Build the core, provision it, and build the host using the existing scripts with
+`GALAXYPAD_IOS_SDK=iphoneos`. Stage that host with the fresh module explicitly:
+
+```sh
+bash scripts/stage-private-ios-device.sh \
+  generated/build/ios-device-app/GalaxyPad.app \
+  generated/build/ios-device-fresh-module/gRMGE01_recomp.dylib
+```
+
+Signing, installation, and game-data transfer remain separate private steps.
+
+On 2026-09-10 this path produced a signed app that installed and visibly reached
+save-file setup on an attached iPad14,5 running iPadOS 26.6.1. The unsigned host
+matched R913 (`27b37908…a3753`); the fresh module was
+`2a7d1ec1…d5295` before signing. This establishes device startup, not sustained
+gameplay, audio quality, or full-game acceptance.
+
+That private installation stored `RMGE01.wbfs` and an `RMGE01/` folder containing
+extracted `sys/` and `files/ModuleData/` under
+`Library/Application Support/GalaxyPad/GameData/`.
+The existing runtime boots directly from the WBFS; it does not need a duplicate
+extracted asset tree for this path. A full USB readback matched the pinned WBFS
+SHA-256 and all seven metadata files. The ordinary in-app import still requires
+9 GiB and performs its existing full extraction.
+
 ## 1. Export the app
 
 Choose **Export private unsigned IPA**. The assistant packages the current
@@ -64,3 +99,7 @@ IOS/ARM64 build with module48f455eb. Signing/device installation remains unteste
 until hardware and credentials are available. Simulator binaries are rejected.
 The assistant's IPA path is private/local and is not a supported LiveContainer,
 computer-free, public-distribution or automatic-signing promise.
+
+### September 11 controls and logging update
+
+Private build 0.1.0 (2) was installed in place and relaunched on the same iPad, preserving the existing save slot; first boot normalized checksum/Mii metadata in that slot, so a byte-for-byte post-boot hash is not expected. It adds a Galaxy-style app pause panel, a labeled Start + control, SunPad-oriented iPad spacing, and opt-in frame/audio/performance diagnostics. See [physical feedback and remaining issues](IPAD-FEEDBACK-2026-09-11.md); pointer accuracy, plaza performance and physical-controller acceptance remain open.

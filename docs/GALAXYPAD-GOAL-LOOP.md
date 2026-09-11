@@ -1,13 +1,144 @@
 # GalaxyPad goal-based loop
 
-Operating loop for the autonomous build of GalaxyPad. The requirements live in `docs/GALAXYPAD-PRD.md`; this document is how you run. Written 4 Sep 2026.
+Operating loop for the autonomous build of GalaxyPad. The requirements live in
+`docs/GALAXYPAD-PRD.md`; this document is how you run. Written 4 Sep 2026.
+
+## Active goal loop — 2026-09-11
+
+The active Codex goal is to resolve the physical-iPad slowdown and related
+pause/controller issues without disturbing the advanced save or app data. The
+loop is intentionally gated:
+
+1. Visually resume the 121-star Observatory save and hold one fixed heavy scene.
+2. Confirm `runtime_paused=0 menu=0` in the lifecycle log and pass
+   `--active-scene-confirmed` to `scripts/galaxypad-performance-loop.sh`.
+3. Capture one unsampled logging-off interval and one bounded CPU Profiler trace.
+4. Select one source-level candidate only after the profile and an actual-policy
+   correctness/cost gate agree; rebuild and reinstall privately.
+5. Repeat the same scene, retaining process identity, VI/audio evidence, and
+   save hash. Keep a candidate only if performance improves without lifecycle,
+   input, audio, or correctness regression.
+
+The first profile was rejected because the app was paused behind the three-dot
+menu. The quiet native-burst differential gate passes 5,376 cases. Its
+actual-policy cost screen now compiles against the available iPhoneOS device
+flags: the private candidate object is 7,216 bytes of text versus 6,672 for
+control (+8.3%), so this lane is rejected on the source-level cost gate. No
+module rebuild or FPS claim follows from that result. Astra Medium was assigned
+through the secondary account for the heavy computer-use audit and confirmed
+the paused state.
+
+The paused-state gate was later cleared by a physical “Back to Game” tap. The
+accepted active-scene profile captured 34,090 CPU/GPU-thread samples on the
+121-star Observatory platform and identified `Normal_ReadIndex<unsigned short,
+short, 1u>` among the measured hot stacks. The isolated reader reduction was
+later audited out because the staged archive member was byte-identical to
+control. The next whole-normalization candidate passed 261,120 complete-routine
+comparisons and 69,120 callback cases, but its unattended Simulator samples
+matched control and one reverse-order replay failed before renderer readiness.
+It is parked; it was never installed on the physical iPad.
+
+The current private device build adds the iPad display correction and menu
+guard: absent or invalid aspect preferences resolve to 4:3 (`aspect_ratio_mode=0`),
+while 16:9 remains an explicit Display choice. The three-dot UIMenu is input
+blocking but runtime-neutral; its host gate cannot request `Runtime::Pause`,
+and dismissal clears the gate synchronously. The top Pause and three-dot
+controls are both lowered by 8 points. The exact bundle was installed in
+place without changing the app database UUID or save data; physical menu,
+controller, and touch confirmation remains the next required check.
+
+The same device build additionally defaults touch controls to hide when an
+extended controller connects and to reappear when it disconnects, with a
+persistent visibility breadcrumb. It raises the right-stick pointer response
+to 1.2×. The exact physical console sequence now proves the visibility
+contract (`hidden=0` → `hidden=1` → `hidden=0`) for the tested Xbox controller;
+the raw excerpt is retained at
+`generated/runtime/ipad-iteration-1/controller-hotplug-console-20260911.log`.
+These are bounded input changes; the performance loop remains separate and
+must continue to use logging-off matched scenes plus opt-in profiles.
+
+## Reoriented unattended loop — 2026-09-11
+
+The physical-only loop is not suitable when the operator is away. QuickTime is
+an observation/recording surface, and CoreDevice exposes no supported touch or
+gamepad injection. XCUITest is the supported physical-tap alternative, but
+this checkout has no signed UI-test runner; it also cannot prove a simultaneous
+title-screen A+B hold or emulate an Xbox controller. The active iteration lane
+therefore moves to the iPad Simulator, with the physical iPad reserved for
+final performance and input acceptance.
+
+The unattended lane is `scripts/galaxypad-unattended-simulator-loop.sh`. It
+requires a built Simulator app, fresh Simulator module, extracted local game
+root and disc path, and the private save seed. It boots one dedicated
+Simulator, refuses by default to disturb a different already-booted Simulator,
+and can preserve one explicitly allowed unrelated Simulator, installs
+the app, seeds only `Library/Application Support/GalaxyPad/Wii`, launches with
+the read-only host game/module paths, and leaves persistent frame logging off.
+It then drives the observed route autonomously: a 30-second simultaneous A+B
+hold (the title transition is unusually slow on this host), pointer settle
+plus A on file 1, pointer settle plus A on Play, 30 bounded A pulses through
+the opening story, a late-game screenshot, and a bounded host `sample` CPU
+capture. Every candidate gets a new ignored output directory; no physical app
+container or save is touched. A failed run also writes `failure-state.log`
+with the exit status, booted devices, launchd state, PID state, and console
+tail for the next iteration.
+
+The first five-second route attempt was rejected as a navigation result, not
+an input result: the log showed host acceptance, device consumption, and Wii
+Remote A+B (`3072`) but the title remained visible. A clean 30-second hold
+then reached file select; the same unattended pointer actions reached Play and
+the late-game plaza at
+`generated/runtime/ipad-iteration-1/simulator-reorientation-unattended-plaza-manual.png`
+with frame logging off. The repeatable script output
+`generated/runtime/ipad-iteration-1/simulator-reorientation-unattended-30s-plaza/`
+contains the corresponding late-scene screenshot, input-route log, and CPU
+profile; its on-screen counter read 51.0 FPS with frame logging off. The
+earlier `...unattended-plaza/` output remains as the intentionally retained
+failed five-second route-timing pass.
+
+For the next diagnostic rung, the same script accepts
+`GALAXYPAD_SIMULATOR_EFB_TRACE=/absolute/output/efb-trace.csv`. That opt-in
+trace records EFB read coordinates, guest PC/LR, and elapsed time; it is kept
+off for normal candidate comparisons because per-read file output can perturb
+timing. An EFB-focused candidate must use this trace only to confirm
+whether the observed `PeekEFBDepth` waits are pointer work or broader guest
+render work before any semantics-changing EFB edit is attempted.
+
+Simulator evidence is for deterministic correctness, scene reachability, and
+candidate-to-candidate CPU attribution—not an iPad FPS claim. A candidate can
+advance to physical installation only after the same saved scene, lifecycle,
+audio, and save invariants pass in the Simulator; the physical iPad then gets
+one in-place install and a separate acceptance check.
+
+The unattended iteration rule is now explicit: select one measured shared
+execution/dispatch hypothesis, run its offline correctness and cost gates,
+build one private Simulator module, and run the exact save/input route against
+control. A failed build, crash, missing readiness signal, no-op profile, or
+regression parks the candidate and leaves the physical baseline unchanged. If
+an unrelated Simulator must remain booted, set
+`GALAXYPAD_ALLOW_OTHER_SIMULATORS=1`; the output records that host-pressure
+qualification. Do not install a candidate on the iPad until this lane passes.
+
+R915 is the first candidate to clear that unattended comparison: it specializes
+the common three-component indexed position reader and two-component texture
+reader while preserving the original branches for all other formats. The
+forward pair measured 54.4 versus 52.7 FPS and the reverse pair 50.0 versus
+47.3 FPS for candidate versus control. Both reached the same seeded late-game
+scene with the same save hash and one pre-existing privacy-filter error. The
+candidate was then rebuilt for `iphoneos`, signed with the existing development
+profile, installed in place, and relaunched. The physical active-scene smoke
+holds roughly 59.8–60.0 FPS at 1× with frame logging enabled and audio
+underruns flat at three, but it has not reproduced the user's heavy moving
+scene because the current desktop route cannot inject physical touch or an
+Xbox controller. R915 is therefore a measured candidate with device startup
+evidence, not final physical acceptance.
 
 ## Active user priority — R838 complete app experience
 
-R911: prioritize a useful physical-iPad baseline when hardware/signing becomes
-available; Simulator-only results cannot establish device performance. See
-PHYSICAL-IPAD-FIRST-TEST.md. No connected device or valid signing identity on
-latest check. Full PRD remains unchanged; UI is exploratory-test quality only.
+R911: prioritize a useful physical-iPad baseline; Simulator-only results cannot
+establish device performance. See PHYSICAL-IPAD-FIRST-TEST.md. The connected
+iPad and valid development signing identity are now verified for this private
+run. Full PRD remains unchanged; UI is exploratory-test quality only.
 R910 private module built and ran; R911 confirms actual guarded-path use but
 its timing capture is invalid because SIGTERM did not export VI/work CSVs.
 Never repeat that termination method for measurement: native menu Stop, verify

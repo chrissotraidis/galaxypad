@@ -154,12 +154,15 @@ int main() {
             stream.write(result)
         print(result)
 
-if '--compile-simulator' in sys.argv:
-    # Reuse the real translation unit and build flags, but never replace its object.
-    build = root / 'generated/build/ios-simulator-core'
+if '--compile-simulator' in sys.argv or '--compile-device' in sys.argv:
+    # Reuse the real translation unit and target flags, but never replace its object.
+    device = '--compile-device' in sys.argv
+    build = root / ('generated/build/ios-device-core' if device else
+                    'generated/build/ios-simulator-core')
     entries = json.loads((build / 'compile_commands.json').read_text())
     entry, = [e for e in entries if e['file'].endswith('/VertexLoader_Normal.cpp')]
-    folder = root / 'generated/normal-output-r683'
+    folder = root / ('generated/normal-output-device-r911' if device else
+                     'generated/normal-output-r683')
     folder.mkdir(exist_ok=True)
     staged = folder / 'VertexLoader_Normal.cpp'
     obj = folder / 'VertexLoader_Normal.cpp.o'

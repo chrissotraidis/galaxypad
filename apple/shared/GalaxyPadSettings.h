@@ -25,7 +25,7 @@ typedef NS_ENUM(NSInteger, GalaxyPadAspectRatioMode) {
 @property(nonatomic, assign) NSInteger renderScale;
 - (float)renderScaleFloat;
 
-/* Output aspect ratio. Native 16:9 is the default. This affects game rendering, never
+/* Output aspect ratio. Native 4:3 is the iPad default. This affects game rendering, never
  * touch-control layout. */
 @property(nonatomic, assign) GalaxyPadAspectRatioMode aspectRatioMode;
 

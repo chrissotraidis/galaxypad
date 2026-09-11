@@ -68,7 +68,7 @@ int main() {
   auto invalid=input.update(pad,std::numeric_limits<float>::infinity());
   assert(invalid.moveX==0 && invalid.pointerX==0.5f);
   auto bounded=input.update(pad,10);
-  assert(bounded.pointerX<=0.541f);
+  assert(bounded.pointerX<=0.563f);
   input.reset(); pad.moveX=1;
   assert(!input.update(pad,1.f/60).connected); // neutral gate covers axes too
   pad={}; input.update(pad,0);

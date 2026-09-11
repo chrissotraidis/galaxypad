@@ -6,6 +6,10 @@ case "${GALAXYPAD_IOS_SDK:-iphonesimulator}" in
   iphoneos) lane=ios-device ;;
   *) echo "GALAXYPAD_IOS_SDK must be iphonesimulator or iphoneos" >&2; exit 2 ;;
 esac
+# The app links the packaged core archive rather than the core build tree.
+# Refresh it here so a source-only core rebuild cannot leave the app with a
+# stale RuntimeConfig/ABI or runtime implementation.
+bash "$root/scripts/provision-ios-simulator-core.sh"
 build="$root/generated/build/$lane-app"
 cmake -S "$root/apple/ios" -B "$build" -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE="$root/scripts/$lane-toolchain.cmake" \

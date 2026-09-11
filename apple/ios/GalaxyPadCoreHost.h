@@ -9,6 +9,17 @@ struct GalaxyPadCadenceEstimate {
   double viRate;
   double speed;
 };
+struct GalaxyPadRuntimeCounters {
+  uint64_t frameMaxGapNs;
+  uint64_t frameGapsGe33ms;
+  uint64_t frameGapsGe100ms;
+  uint64_t efbColorPeeks;
+  uint64_t efbDepthPeeks;
+  uint64_t efbPeekNs;
+  uint64_t efbMaxPeekNs;
+  uint64_t efbFramesWithPeeks;
+  uint64_t efbMaxPeeksPerFrame;
+};
 struct GalaxyPadAudioCounters {
   bool valid;
   uint64_t enqueues;
@@ -24,6 +35,7 @@ struct GalaxyPadAudioCounters {
 @property(nonatomic, readonly) BOOL paused;
 @property(nonatomic, readonly) uint64_t renderedFrames;
 - (GalaxyPadCadenceEstimate)cadenceEstimate;
+- (GalaxyPadRuntimeCounters)runtimeCounters;
 - (GalaxyPadAudioCounters)audioCounters;
 - (void)requestDevelopmentCheckpoint;
 - (void)restoreDevelopmentCheckpoint;
@@ -36,7 +48,7 @@ struct GalaxyPadAudioCounters {
 - (BOOL)startWithGameRoot:(NSString *)root discImage:(NSString *)disc
                   module:(NSString *)module userDirectory:(NSString *)user;
 - (void)setApplicationActive:(BOOL)active;
-- (void)setMenuPresented:(BOOL)presented;
+- (void)setNativeUIBlocked:(BOOL)blocked pauseRuntime:(BOOL)pauseRuntime;
 - (void)stop;
 @end
 NS_ASSUME_NONNULL_END

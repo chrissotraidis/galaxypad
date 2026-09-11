@@ -19,6 +19,22 @@
 #import <TargetConditionals.h>
 #include <stdlib.h>
 #include <float.h>
+#include <sys/resource.h>
+#include <mach/mach.h>
+
+static double GalaxyPadProcessCPUSeconds(void) {
+  struct rusage usage = {};
+  if (getrusage(RUSAGE_SELF, &usage) != 0) return NAN;
+  return usage.ru_utime.tv_sec + usage.ru_stime.tv_sec +
+    (usage.ru_utime.tv_usec + usage.ru_stime.tv_usec) / 1000000.0;
+}
+static double GalaxyPadResidentMiB(void) {
+  mach_task_basic_info_data_t info = {};
+  mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+  return task_info(mach_task_self(), MACH_TASK_BASIC_INFO,
+    reinterpret_cast<task_info_t>(&info), &count) == KERN_SUCCESS
+      ? info.resident_size / (1024.0 * 1024.0) : NAN;
+}
 #if TARGET_OS_SIMULATOR
 #include "GalaxyPadSimulatorInput.h"
 #endif
@@ -43,11 +59,14 @@
   uint64_t _fpsFrames;
   BOOL _logFrameRateWindows;
   CFTimeInterval _frameWindowStart;
+  double _frameWindowCPU;
+  NSInteger _activeRenderScale;
   uint64_t _frameWindowFrames;
   double _frameWindowMinFPS;
   double _frameWindowMaxObservationSeconds;
   CGRect _layoutViewport;
   BOOL _menuPresented;
+  BOOL _runtimePauseRequested;
   GalaxyPadImportTransaction *_import;
   UIAlertController *_importProgress;
   BOOL _activateImportAfterExit;
@@ -55,11 +74,19 @@
 #if TARGET_OS_SIMULATOR
   NSString *_simulatorInputPath;
   double _simulatorInputNotBefore;
+  uint32_t _simulatorLastInputButtons;
+  BOOL _simulatorLastInputPointerVisible;
 #endif
 }
 - (void)viewDidLoad {
   [super viewDidLoad];
   GalaxyPadDiagnosticsStart();
+  // Keep diagnostic windows opt-in so the normal device candidate does not
+  // spend main-thread work persisting performance summaries during gameplay.
+  // The three-dot menu can enable them for the next launch when needed.
+  [NSUserDefaults.standardUserDefaults registerDefaults:@{@"GalaxyPadLogFrameRateWindows":@NO}];
+  const BOOL diagnostics = [NSUserDefaults.standardUserDefaults boolForKey:@"GalaxyPadLogFrameRateWindows"];
+  setenv("GALAXYPAD_AUDIO_OUTPUT_DIAGNOSTICS", diagnostics ? "1" : "0", 1);
   self.view.backgroundColor = UIColor.blackColor;
   _surface = [[GalaxyPadMetalView alloc] initWithFrame:self.view.bounds];
   _surface.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -117,6 +144,11 @@
     GalaxyPadGameViewController *view = weakSelf;
     if (view) [view->_host publishInput:input source:galaxypad::InputSource::Controller];
   };
+  _controllers.pauseRequested = ^{
+    GalaxyPadGameViewController *view = weakSelf;
+    if (view && view->_host.busy && !view->_menuPresented && !view->_host.paused)
+      [view->_overlay presentNativePause];
+  };
   _controllers.inputAllowed = ^BOOL {
     GalaxyPadGameViewController *view = weakSelf;
 #if TARGET_OS_SIMULATOR
@@ -134,6 +166,8 @@
   };
   [_controllers start];
   _overlay.nativeUIChanged = ^{ [weakSelf reconcileNativeUI]; };
+  // This is the emulation/VI frame-event rate, not a display-completion FPS
+  // measurement. Keep that distinction visible in the gameplay HUD.
   _fpsLabel = [[UILabel alloc] initWithFrame:CGRectMake(12, 12, 180, 28)];
   _fpsLabel.font = [UIFont monospacedDigitSystemFontOfSize:12 weight:UIFontWeightMedium];
   _fpsLabel.textAlignment = NSTextAlignmentCenter;
@@ -145,9 +179,8 @@
   _fpsLabel.hidden = YES;
   [self.view addSubview:_fpsLabel];
   _fpsTime = CACurrentMediaTime();
-  // Development-only opt-in: reuse the existing one-second frame observation,
-  // with bounded five-second summaries. Observation gaps are UI timer delays,
-  // not individual present intervals or decoder latency.
+  // Bounded five-second diagnostic summaries, persisted locally for reports.
+  // Observation gaps are UI timer delays, not display-completion intervals.
   _logFrameRateWindows = [NSUserDefaults.standardUserDefaults boolForKey:@"GalaxyPadLogFrameRateWindows"];
   _uiTimer = [NSTimer scheduledTimerWithTimeInterval:0.1 repeats:YES block:^(NSTimer *timer) {
     GalaxyPadGameViewController *view = weakSelf;
@@ -165,6 +198,13 @@
       if (!view->_applicationActive || !view->_host.busy || view->_host.paused || view->_menuPresented)
         view->_simulatorInputNotBefore=now;
       auto input=GalaxyPadReadSimulatorInput(view->_simulatorInputPath,now,view->_simulatorInputNotBefore);
+      if (input.buttons != view->_simulatorLastInputButtons ||
+          input.pointerVisible != view->_simulatorLastInputPointerVisible) {
+        GalaxyPadLog(@"simulator input accepted buttons=%u pointer_visible=%d pointer=(%.3f,%.3f) connected=%d",
+          input.buttons, input.pointerVisible, input.pointerX, input.pointerY, input.connected);
+        view->_simulatorLastInputButtons=input.buttons;
+        view->_simulatorLastInputPointerVisible=input.pointerVisible;
+      }
       [view->_host publishInput:input source:galaxypad::InputSource::Controller];
     }
 #endif
@@ -174,7 +214,7 @@
       uint64_t frames = view->_host.renderedFrames;
       const double observationSeconds = now - view->_fpsTime;
       double fps = frames >= view->_fpsFrames ? (frames - view->_fpsFrames) / (now - view->_fpsTime) : 0;
-      view->_fpsLabel.text = view->_host.paused ? @"Paused" : [NSString stringWithFormat:@"%.1f FPS", fps];
+      view->_fpsLabel.text = view->_host.paused ? @"Paused" : [NSString stringWithFormat:@"%.1f emu FPS", fps];
       view->_fpsLabel.accessibilityLabel = [NSString stringWithFormat:@"%.1f frame events per second", fps];
       view->_fpsTime = now; view->_fpsFrames = frames;
       if (view->_logFrameRateWindows) {
@@ -184,6 +224,7 @@
           view->_frameWindowStart = 0;
         } else if (view->_frameWindowStart == 0) {
           view->_frameWindowStart = now;
+          view->_frameWindowCPU = GalaxyPadProcessCPUSeconds();
           view->_frameWindowFrames = frames;
           view->_frameWindowMinFPS = fps;
           view->_frameWindowMaxObservationSeconds = observationSeconds;
@@ -196,10 +237,27 @@
             const auto cadence = [view->_host cadenceEstimate];
             // 'presented' is retained for old parsers; this counter originates
             // at after_frame_event, not a display-completion callback.
-            NSLog(@"[GalaxyPad frame window] counter_source=after_frame_event mono=%.6f seconds=%.6f presented=%llu fps=%.6f min_observed_fps=%.3f max_observation_seconds=%.3f vi_rate_estimate=%.3f emulation_speed_estimate=%.6f",
+            GalaxyPadLog(@"[GalaxyPad frame window] counter_source=after_frame_event mono=%.6f seconds=%.6f presented=%llu fps=%.6f min_observed_fps=%.3f max_observation_seconds=%.3f vi_rate_estimate=%.3f emulation_speed_estimate=%.6f",
                   now, seconds, (unsigned long long)count, count / seconds,
                   view->_frameWindowMinFPS, view->_frameWindowMaxObservationSeconds,
                   cadence.viRate, cadence.speed);
+            const double cpu = GalaxyPadProcessCPUSeconds();
+            const auto runtime = [view->_host runtimeCounters];
+            GalaxyPadLog(@"[GalaxyPad performance] mono=%.6f seconds=%.3f process_cpu_percent=%.2f resident_mib=%.1f thermal_state=%ld low_power=%d active_render_scale=%ld output_max_hz=%ld cpu_percent_scope=all_threads_one_core_100",
+              now, seconds, (cpu - view->_frameWindowCPU) / seconds * 100.0,
+              GalaxyPadResidentMiB(), (long)NSProcessInfo.processInfo.thermalState,
+              NSProcessInfo.processInfo.lowPowerModeEnabled, (long)view->_activeRenderScale,
+              (long)view.view.window.screen.maximumFramesPerSecond);
+            GalaxyPadLog(@"[GalaxyPad runtime counters] frame_max_gap_ms=%.3f frame_gaps_ge_33ms=%llu frame_gaps_ge_100ms=%llu efb_color_peeks=%llu efb_depth_peeks=%llu efb_total_peek_ms=%.3f efb_max_peek_ms=%.3f efb_frames_with_peeks=%llu efb_max_peeks_per_frame=%llu",
+              runtime.frameMaxGapNs / 1e6,
+              (unsigned long long)runtime.frameGapsGe33ms,
+              (unsigned long long)runtime.frameGapsGe100ms,
+              (unsigned long long)runtime.efbColorPeeks,
+              (unsigned long long)runtime.efbDepthPeeks,
+              runtime.efbPeekNs / 1e6, runtime.efbMaxPeekNs / 1e6,
+              (unsigned long long)runtime.efbFramesWithPeeks,
+              (unsigned long long)runtime.efbMaxPeeksPerFrame);
+            view->_frameWindowCPU = cpu;
             // Cumulative mixer events, bracketed independently of frame counts.
             // RemoteIO's separate opt-in counters report their availability.
             // Do not confuse disabled measurement with zero delivered audio.
@@ -207,7 +265,7 @@
             const auto audio = [view->_host audioCounters];
             const double audioAfter = CACurrentMediaTime();
             if (audio.valid) {
-              NSLog(@"[GalaxyPad audio counters] mono_before=%.6f mono_after=%.6f dma_enqueues=%llu dma_underruns=%llu dma_backlog_drops=%llu dma_full_drops=%llu output_counters_available=%d output_callbacks=%llu output_requested_frames=%llu output_frames=%llu output_nonzero_frames=%llu output_short_callbacks=%llu output_peak=%u",
+              GalaxyPadLog(@"[GalaxyPad audio counters] mono_before=%.6f mono_after=%.6f dma_enqueues=%llu dma_underruns=%llu dma_backlog_drops=%llu dma_full_drops=%llu output_counters_available=%d output_callbacks=%llu output_requested_frames=%llu output_frames=%llu output_nonzero_frames=%llu output_short_callbacks=%llu output_peak=%u",
                     audioBefore, audioAfter, (unsigned long long)audio.enqueues,
                     (unsigned long long)audio.underruns,
                     (unsigned long long)audio.backlogDrops,
@@ -251,7 +309,7 @@
 - (void)viewDidLayoutSubviews {
   [super viewDidLayoutSubviews];
   CGRect safe = UIEdgeInsetsInsetRect(self.view.bounds, self.view.safeAreaInsets);
-  _fpsLabel.frame = CGRectMake(CGRectGetMinX(safe)+12, CGRectGetMinY(safe)+20, 82, 24);
+  _fpsLabel.frame = CGRectMake(CGRectGetMinX(safe)+12, CGRectGetMinY(safe)+20, 112, 24);
   _status.frame = CGRectMake(CGRectGetMidX(safe) - MIN(300, safe.size.width/2),
       CGRectGetMidY(safe)-50, MIN(600, safe.size.width), 100);
   _restartButton.frame = CGRectMake(CGRectGetMidX(safe)-90, CGRectGetMidY(safe)+60, 180, 48);
@@ -325,6 +383,10 @@
       return;
     }
     _status.text = @"Starting Galaxy…";
+    _activeRenderScale = GalaxyPadSettings.sharedSettings.renderScale;
+    const NSInteger aspectRatioMode = GalaxyPadSettings.sharedSettings.aspectRatioMode;
+    GalaxyPadLog(@"Starting runtime: render_scale=%ld aspect_ratio_mode=%ld pointer_mode=virtual_wiimote_ir pointer_yaw=25 pointer_pitch=20 pointer_vertical_offset_cm=10 frame_logging=%d",
+      (long)_activeRenderScale, (long)aspectRatioMode, _logFrameRateWindows);
     if (![_host startWithGameRoot:root discImage:disc module:module userDirectory:user.path]) return;
     _restartButton.hidden = YES;
     _overlay.gameplayAvailable = YES;
@@ -351,23 +413,47 @@
 - (void)setApplicationActive:(BOOL)active {
   _frameWindowStart = 0;
   _applicationActive = active;
+  GalaxyPadLog(@"scene active=%d", active);
   [_host setApplicationActive:active];
   if (active) [_controllers reconcile];
 }
 - (void)reconcileNativeUI {
-  BOOL blocked = _overlay.blocksGameplay || self.presentedViewController != nil || _import != nil || _removingGameData;
-  if (_menuPresented == blocked) return;
+  BOOL nativeMenu = _overlay.nativeMenuVisible;
+  BOOL modalUI = self.presentedViewController != nil || _import != nil || _removingGameData;
+  BOOL blocked = _overlay.blocksGameplay || modalUI;
+  // The three-dot UIMenu is an input-owned HUD surface; it must not stop the
+  // emulated CPU/audio clock. Native alerts, import sheets, and the explicit
+  // Pause panel still request a runtime pause.
+  // UIMenu presentation is host UI only. Keep this explicit so a future
+  // UIKit presentation-controller change cannot turn the three-dot menu into
+  // a runtime pause just because presentedViewController became non-nil.
+  BOOL pauseRuntime = !nativeMenu && (modalUI || _overlay.blocksGameplay);
+  if (_menuPresented == blocked && _runtimePauseRequested == pauseRuntime) return;
+  BOOL wasBlocked = _menuPresented;
   _frameWindowStart = 0;
   _menuPresented = blocked;
-  GalaxyPadLog(@"native UI blocked=%d; input cleared", blocked);
-  [_host setMenuPresented:blocked];
+  _runtimePauseRequested = pauseRuntime;
+  GalaxyPadLog(@"native UI blocked=%d pause_runtime=%d; input cleared overlay=%d native_menu=%d presented=%d import=%d removal=%d",
+    blocked, pauseRuntime, _overlay.blocksGameplay, nativeMenu,
+    self.presentedViewController != nil,
+    _import != nil, _removingGameData);
+  [_host setNativeUIBlocked:blocked pauseRuntime:pauseRuntime];
+  if (wasBlocked && !blocked) [_controllers reconcile];
 }
 - (void)presentViewController:(UIViewController *)controller animated:(BOOL)animated
     completion:(void (^)(void))completion {
   _frameWindowStart = 0;
   _menuPresented = YES;
-  [_host setMenuPresented:YES];
-  [super presentViewController:controller animated:animated completion:completion];
+  // Mark native UI as input-blocking immediately, but defer the pause decision
+  // until UIKit has identified what it presented. The three-dot UIMenu uses
+  // this override on iPadOS and must not pause the emulated runtime.
+  _runtimePauseRequested = NO;
+  [_host setNativeUIBlocked:YES pauseRuntime:NO];
+  __weak GalaxyPadGameViewController *weakSelf = self;
+  [super presentViewController:controller animated:animated completion:^{
+    [weakSelf reconcileNativeUI];
+    if (completion) completion();
+  }];
 }
 - (void)stopGame {
   _frameWindowStart = 0;
@@ -576,7 +662,7 @@
   return [NSString stringWithFormat:
     @"configuredTarget=RMGE01 revision=0 configuredImageSHA256=%s configuredDOLSHA256=%s; "
      "runtimeBusy=%d paused=%d frameEvents=%llu counterSource=after_frame_event "
-     "renderScaleSelectedForNextLaunch=%ld; "
+     "renderScaleSelectedForNextLaunch=%ld activeRenderScale=%ld performanceLogging=%d; "
      "platform=%@ os=%@ thermalState=%ld lowPowerMode=%d; "
      "audioCountersAvailable=%d dmaEnqueues=%llu dmaUnderruns=%llu "
      "dmaBacklogDrops=%llu dmaFullDrops=%llu; "
@@ -585,6 +671,7 @@
      "pointerMode=classic; loaded module identity, signature and dispatch diagnostics not yet integrated",
     GalaxyPadImageSHA256,GalaxyPadDOLSHA256,_host.busy,_host.paused,
     (unsigned long long)_host.renderedFrames,(long)GalaxyPadSettings.sharedSettings.renderScale,
+    (long)_activeRenderScale, _logFrameRateWindows,
     TARGET_OS_SIMULATOR ? @"simulator" : @"device", UIDevice.currentDevice.systemVersion,
     (long)NSProcessInfo.processInfo.thermalState, NSProcessInfo.processInfo.lowPowerModeEnabled,
     audio.valid, (unsigned long long)audio.enqueues, (unsigned long long)audio.underruns,
@@ -670,7 +757,7 @@
   NSArray *games=@[@"A", @"B", @"Spin", @"C", @"Z"];
   NSArray *physical=@[@"A", @"B", @"X", @"Y", @"Left Trigger"];
   UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"Controller Button Mapping"
-    message:@"Assignments swap to keep every action reachable. Left stick moves; right stick aims; click right stick to recenter. Hold Left Shoulder for right-stick tilt. Right Shoulder is also A; Right Trigger is also B, so you can aim while using either action. Menu/Options and D-pad stay fixed. Connect a controller to test."
+    message:@"Assignments swap to keep every action reachable. Left stick moves; right stick aims; click right stick to recenter. Hold Left Shoulder for right-stick tilt. Right Shoulder is also A; Right Trigger is also B, so you can aim while using either action. Menu or Options pauses the app immediately; the touch Start + remains Galaxy’s held pause input. D-pad controls the camera. Connect a controller to test."
     preferredStyle:UIAlertControllerStyleAlert];
   __weak GalaxyPadGameViewController *weakSelf=self;
   for (unsigned i=0;i<5;++i) {
@@ -738,10 +825,12 @@
 }
 - (void)sceneWillResignActive:(UIScene *)scene {
   (void)scene;
+  GalaxyPadLog(@"scene lifecycle will_resign_active");
   [(GalaxyPadGameViewController *)self.window.rootViewController setApplicationActive:NO];
 }
 - (void)sceneDidBecomeActive:(UIScene *)scene {
   (void)scene;
+  GalaxyPadLog(@"scene lifecycle did_become_active");
   [(GalaxyPadGameViewController *)self.window.rootViewController setApplicationActive:YES];
 }
 @end

@@ -1,6 +1,104 @@
 # GalaxyPad status
 
-Last updated: 2026-09-10
+Last updated: 2026-09-11
+
+## 2026-09-11 end-of-session candidate installed
+
+Reinstalled the latest known-good strict-signed private iPhoneOS bundle
+`generated/device-stage.JOtjGn/GalaxyPad.app` in place on the physical iPad
+and relaunched it successfully; the current process was PID 8171. The save
+backups before and after installation remain byte-identical, and no app-data,
+save, or WBFS reset was performed. The two-range R916b module experiment is
+parked after a Simulator null-instruction-pointer crash before renderer
+readiness; it was not installed on the iPad. See
+`docs/RESUME-2026-09-11-GALAXYPAD-IPAD.md` for the next-session sequence.
+
+## 2026-09-11 physical controller hot-plug proven
+
+The exact physical iPad console log now proves the requested Xbox handoff:
+`connected=0 ... hidden=0`, then `connected=1 ... hidden=1`, then
+`connected=0 ... hidden=0`, with ownership changing 0 → 1 → 0 and input
+cleared on each transition. The raw private excerpt is retained at
+`generated/runtime/ipad-iteration-1/controller-hotplug-console-20260911.log`.
+The console attachment was released, the same app was relaunched without
+uninstalling or changing its save, and it is currently PID 8160. The post-
+release backup matches the pre-release SHA-256. Three-dot continuity and
+heavy-scene performance remain open.
+
+The latest unattended logging-off Simulator recheck reached the seeded plaza
+at 47.3 emu FPS; its 8-second sample still shows `StaticRecompCore::Run()` and
+`chassis_dispatch` as the principal attribution. This is not an iPad FPS
+claim and no new performance fix is claimed from it.
+
+## 2026-09-11 final private host rebuild installed
+
+The latest iPhoneOS host rebuild is strict-signed and installed in place on
+the iPad as PID 8142. The HUD now identifies the existing frame-event counter
+as `emu FPS`; startup still reports 4:3, `frame_logging=0`, and
+`connected=1 auto_hide=1 hidden=1`. The app database UUID and save state were
+preserved. This pass does not claim a performance gain; the CPU/emulation and
+audio-underrun investigation remains open, with physical disconnect/reconnect
+and three-dot continuity awaiting direct confirmation.
+
+## 2026-09-11 controller visibility and native-menu correction
+
+The newest exact iPad install fixes the half-second native-menu pause window
+caused by the generic `presentViewController:` override. The three-dot UIMenu
+now blocks gameplay input but cannot request a runtime pause. Touch controls
+default to hiding when an extended controller connects and reappear on the
+disconnect reconciliation path; the current launch logged
+`connected=1 auto_hide=1 hidden=1`. Right-stick pointer response is now 1.2×.
+Focused controller/UIKit checks, strict signing, in-place installation, and
+4:3 logging-off launch evidence pass. Physical disconnect/reconnect and
+pointer comfort remain open; performance is still separately limited by the
+measured CPU/emulation and audio-production pressure.
+
+## 2026-09-11 iPad aspect and menu correction
+
+The latest exact private device build is installed in place. Startup reports
+`aspect_ratio_mode=0` and `frame_logging=0`; the iPad normalized viewport is
+`{{0, 0.013671875}, {1, 0.97265625}}`, confirming 4:3 with top/bottom
+letterboxing. Invalid saved aspect values now also fall back to 4:3, while
+16:9 remains an explicit Display choice.
+
+The three-dot host gate is input-only and explicitly forces `pause_runtime=0`;
+the top Pause panel remains the intentional runtime pause. Menu dismissal now
+releases the gate synchronously, and both top controls are 8 points lower.
+The exact install preserved the app database UUID and a byte-identical save
+backup. Focused UIKit/controller/signature checks pass; physical menu,
+controller, touch, and cursor confirmation remains open.
+
+## 2026-09-11 unattended Simulator performance lane
+
+The active loop is now autonomous when the operator is away:
+`scripts/galaxypad-unattended-simulator-loop.sh` installs the private
+Simulator app, seeds only the private Wii save, waits for renderer readiness,
+holds title A+B for 30 seconds, selects file 1 and Play by pointer, advances
+the opening story with bounded A pulses, captures the late-game plaza and
+profiles with frame logging off. A clean replay reached the plaza and showed
+51.0 FPS on-screen. The earlier five-second attempt correctly proved input
+consumption but failed the unusually slow title transition; it is retained as
+a harness-timing defect, not an input-bridge defect.
+
+An opt-in `GALAXYPAD_SIMULATOR_EFB_TRACE` path now exposes the existing EFB
+read trace. The trace-enabled run recorded 10,365 depth reads, 1.242 ms mean,
+11.391 ms maximum, and 648 reads over 5 ms across the launch-to-profile
+window. This is diagnostic only. The physical iPad remains installed at the
+known-good logging-off baseline and is reserved for final device acceptance;
+no physical touch injection is available from the current desktop route.
+The next lowest step is one stationary late-scene EFB/caller comparison, then
+one semantics-preserving candidate only if the wait cost is confirmed.
+
+The R911 whole-normalization candidate then passed 261,120 complete-routine
+comparisons and 69,120 callback cases, but did not improve the unattended
+late-game profile. The first matched pair read 50.0 FPS for the candidate and
+49.1 FPS for control, with effectively identical `StaticRecompCore::Run`,
+`chassis_dispatch`, and EFB-wait sample counts. A reverse-order candidate
+replay stopped before renderer readiness while a subsequent control replay
+completed. The candidate is parked and was never installed on the physical
+iPad. See `docs/IPAD-PERFORMANCE-LOOP-2026-09-11.md`; the next candidate must
+come from the measured shared execution/dispatch path and pass the unattended
+Simulator route before hardware consideration.
 
 ## R915 local installation assistant
 

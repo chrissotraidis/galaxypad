@@ -6,6 +6,14 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
+@interface GalaxyPadMenuButton : UIButton
+- (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction
+    willDisplayMenuForConfiguration:(UIContextMenuConfiguration *)configuration
+    animator:(id<UIContextMenuInteractionAnimating>)animator;
+- (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction
+    willEndForConfiguration:(UIContextMenuConfiguration *)configuration
+    animator:(id<UIContextMenuInteractionAnimating>)animator;
+@end
 @interface GalaxyPadGameOverlay (TestAccess)
 - (void)beginLayoutEditing;
 - (void)selectControlForEditing:(UIView *)control;
@@ -56,8 +64,13 @@ static NSUInteger CountViews(UIView *root, Class type) {
 - (CGPoint)locationInView:(UIView *)view { (void)view; return self.testPoint; }
 @end
 @interface OverlayTestViewController : UIViewController
+@property(nonatomic,strong) UIViewController *capturedPresentation;
 @end
 @implementation OverlayTestViewController
+- (void)presentViewController:(UIViewController *)controller animated:(BOOL)animated completion:(void (^)(void))completion {
+  self.capturedPresentation=controller;
+  if (completion) completion();
+}
 - (void)viewDidAppear:(BOOL)animated {
   [super viewDidAppear:animated];
   GalaxyPadAboutViewController *about=[[GalaxyPadAboutViewController alloc] init];
@@ -71,6 +84,15 @@ static NSUInteger CountViews(UIView *root, Class type) {
   Check(about.navigationItem.rightBarButtonItem!=nil,"About has explicit dismissal");
   // This bundle's own preferences only, never the product's defaults.
   [NSUserDefaults.standardUserDefaults removePersistentDomainForName:NSBundle.mainBundle.bundleIdentifier];
+  GalaxyPadSettings *displaySettings = GalaxyPadSettings.sharedSettings;
+  Check(displaySettings.aspectRatioMode == GalaxyPadAspectRatioOriginal,
+        "iPad-safe aspect default is 4:3");
+  Check(displaySettings.hideTouchControlsWhenControllerConnected,
+        "controller connection hides touch controls by default");
+  [NSUserDefaults.standardUserDefaults setInteger:99 forKey:@"GalaxyPadAspectRatioMode"];
+  Check(displaySettings.aspectRatioMode == GalaxyPadAspectRatioOriginal,
+        "invalid aspect preference safely falls back to 4:3");
+  [NSUserDefaults.standardUserDefaults removeObjectForKey:@"GalaxyPadAspectRatioMode"];
   GalaxyPadGameOverlay *overlay=[[GalaxyPadGameOverlay alloc] initWithFrame:self.view.bounds];
   [self.view addSubview:overlay];
   // Exercise the real letterboxed layout, including optional controls.
@@ -91,11 +113,20 @@ static NSUInteger CountViews(UIView *root, Class type) {
   overlay.gameplayAvailable = NO;
   [overlay layoutIfNeeded];
   Check(Find(overlay,@"A",YES).hidden,"idle hides gameplay buttons");
+  Check(Find(overlay,@"galaxypad.pause",YES).hidden,"idle hides native pause");
   Check(!Find(overlay,@"galaxypad.menu",YES).hidden,"idle retains native menu access");
   [overlay refreshControllerVisibility]; [overlay layoutIfNeeded];
   Check(Find(overlay,@"A",YES).hidden,"controller refresh cannot reveal idle gameplay buttons");
   overlay.gameplayAvailable = YES; [overlay layoutIfNeeded];
   Check(!Find(overlay,@"A",YES).hidden,"running restores gameplay buttons");
+  Check(!Find(overlay,@"galaxypad.pause",YES).hidden,"running exposes native pause");
+  UIView *menuControl=Find(overlay,@"galaxypad.menu",YES);
+  UIView *pauseControl=Find(overlay,@"galaxypad.pause",YES);
+  CGRect topSafe=UIEdgeInsetsInsetRect(overlay.bounds,overlay.safeAreaInsets);
+  Check(fabs(CGRectGetMinY(menuControl.frame)-CGRectGetMinY(pauseControl.frame))<0.5,
+        "top controls share the same vertical alignment");
+  Check(CGRectGetMinY(menuControl.frame)>=CGRectGetMinY(topSafe)+19.5,
+        "top controls keep the lowered iPad-safe inset");
   Check(rootMenu.children.count==8,"root menu includes the main Audio group");
   GalaxyPadSettings *audioSettings = GalaxyPadSettings.sharedSettings;
   Check(audioSettings.mainVolume==100 && !audioSettings.mainAudioMuted,"audio defaults full volume and unmuted");
@@ -121,8 +152,11 @@ static NSUInteger CountViews(UIView *root, Class type) {
         "all four render scales remain available under Display");
   Check(CountViews(overlay,UISegmentedControl.class)==0,
         "touch settings do not duplicate the render-resolution selector");
-  Check([display.children.lastObject.title isEqual:@"Show FPS Counter"],
+  Check([display.children[2].title isEqual:@"Show FPS Counter"],
         "FPS diagnostic is inside Display");
+  Check([((UIAction *)display.children[3]).identifier isEqual:@"galaxypad.menu.performance-log"] &&
+        ((UIAction *)display.children[3]).state==UIMenuElementStateOff,
+        "persistent performance logging defaults off and is reachable");
   UIAction *stop=(UIAction *)rootMenu.children.lastObject;
   Check((stop.attributes & UIMenuElementAttributesDestructive) &&
         (stop.attributes & UIMenuElementAttributesDisabled),
@@ -134,6 +168,13 @@ static NSUInteger CountViews(UIView *root, Class type) {
   overlay.stopRequested=nil;
   Check(((UIAction *)menuButton.menu.children.lastObject).attributes & UIMenuElementAttributesDisabled,
         "clearing runtime handler refreshes the already attached menu");
+  GalaxyPadMenuButton *nativeMenu=(GalaxyPadMenuButton *)menuButton;
+  [nativeMenu contextMenuInteraction:nil willDisplayMenuForConfiguration:nil animator:nil];
+  Check(overlay.nativeMenuVisible && overlay.blocksGameplay,
+        "displayed native menu blocks gameplay input");
+  [nativeMenu contextMenuInteraction:nil willEndForConfiguration:nil animator:nil];
+  Check(!overlay.nativeMenuVisible && !overlay.blocksGameplay,
+        "menu dismissal releases gameplay without animator completion");
   for (UIMenuElement *element in rootMenu.children) {
     if ([element.title isEqual:@"Game Data & Saves"]) {
       UIAction *status=(UIAction *)((UIMenu *)element).children.firstObject;
@@ -148,7 +189,7 @@ static NSUInteger CountViews(UIView *root, Class type) {
     }
   }
   UIAlertController *guide=[overlay touchControlGuide];
-  Check([guide.message containsString:@"X: spin. Y: camera."] &&
+  Check([guide.message containsString:@"X: spin. Y: reset camera."] &&
         [guide.message containsString:@"press A or B separately"] &&
         [guide.message containsString:@"not device motion"],
         "touch guide describes face labels, independent aim/action and tilt boundary");
@@ -200,18 +241,16 @@ static NSUInteger CountViews(UIView *root, Class type) {
   if (self.traitCollection.userInterfaceIdiom == UIUserInterfaceIdiomPad &&
       overlay.bounds.size.width >= 1000) {
     NSArray<NSString *> *ids = @[@"move", @"tilt", @"A", @"B", @"Spin", @"C", @"Z", @"1", @"2", @"Plus", @"−", @"D_U", @"D_D", @"D_L", @"D_R"];
-    // Conservative lower-corner bounds from the R841 opening-plaza capture.
-    // These are one-scene regression zones, not full-game HUD acceptance.
-    CGFloat w=overlay.bounds.size.width, h=overlay.bounds.size.height;
-    CGRect leftHUD=CGRectMake(0,h*0.70,w*0.18,h*0.20);
-    CGRect rightHUD=CGRectMake(w*0.84,h*0.65,w*0.16,h*0.25);
+    // Physical-device feedback prioritizes SunPad's thumb reach over the old
+    // scene-specific HUD exclusion rectangles that forced controls inward.
+    Check(CGRectGetMidX(Find(overlay,@"move",YES).frame)<overlay.bounds.size.width*0.2,
+          "iPad movement is reachable from the left edge");
+    Check(CGRectGetMidX(Find(overlay,@"A",YES).frame)>overlay.bounds.size.width*0.85,
+          "iPad jump is reachable from the right edge");
     for (NSUInteger i=0; i<ids.count; ++i) {
       UIView *first=Find(overlay,ids[i],YES);
       Check(first!=nil,"default iPad control exists");
       Check(first.bounds.size.width>=44 && first.bounds.size.height>=44,"minimum iPad target is 44pt");
-      if (!first.hidden)
-        Check(!CGRectIntersectsRect(first.frame,leftHUD) && !CGRectIntersectsRect(first.frame,rightHUD),
-              "default iPad targets clear recorded plaza HUD corner zones");
       for (NSUInteger j=i+1; j<ids.count; ++j) {
         UIView *second=Find(overlay,ids[j],YES);
         Check(second!=nil,"peer control exists");
@@ -226,23 +265,31 @@ static NSUInteger CountViews(UIView *root, Class type) {
   UIControl *a=(UIControl *)Find(overlay,@"A",YES);
   UIControl *b=(UIControl *)Find(overlay,@"B",YES);
   Check(a && b,"A and B controls exist");
+  [a sendActionsForControlEvents:UIControlEventTouchDown];
+  [(UIControl *)Find(overlay,@"galaxypad.pause",YES) sendActionsForControlEvents:UIControlEventTouchUpInside];
+  Check(state.buttons==0,"native pause releases held input");
+  Check(overlay.blocksGameplay,"native Pause blocks gameplay input");
+  UIControl *nativeResume=(UIControl *)Find(overlay,@"galaxypad.pause.back",YES);
+  Check(nativeResume && !nativeResume.hidden,"native Pause has a visible Back to Game escape hatch");
+  [nativeResume sendActionsForControlEvents:UIControlEventTouchUpInside];
+  Check(!overlay.blocksGameplay,"Back to Game releases the pause input gate");
   UIControl *pauseActivation=(UIControl *)Find(overlay,@"Plus",YES);
   Check([pauseActivation accessibilityActivate],"visible pause supports accessibility activation");
   Check(state.buttons & galaxypad::Plus,"accessibility activation presses Plus");
   [pauseActivation sendActionsForControlEvents:UIControlEventTouchDown];
-  [NSRunLoop.mainRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
+  [NSRunLoop.mainRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.8]];
   Check(state.buttons & galaxypad::Plus,"accessibility release preserves held touch");
   [pauseActivation sendActionsForControlEvents:UIControlEventTouchUpInside];
   Check(!(state.buttons & galaxypad::Plus),"touch release clears remaining Plus");
   Check([pauseActivation accessibilityActivate],"second accessibility pulse starts");
   [overlay reset];
-  [NSRunLoop.mainRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
+  [NSRunLoop.mainRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.8]];
   Check(state.buttons==0,"reset cancels pending accessibility pulse");
   [pauseActivation accessibilityActivate];
   [overlay toggleSettingsPanel];
   Check(state.buttons==0 && ![pauseActivation accessibilityActivate],"settings clears and blocks accessibility input");
   [overlay toggleSettingsPanel];
-  [NSRunLoop.mainRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
+  [NSRunLoop.mainRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.8]];
   Check(state.buttons==0,"dismissed settings does not revive cancelled pulse");
   overlay.gameplayAvailable=NO;
   Check(![pauseActivation accessibilityActivate],"idle rejects accessibility game input");
@@ -265,33 +312,18 @@ static NSUInteger CountViews(UIView *root, Class type) {
     Check([button attributedTitleForState:UIControlStateNormal]==nil,"no multiline action text in face buttons");
   }
   if (self.traitCollection.userInterfaceIdiom==UIUserInterfaceIdiomPad && overlay.bounds.size.width>=1000) {
-    for (NSString *identifier in @[@"1", @"2", @"Plus", @"−"]) {
+    for (NSString *identifier in @[@"1", @"2", @"−"]) {
       Check(Find(overlay,identifier,YES).center.y > overlay.bounds.size.height*0.5,
             "auxiliary buttons remain with lower SunPad clusters, never a top toolbar");
       UIView *aux=Find(overlay,identifier,YES);
       Check(aux.bounds.size.width==aux.bounds.size.height,
             "auxiliary keys are compact, not oversized shoulder pills");
     }
-    Check(Find(overlay,@"Plus",YES).center.x < b.center.x,
-          "primary pause sits inward beside the action cluster");
-    // Observed Gateway inventory footprint, relative to the game viewport.
-    // A is the large control that covered the Star Bit counter in R626.
-    CGRect inventory = CGRectMake(overlay.bounds.size.width*0.85,
-        overlay.bounds.size.height*(0.1031175+0.793765*0.83),
-        overlay.bounds.size.width*0.10,overlay.bounds.size.height*0.793765*0.09);
-    Check(!CGRectIntersectsRect(a.frame,inventory),
-          "default A leaves the observed Gateway inventory HUD clear");
-    CGRect storyText = CGRectMake(overlay.bounds.size.width*0.13,
-        overlay.bounds.size.height*(0.1031175+0.793765*0.65),
-        overlay.bounds.size.width*0.65,overlay.bounds.size.height*0.793765*0.205);
-    for (NSString *identifier in @[@"move", @"D_U", @"D_D", @"D_L", @"D_R"]) {
-      if (CGRectIntersectsRect(Find(overlay,identifier,YES).frame,storyText))
-        fprintf(stderr,"Overlap %s: control=%s text=%s\n",identifier.UTF8String,
-            NSStringFromCGRect(Find(overlay,identifier,YES).frame).UTF8String,
-            NSStringFromCGRect(storyText).UTF8String);
-      Check(!CGRectIntersectsRect(Find(overlay,identifier,YES).frame,storyText),
-            "default left controls leave observed story copy clear");
-    }
+    Check(Find(overlay,@"Plus",YES).bounds.size.width>=100,
+          "iPad Start has a readable labeled target");
+    Check([[(UIButton *)Find(overlay,@"Plus",YES) titleForState:UIControlStateNormal] isEqual:@"Start +"],
+          "Start identifies the guest plus button");
+
   }
   [a sendActionsForControlEvents:UIControlEventTouchDown];
   [b sendActionsForControlEvents:UIControlEventTouchDown];

@@ -3,6 +3,12 @@
 #include "GalaxyPadMovementTrace.h"
 #include <functional>
 #include <utility>
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#if TARGET_OS_SIMULATOR
+#include <os/log.h>
+#endif
+#endif
 
 namespace galaxypad {
 namespace {
@@ -43,6 +49,13 @@ public:
   ciface::Core::DeviceRemoval UpdateInput() override {
     std::lock_guard lock(mutex_);
     state_ = mixer_->consume();
+#if defined(__APPLE__) && TARGET_OS_SIMULATOR
+    if (state_.buttons != lastLoggedButtons_) {
+      os_log_info(OS_LOG_DEFAULT, "[GalaxyPad input device] consumed buttons=%u pointer_visible=%d pointer=(%.3f,%.3f) connected=%d",
+        state_.buttons, state_.pointerVisible, state_.pointerX, state_.pointerY, state_.connected);
+      lastLoggedButtons_ = state_.buttons;
+    }
+#endif
     movementTrace_.record(state_.moveX,state_.moveY);
     return ciface::Core::DeviceRemoval::Keep;
   }
@@ -57,6 +70,9 @@ private:
   std::shared_ptr<InputMixer> mixer_;
   std::mutex mutex_;
   InputState state_;
+#if defined(__APPLE__) && TARGET_OS_SIMULATOR
+  uint32_t lastLoggedButtons_ = 0;
+#endif
   MovementTrace movementTrace_{"device"};
 };
 }

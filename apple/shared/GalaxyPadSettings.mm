@@ -52,16 +52,16 @@
 - (GalaxyPadAspectRatioMode)aspectRatioMode {
     NSNumber *saved = [[NSUserDefaults standardUserDefaults]
         objectForKey:@"GalaxyPadAspectRatioMode"];
-    NSInteger mode = saved == nil ? GalaxyPadAspectRatioWidescreen : saved.integerValue;
+    NSInteger mode = saved == nil ? GalaxyPadAspectRatioOriginal : saved.integerValue;
     if (mode < GalaxyPadAspectRatioOriginal || mode > GalaxyPadAspectRatioFillScreen)
-        return GalaxyPadAspectRatioWidescreen;
+        return GalaxyPadAspectRatioOriginal;
     return (GalaxyPadAspectRatioMode)mode;
 }
 
 - (void)setAspectRatioMode:(GalaxyPadAspectRatioMode)aspectRatioMode {
     NSInteger mode = aspectRatioMode;
     if (mode < GalaxyPadAspectRatioOriginal || mode > GalaxyPadAspectRatioFillScreen)
-        mode = GalaxyPadAspectRatioWidescreen;
+        mode = GalaxyPadAspectRatioOriginal;
     [[NSUserDefaults standardUserDefaults] setInteger:mode
                                                forKey:@"GalaxyPadAspectRatioMode"];
 }
