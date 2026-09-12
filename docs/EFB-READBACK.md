@@ -243,7 +243,11 @@ Next use existing EFB_TRACE coordinate/value/PC/LR/frame data on that route;
 preserve depth semantics. Phase tracing and host scheduling remain confounders.
 Evidence generated/runtime/audio-events-r393/cluster-analysis-r394.json.
 
-GalaxyPad retains Dolphin's required `RMG` defaults: CPU EFB access enabled, deferred invalidation enabled, and arbitrary mipmap detection enabled. The runtime never returns a constant, fabricated, or multi-frame-stale depth value for performance.
+Correction, September 13: that historical claim did not hold for the later private
+Simulator and physical packages: their RMG.ini disabled EFB access, returning zero
+depth and breaking Pull Stars. The current host now explicitly enables EFB access
+before Run. See [the reproduced failure and fix](PERFORMANCE-2026-09-12.md#september-13-pull-star-cause-reproduced-and-corrected).
+Do not use disabled or fabricated depth as a performance optimization.
 
 ## Instrumentation
 

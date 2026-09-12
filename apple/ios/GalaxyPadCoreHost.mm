@@ -12,6 +12,7 @@
 #include "Core/Core.h"
 #include "Core/System.h"
 #include "Core/Config/MainSettings.h"
+#include "Core/Config/GraphicsSettings.h"
 #include "AudioCommon/AudioCommon.h"
 #include "../shared/GalaxyPadInputDevice.h"
 #include "InputCommon/ControllerInterface/ControllerInterface.h"
@@ -427,6 +428,9 @@ void RuntimeLog(moderngekko::RuntimeLogLevel level, const char *category,
           // Keep CPU emulation and Metal rendering on separate threads. Set this
           // before Run initializes the core; never change it during gameplay.
           Config::SetCurrent(Config::MAIN_CPU_THREAD, true);
+          // Pull Stars use GXPeekZ to validate pointer depth. Disabling EFB
+          // access returns zero and makes visible 3D targets unselectable.
+          Config::SetCurrent(Config::GFX_HACK_EFB_ACCESS_ENABLE, true);
 #if TARGET_OS_SIMULATOR
           if (nativePointerProbe) {
             NSData *dol=[NSData dataWithContentsOfFile:[root stringByAppendingPathComponent:@"sys/main.dol"]];

@@ -1,11 +1,14 @@
 # GalaxyPad release readiness
 
-Updated 2026-09-12. **NO-GO for publication or shipping.**
+Updated 2026-09-13. **NO-GO for publication or shipping.**
 
 The latest [performance and hardware handoff](PERFORMANCE-2026-09-12.md) supersedes
 the historical candidate identities below. CPU/render overlap and experimental
 audio adaptation improved the fixed Simulator route, and the private iPad build
-is installed. The newly reported dome Pull Star failure blocks level entry. Remaining physical
+is installed. The dome Pull Star failure was reproduced and fixed in Simulator by restoring
+real depth access; actual level entry passes. Physical acceptance remains pending.
+The correct-depth heavy-scene baseline is 45–49 frame events/s. Earlier faster
+results used disabled depth and do not establish playable-config acceptance. Remaining physical
 slowdowns, Xbox Start retest, audio listening,
 long-session behavior and iPhone performance prevent release acceptance.
 

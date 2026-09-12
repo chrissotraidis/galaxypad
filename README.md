@@ -20,9 +20,9 @@ touch ergonomics, lifecycle reliability, and physical-device testing remain open
 | Platform | Current boundary |
 | --- | --- |
 | Apple silicon Mac | Packaged app and gameplay; one measured stationary plaza window reached 59.95 VI/s. Sustained performance across the game is not accepted. |
-| iPad Simulator | Matched late-game route improved from 41.8–46.4 to roughly 56–60 frame events/s with CPU/render overlap. Separate audio diagnostics improved from 157 underruns to zero. Longer and broader acceptance remains open. |
+| iPad Simulator | Corrected depth access restores Pull Star activation and level entry. Heavy-scene logging-off samples are 45–49 frame events/s. Earlier 56–60 and audio results used disabled depth and do not establish playable-config acceptance. |
 | iPhone Simulator | A persisted new file loads into the opening plaza and diagnostic movement works. Recent gameplay windows were about 31–46 frame events/s under concurrent host load; touch and sustained performance are not accepted. |
-| Physical iPad | Latest private threading/audio candidate installed in place. User reports stable gameplay, remaining slowdowns and unreliable Xbox Start/Menu. A follow-up button-event fix awaits physical retest. |
+| Physical iPad | Updated in place with the depth-access, Menu-event and pointer-handoff fixes; saves preserved and launch verified. User gameplay/input confirmation and performance acceptance remain open. |
 | Physical iPhone | Current candidate has no physical performance acceptance. |
 
 HUD readings measure frame events, **not guaranteed displayed FPS**. Logging-off

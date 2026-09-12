@@ -416,8 +416,23 @@ static NSUInteger CountViews(UIView *root, Class type) {
   Check(state.buttons==galaxypad::A && state.pointerVisible &&
         std::abs(state.pointerX-0.75)<0.001 && std::abs(state.pointerY-0.25)<0.001,
         "pointer movement preserves held A and maps through gameplay viewport");
+  Check(state.pointerContact,"active touch owns pointer");
+  [overlay touchesEnded:[NSSet setWithObject:pointer] withEvent:nil];
+  Check(state.pointerVisible && !state.pointerContact && state.buttons==galaxypad::A,
+        "lift releases pointer ownership but retains touch aim and held A");
+  galaxypad::InputMixer pointerMixer;
+  galaxypad::InputState controllerAim; controllerAim.pointerVisible=true;
+  controllerAim.pointerX=0.2f;
+  pointerMixer.set(galaxypad::InputSource::Controller,controllerAim);
+  pointerMixer.set(galaxypad::InputSource::Touch,state);
+  Check(pointerMixer.consume().pointerX==0.2f,"lift restores right-stick aim");
+  [overlay touchesBegan:[NSSet setWithObject:pointer] withEvent:nil];
+  pointerMixer.set(galaxypad::InputSource::Touch,state);
+  Check(std::abs(pointerMixer.consume().pointerX-0.75f)<0.001,
+        "new contact takes pointer ownership again");
   [overlay touchesCancelled:[NSSet setWithObject:pointer] withEvent:nil];
-  Check(!state.pointerVisible && state.buttons==galaxypad::A,"pointer cancel preserves held button");
+  Check(!state.pointerVisible && !state.pointerContact && state.buttons==galaxypad::A,
+        "pointer cancel clears contact and preserves held button");
   [a sendActionsForControlEvents:UIControlEventTouchUpInside];
   [overlay reset];
   [overlay touchesBegan:[NSSet setWithObject:pointer] withEvent:nil];
