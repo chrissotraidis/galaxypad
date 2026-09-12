@@ -1,0 +1,59 @@
+--- a/Source/Core/AudioCommon/CoreAudioSoundStream.cpp
++++ b/Source/Core/AudioCommon/CoreAudioSoundStream.cpp
+@@ -11,6 +11,15 @@
+ #include "Common/GalaxyPadAudioOutputCounters.h"
+ 
+ #include "Common/Logging/Log.h"
++#include <TargetConditionals.h>
++#if !TARGET_OS_SIMULATOR || !defined(GALAXYPAD_DIAGNOSTIC_PCM_CAPTURE)
++#error This copied capture source is Simulator diagnostic only
++#endif
++#include "DiagnosticPcmCapture.h"
++namespace {
++galaxypad::diagnostic::PcmCapture pcm_capture;
++CoreAudioSound* pcm_capture_owner = nullptr;
++}
+ 
+ OSStatus CoreAudioSound::OutputCallback(void* ref_con, AudioUnitRenderActionFlags* action_flags,
+                                         const AudioTimeStamp* timestamp, UInt32 bus_number,
+@@ -31,6 +40,10 @@
+   galaxypad::audio::outputCounters.Record(static_cast<const s16*>(buffer.mData),
+                                          number_frames, frames);
+ 
++  if (pcm_capture_owner == sound)
++    pcm_capture.Record(static_cast<const s16*>(buffer.mData), number_frames, frames,
++                       timestamp ? timestamp->mHostTime : 0);
++
+   static std::atomic<bool> logged_callback = false;
+   if (!logged_callback.exchange(true))
+   {
+@@ -46,6 +59,11 @@
+     return;
+   AudioOutputUnitStop(m_audio_unit);
+   AudioUnitUninitialize(m_audio_unit);
++  if (pcm_capture_owner == this)
++  {
++    pcm_capture.Finish();
++    pcm_capture_owner = nullptr;
++  }
+   AudioComponentInstanceDispose(m_audio_unit);
+ }
+ 
+@@ -92,6 +110,17 @@
+     return false;
+   }
+ 
++  const char* pcm_path = std::getenv("GALAXYPAD_AUDIO_PCM_PATH");
++  if (pcm_path && *pcm_path)
++  {
++    if (!pcm_capture_owner && pcm_capture.Start(pcm_path, GetMixer()->GetSampleRate()))
++    {
++      pcm_capture_owner = this;
++      std::fprintf(stderr, "[GalaxyPad PCM diagnostic] armed 120 seconds at 48000 Hz; stop game to flush\n");
++    }
++    else
++      std::fprintf(stderr, "[GalaxyPad PCM diagnostic] capture unavailable; audio continues unchanged\n");
++  }
+   std::fprintf(stderr, "[SunPad audio] RemoteIO initialized at %.0f Hz\n", format.mSampleRate);
+   return true;
+ }

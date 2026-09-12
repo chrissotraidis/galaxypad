@@ -352,7 +352,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     [_pauseCard addSubview:_pauseTitleLabel];
 
     _pauseDetailLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    _pauseDetailLabel.text = @"Back to Game resumes this action.\nHold Start + for Galaxy’s original Wii pause screen, including Return to Observatory.";
+    _pauseDetailLabel.text = @"Press controller Menu / Options again, or Back to Game, to resume.\nHold Start + for Galaxy’s original Wii pause screen, including Return to Observatory.";
     _pauseDetailLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.78];
     _pauseDetailLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     _pauseDetailLabel.numberOfLines = 0;
@@ -386,6 +386,11 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
 
 - (void)presentNativePause {
     [self presentPause];
+}
+- (BOOL)nativePauseVisible { return _pauseVisible; }
+- (void)toggleNativePause {
+    if (_pauseVisible) [self dismissPauseMenu];
+    else [self presentPause];
 }
 
 - (void)dismissPauseMenu {
@@ -1890,7 +1895,9 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
 }
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     (void)event;
-    if (!_gameplayAvailable || self.blocksGameplay || _pointerContact ||
+    // Controller auto-hide owns the pointer too: a new screen contact must
+    // not replace controller aim after the handoff cleared the old touch.
+    if (!_gameplayAvailable || self.blocksGameplay || _touchControlsHidden || _pointerContact ||
         [NSUserDefaults.standardUserDefaults boolForKey:@"GalaxyPadTouchControlsDisabled"]) return;
     const CGRect viewport = [self gameplayViewport];
     if (CGRectIsEmpty(viewport)) return;

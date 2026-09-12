@@ -1,6 +1,18 @@
 # GalaxyPad status
 
-Last updated: 2026-09-11
+Last updated: 2026-09-12
+
+## 2026-09-12 performance gain, hardware feedback and Start fix
+
+The current private iPad candidate is installed and running. Matched Simulator
+gameplay improved from roughly 44 to 58 frame events/s; separate audio diagnostics
+recorded zero new underruns versus 157 in the control. The user reports stability
+but continuing slowdowns and unreliable Xbox Start/Menu. A subsequent source fix
+preserves queued button-event edges and passes an old-fails/new-passes regression;
+physical retest remains due. A new physical report says the dome Pull Star cannot
+be activated, blocking galaxy selection; reproduction is in progress. This supersedes the historical candidate identities
+below. See [the current handoff](PERFORMANCE-2026-09-12.md) for exact hashes,
+preservation differences, architecture limits and evidence. **Not release-ready.**
 
 ## 2026-09-11 end-of-session candidate installed
 

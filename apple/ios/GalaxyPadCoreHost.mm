@@ -152,6 +152,10 @@ void RuntimeLog(moderngekko::RuntimeLogLevel level, const char *category,
   const auto snapshot = _session->runtime->GetDiagnosticsSnapshot();
   return {true, snapshot.dma_enqueues, snapshot.dma_underruns,
           snapshot.dma_backlog_drops, snapshot.dma_queue_full_drops,
+          snapshot.dma_queue_min, snapshot.dma_queue_max,
+          snapshot.dma_producer_max_gap_ns, snapshot.dma_gaps_ge_50ms,
+          snapshot.dma_gaps_ge_100ms, snapshot.dma_first_underrun_enqueue,
+          snapshot.dma_last_underrun_enqueue,
           galaxypad::audio::outputCounters.Read()};
 }
 - (GalaxyPadCadenceEstimate)cadenceEstimate {
@@ -420,6 +424,9 @@ void RuntimeLog(moderngekko::RuntimeLogLevel level, const char *category,
           // Config exists after Create; set gain before Run creates the stream.
           Config::SetBaseOrCurrent(Config::MAIN_AUDIO_VOLUME, initialVolume);
           Config::SetBaseOrCurrent(Config::MAIN_AUDIO_MUTED, initialMute);
+          // Keep CPU emulation and Metal rendering on separate threads. Set this
+          // before Run initializes the core; never change it during gameplay.
+          Config::SetCurrent(Config::MAIN_CPU_THREAD, true);
 #if TARGET_OS_SIMULATOR
           if (nativePointerProbe) {
             NSData *dol=[NSData dataWithContentsOfFile:[root stringByAppendingPathComponent:@"sys/main.dol"]];

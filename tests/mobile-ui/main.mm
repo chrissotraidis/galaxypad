@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Isolated UIKit regression host; not compiled into GalaxyPad.
 #import "../../apple/ios/GalaxyPadGameOverlay.h"
+#import "../../apple/ios/GalaxyPadControllers.h"
+#import <GameController/GameController.h>
+#import <objc/runtime.h>
 #import "../../apple/ios/GalaxyPadAboutViewController.h"
 #import "../../apple/shared/GalaxyPadSettings.h"
 #include <cstdio>
@@ -14,6 +17,15 @@
     willEndForConfiguration:(UIContextMenuConfiguration *)configuration
     animator:(id<UIContextMenuInteractionAnimating>)animator;
 @end
+@interface GalaxyPadControllers (PauseTestAccess)
+- (void)publishWithSeconds:(float)seconds;
+@end
+// Software controller snapshots exercise the production adapter. Override
+// enumeration only inside this isolated test bundle, never in GalaxyPad.
+static NSArray<GCController *> *pauseTestControllers;
+static NSArray<GCController *> *PauseTestControllerList(id, SEL) {
+  return pauseTestControllers;
+}
 @interface GalaxyPadGameOverlay (TestAccess)
 - (void)beginLayoutEditing;
 - (void)selectControlForEditing:(UIView *)control;
@@ -50,6 +62,63 @@ static UIView *Find(UIView *root, NSString *name, BOOL identifier) {
 }
 static void Check(BOOL condition,const char *message) {
   if (!condition) { fprintf(stderr,"FAIL: %s\n",message); exit(1); }
+}
+static void CheckControllerPauseToggle(GalaxyPadGameOverlay *overlay) {
+  GCController *controller=[GCController controllerWithExtendedGamepad];
+  pauseTestControllers=@[controller];
+  Method enumeration=class_getClassMethod(GCController.class,@selector(controllers));
+  IMP original=method_setImplementation(enumeration,(IMP)PauseTestControllerList);
+  GalaxyPadControllers *adapter=[GalaxyPadControllers new];
+  __block BOOL modal=NO;
+  __block unsigned toggles=0;
+  __block galaxypad::InputState published;
+  __weak GalaxyPadControllers *weakAdapter=adapter;
+  adapter.inputAllowed=^BOOL { return !modal && !overlay.blocksGameplay; };
+  adapter.pauseToggleAllowed=^BOOL {
+    return !modal && (!overlay.blocksGameplay || overlay.nativePauseVisible);
+  };
+  adapter.pauseRequested=^{ ++toggles; [overlay toggleNativePause]; [weakAdapter reset]; };
+  adapter.inputChanged=^(galaxypad::InputState input) { published=input; };
+  [adapter reconcile];
+  auto menu=[&](float value) {
+    auto button=controller.extendedGamepad.buttonMenu;
+    Check(button.pressedChangedHandler!=nil,"Menu uses event-time pressed callbacks");
+    // Deliberately leave the live snapshot released: queued short taps must use
+    // the event payload, including when a timer samples zero between callbacks.
+    button.pressedChangedHandler(button,value,value!=0);
+    [adapter publishWithSeconds:0];
+  };
+  menu(0); menu(1);
+  Check(toggles==1 && overlay.nativePauseVisible,"controller Menu opens native pause");
+  menu(1);
+  Check(toggles==1,"held Menu does not toggle repeatedly");
+  [controller.extendedGamepad.leftThumbstick.xAxis setValue:0.5f];
+  menu(0); menu(1);
+  Check(toggles==2 && !overlay.blocksGameplay,"second Menu press resumes while gameplay is blocked and a stick is held");
+  Check(published.buttons==0,"resume Menu does not leak guest Plus");
+  menu(1);
+  Check(toggles==2,"held resume Menu does not pause again");
+  [controller.extendedGamepad.leftThumbstick.xAxis setValue:0];
+  menu(0);
+  [controller.extendedGamepad.buttonA setValue:1];
+  [adapter publishWithSeconds:0];
+  Check(published.buttons==galaxypad::A,"gameplay input returns after resume and release");
+  [controller.extendedGamepad.buttonA setValue:0];
+  modal=YES; menu(0); menu(1);
+  Check(toggles==2,"Menu cannot escape unrelated modal UI");
+  modal=NO; menu(1);
+  Check(toggles==2,"held modal input cannot become a new Menu press");
+  menu(0); menu(1);
+  Check(toggles==3 && overlay.nativePauseVisible,"fresh Menu works after modal closes");
+  menu(0);
+  auto options=controller.extendedGamepad.buttonOptions;
+  Check(options.pressedChangedHandler!=nil,"Options uses event-time pressed callbacks");
+  options.pressedChangedHandler(options,1,YES);
+  [adapter publishWithSeconds:0];
+  Check(toggles==4 && !overlay.blocksGameplay,"Options also resumes native pause");
+  pauseTestControllers=@[]; [adapter reconcile];
+  method_setImplementation(enumeration,original);
+  pauseTestControllers=nil;
 }
 static NSUInteger CountViews(UIView *root, Class type) {
   NSUInteger count=[root isKindOfClass:type] ? 1 : 0;
@@ -273,6 +342,7 @@ static NSUInteger CountViews(UIView *root, Class type) {
   Check(nativeResume && !nativeResume.hidden,"native Pause has a visible Back to Game escape hatch");
   [nativeResume sendActionsForControlEvents:UIControlEventTouchUpInside];
   Check(!overlay.blocksGameplay,"Back to Game releases the pause input gate");
+  CheckControllerPauseToggle(overlay);
   UIControl *pauseActivation=(UIControl *)Find(overlay,@"Plus",YES);
   Check([pauseActivation accessibilityActivate],"visible pause supports accessibility activation");
   Check(state.buttons & galaxypad::Plus,"accessibility activation presses Plus");
@@ -349,6 +419,16 @@ static NSUInteger CountViews(UIView *root, Class type) {
   [overlay touchesCancelled:[NSSet setWithObject:pointer] withEvent:nil];
   Check(!state.pointerVisible && state.buttons==galaxypad::A,"pointer cancel preserves held button");
   [a sendActionsForControlEvents:UIControlEventTouchUpInside];
+  [overlay reset];
+  [overlay touchesBegan:[NSSet setWithObject:pointer] withEvent:nil];
+  Check(state.pointerVisible,"prepare touch aim before controller handoff");
+  [overlay setTouchControlsHidden:YES animated:NO];
+  Check(!state.pointerVisible,"controller handoff clears touch aim");
+  [overlay touchesBegan:[NSSet setWithObject:pointer] withEvent:nil];
+  Check(!state.pointerVisible,"hidden touch controls cannot reclaim controller aim");
+  [overlay setTouchControlsHidden:NO animated:NO];
+  [overlay touchesBegan:[NSSet setWithObject:pointer] withEvent:nil];
+  Check(state.pointerVisible,"touch aim returns after controller handoff ends");
   [overlay reset];
   [a sendActionsForControlEvents:UIControlEventTouchDown];
   [overlay touchesBegan:[NSSet setWithObject:pointer] withEvent:nil];

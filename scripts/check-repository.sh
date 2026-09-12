@@ -35,6 +35,7 @@ python3 ./tests/test-mobile-ui-result.py
 bash ./tests/test-mobile-settings.sh
 bash ./tests/test-mobile-stick-routing.sh
 bash ./tests/test-mobile-controller.sh
+bash ./tests/test-controller-pause-events.sh
 bash ./tests/test-import-activation.sh
 bash ./tests/test-import-transaction.sh
 python3 ./tests/test-runner-background-input.py

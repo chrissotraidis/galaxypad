@@ -1,0 +1,550 @@
+diff --git a/Source/Core/AudioCommon/Mixer.cpp b/Source/Core/AudioCommon/Mixer.cpp
+--- a/Source/Core/AudioCommon/Mixer.cpp
++++ b/Source/Core/AudioCommon/Mixer.cpp
+@@ -65,6 +65,17 @@
+ // Executed from sound stream thread
+ void Mixer::MixerFifo::Mix(s16* samples, std::size_t num_samples)
+ {
++  if (this == &m_mixer->m_dma_mixer && num_samples > 2048)
++  {
++    // Fixed callback workspace; oversized backend requests are processed in
++    // bounded pieces immediately, without a second queue or allocations.
++    while (num_samples)
++    {
++      const auto count = std::min<std::size_t>(num_samples, 2048);
++      Mix(samples, count); samples += count * 2; num_samples -= count;
++    }
++    return;
++  }
+   constexpr u32 INDEX_HALF = 0x80000000;
+   constexpr DT_s FADE_IN_RC = DT_s(0.008);
+   constexpr DT_s FADE_OUT_RC = DT_s(0.064);
+@@ -86,38 +97,41 @@
+                  static_cast<std::size_t>(MAX_GRANULE_QUEUE_SIZE));
+   m_granule_queue_size.store(buffer_size_granules, std::memory_order_relaxed);
+ 
+-#if defined(__APPLE__)
+-  // Static-recompiled games can deliver DSP samples a fraction slower than
+-  // wall clock during brief CPU/GPU contention. Keep the Apple DSP queue near
+-  // its measured-gap reserve with a very small resampling correction instead of
+-  // repeatedly draining it and fading whole parts of the mix away.
+   if (this == &m_mixer->m_dma_mixer)
+   {
+-    const std::size_t queue_size = m_granule_queue_size.load(std::memory_order_relaxed);
+-    const std::size_t head = m_queue_head.load(std::memory_order_acquire);
+-    const std::size_t tail = m_queue_tail.load(std::memory_order_acquire);
+-    const std::size_t queued = (head - tail) & GRANULE_QUEUE_MASK;
+-    const double target = static_cast<double>(
+-        std::max<std::size_t>(2, queue_size * 4 / 5));
+-
+-    // Do not begin draining a one-granule queue. Waiting for the target
+-    // reserve gives the adaptive resampler enough headroom for frame-time variation.
+-    if (m_prebuffering)
+-    {
+-      if (queued < static_cast<std::size_t>(target))
+-        return;
+-      m_prebuffering = false;
+-    }
+-
+-    const double error = (static_cast<double>(queued) - target) / target;
+-    const double desired_rate = std::clamp(1.0 + 0.02 * error, 0.98, 1.02);
+-    m_dynamic_rate += 0.1 * (desired_rate - m_dynamic_rate);
+-    in_sample_rate *= m_dynamic_rate;
+-  }
+-#endif
++    const bool running = Core::GetState(Core::System::GetInstance()) == Core::State::Running;
++    const bool flush = m_mixer->m_dma_tempo_flush_requested.exchange(false, std::memory_order_acq_rel);
++    if (flush || running != m_mixer->m_dma_tempo_was_running)
++      FlushTempoOnConsumer();
++    m_mixer->m_dma_tempo_was_running = running;
++    if (!running || m_mixer->m_dma_tempo_failed.load(std::memory_order_acquire))
++    {
++      FlushTempoOnConsumer();
++      return;
++    }
++    in_sample_rate = 32000.0;
++  }
++
+ 
+   const double base = static_cast<double>(1 << GRANULE_FRAC_BITS);
+   const u32 index_jump = std::lround(base * in_sample_rate / out_sample_rate);
++  if (this == &m_mixer->m_dma_mixer)
++  {
++    const auto hops = (u64(m_current_index & (INDEX_HALF-1)) + u64(index_jump)*num_samples) / INDEX_HALF;
++    const auto tempo_frames = hops * GRANULE_OVERLAP;
++    if (tempo_frames > m_mixer->m_dma_tempo_callback.size())
++    {
++      m_mixer->m_dma_tempo_failed.store(true, std::memory_order_release);
++      FlushTempoOnConsumer();
++      return;
++    }
++    const auto before = m_mixer->m_dma_tempo.ReadStatistics().unavailableWindows;
++    m_mixer->m_dma_tempo.Pull(m_mixer->m_dma_tempo_callback.data(), tempo_frames);
++    const auto after = m_mixer->m_dma_tempo.ReadStatistics().unavailableWindows;
++    for (auto failed = before; failed < after; ++failed)
++      GalaxyPadDiagnostics::RecordDmaUnderrun();
++    m_mixer->m_dma_tempo_callback_index = 0;
++  }
+ 
+   // These fade in / out multiplier are tuned to match a constant
+   // fade speed regardless of the input or the output sample rate.
+@@ -249,11 +263,30 @@
+   {
+     // Big-endian RL-orderered stereo samples.
+ 
+-    const s16* ptr = samples;
+-    for (std::size_t i = 0; i != num_samples; ++i)
+-    {
+-      m_dma_mixer.PushSample(Common::swap16(ptr[1]), Common::swap16(ptr[0]));
+-      ptr += 2;
++    if (!m_dma_tempo_failed.load(std::memory_order_acquire))
++    {
++      std::array<galaxypad::experiment::AudioTempo::Frame, 128> converted;
++      for (std::size_t offset = 0; offset < num_samples;)
++      {
++        const auto count = std::min(converted.size(), num_samples - offset);
++        for (std::size_t i = 0; i < count; ++i)
++          converted[i] = {float(static_cast<s16>(Common::swap16(samples[2*(offset+i)+1]))),
++                          float(static_cast<s16>(Common::swap16(samples[2*(offset+i)])))};
++        const auto accepted = m_dma_tempo.Push(converted.data(), count);
++        if (accepted != count)
++          GalaxyPadDiagnostics::RecordDmaQueueFullDrop();
++        m_dma_tempo_real_input_remainder += accepted;
++        while (m_dma_tempo_real_input_remainder >= 128)
++        {
++          m_dma_tempo_real_input_remainder -= 128;
++          const auto now = std::chrono::steady_clock::now().time_since_epoch();
++          // Existing enqueues continue to mean 128 newly accepted input frames.
++          GalaxyPadDiagnostics::RecordDmaEnqueue(
++              m_dma_tempo.BufferedInputFramesOnProducer() / 128,
++              std::chrono::duration_cast<std::chrono::nanoseconds>(now).count());
++        }
++        offset += count;
++      }
+     }
+   }
+ 
+@@ -467,7 +500,14 @@
+ 
+ void Mixer::MixerFifo::DoState(PointerWrap& p)
+ {
+-  p.Do(m_input_sample_rate_divisor);
++  u32 rate_divisor = m_input_sample_rate_divisor;
++  p.Do(rate_divisor);
++  if (p.IsReadMode())
++  {
++    SetInputSampleRateDivisor(rate_divisor);
++    if (this == &m_mixer->m_dma_mixer)
++      m_mixer->m_dma_tempo_flush_requested.store(true, std::memory_order_release);
++  }
+   p.Do(m_LVolume);
+   p.Do(m_RVolume);
+ }
+@@ -484,6 +524,15 @@
+ 
+ void Mixer::MixerFifo::SetInputSampleRateDivisor(u32 rate_divisor)
+ {
++  if (this == &m_mixer->m_dma_mixer && rate_divisor != FIXED_SAMPLE_RATE_DIVIDEND / 32000)
++  {
++    // Explicit isolated-candidate failure before changing the interpretation of
++    // any queued sample. Keep the process alive; recreate the stream to recover.
++    m_mixer->m_dma_tempo_failed.store(true, std::memory_order_release);
++    ERROR_LOG_FMT(AUDIO, "GalaxyPad tempo candidate requires 32 kHz DMA; rejecting divisor {}",
++                  rate_divisor);
++    return;
++  }
+   m_input_sample_rate_divisor = rate_divisor;
+ }
+ 
+@@ -503,7 +552,8 @@
+   return std::make_pair(m_LVolume.load(), m_RVolume.load());
+ }
+ 
+-void Mixer::MixerFifo::Enqueue()
++void Mixer::MixerFifo::ApplyGranuleWindow(Granule* output, const Granule& input,
++                                             std::size_t start)
+ {
+   // import numpy as np
+   // import scipy.signal as signal
+@@ -557,6 +607,23 @@
+       0.0002984010f, 0.0002102045f, 0.0001443499f, 0.0000961509f, 0.0000616906f, 0.0000377350f,
+       0.0000216492f, 0.0000113187f, 0.0000050749f, 0.0000016272f};
+ 
++  for (std::size_t i = 0; i < GRANULE_SIZE; ++i)
++    (*output)[i] = input[(i + start) & GRANULE_MASK] * GRANULE_WINDOW[i];
++}
++
++void Mixer::MixerFifo::FlushTempoOnConsumer()
++{
++  m_mixer->m_dma_tempo.FlushOnConsumer();
++  m_mixer->m_dma_tempo_previous = {};
++  m_front = {}; m_back = {}; m_current_index = 0;
++  m_quantization_error = {}; m_fade_volume = 1.0f;
++  m_queue_fading.store(false, std::memory_order_relaxed);
++  m_queue_looping.store(false, std::memory_order_relaxed);
++}
++
++void Mixer::MixerFifo::Enqueue()
++{
++
+   const std::size_t head = m_queue_head.load(std::memory_order_acquire);
+   const std::size_t tail = m_queue_tail.load(std::memory_order_acquire);
+ 
+@@ -574,9 +641,7 @@
+ 
+   // By preconstructing the granule window, we have the best chance of
+   // the compiler optimizing this loop using SIMD instructions.
+-  const std::size_t start_index = m_next_buffer_index;
+-  for (std::size_t i = 0; i < GRANULE_SIZE; ++i)
+-    m_queue[head][i] = m_next_buffer[(i + start_index) & GRANULE_MASK] * GRANULE_WINDOW[i];
++  ApplyGranuleWindow(&m_queue[head], m_next_buffer, m_next_buffer_index);
+ 
+   m_queue_head.store(next_head, std::memory_order_release);
+   if (this == &m_mixer->m_dma_mixer)
+@@ -592,6 +657,24 @@
+ 
+ bool Mixer::MixerFifo::Dequeue(Granule* granule)
+ {
++  if (this == &m_mixer->m_dma_mixer)
++  {
++    std::array<galaxypad::experiment::AudioTempo::Frame, GRANULE_OVERLAP> current;
++    std::copy_n(m_mixer->m_dma_tempo_callback.data() + m_mixer->m_dma_tempo_callback_index,
++                current.size(), current.data());
++    m_mixer->m_dma_tempo_callback_index += current.size();
++    Granule raw;
++    for (std::size_t i = 0; i < GRANULE_OVERLAP; ++i)
++    {
++      const auto previous = m_mixer->m_dma_tempo_previous[i];
++      raw[i] = {previous.left, previous.right};
++      raw[i + GRANULE_OVERLAP] = {current[i].left, current[i].right};
++    }
++    ApplyGranuleWindow(granule, raw, 0);
++    m_mixer->m_dma_tempo_previous = current;
++    return false;
++  }
++
+   const std::size_t granule_queue_size = m_granule_queue_size.load(std::memory_order_relaxed);
+   const std::size_t head = m_queue_head.load(std::memory_order_acquire);
+   std::size_t tail = m_queue_tail.load(std::memory_order_acquire);
+diff --git a/Source/Core/AudioCommon/Mixer.h b/Source/Core/AudioCommon/Mixer.h
+--- a/Source/Core/AudioCommon/Mixer.h
++++ b/Source/Core/AudioCommon/Mixer.h
+@@ -7,6 +7,7 @@
+ #include <atomic>
+ #include <bit>
+ 
++#include "AudioCommon/AudioTempo.h"
+ #include "AudioCommon/SurroundDecoder.h"
+ #include "AudioCommon/WaveFile.h"
+ #include "Common/CommonTypes.h"
+@@ -143,7 +144,7 @@
+     std::size_t m_next_buffer_index = 0;
+ 
+     u32 m_current_index = 0;
+-    Granule m_front, m_back;
++    Granule m_front{}, m_back{};
+ 
+     std::atomic<std::size_t> m_granule_queue_size{20};
+     std::array<Granule, MAX_GRANULE_QUEUE_SIZE> m_queue;
+@@ -155,6 +156,8 @@
+     double m_dynamic_rate = 1.0;
+     bool m_prebuffering = true;
+ 
++    static void ApplyGranuleWindow(Granule* output, const Granule& input, std::size_t start);
++    void FlushTempoOnConsumer();
+     void Enqueue();
+     bool Dequeue(Granule* granule);
+ 
+@@ -166,6 +169,16 @@
+   };
+ 
+   void RefreshConfig();
++
++  // DMA only: no second queued granule FIFO and no eleven unused tempo rings.
++  galaxypad::experiment::AudioTempo m_dma_tempo;
++  std::array<galaxypad::experiment::AudioTempo::Frame, 128> m_dma_tempo_previous{};
++  std::array<galaxypad::experiment::AudioTempo::Frame, 1536> m_dma_tempo_callback{};
++  std::size_t m_dma_tempo_callback_index = 0;
++  std::atomic<bool> m_dma_tempo_failed{false};
++  std::atomic<bool> m_dma_tempo_flush_requested{false};
++  bool m_dma_tempo_was_running = true;  // consumer only; first startup retains input
++  std::size_t m_dma_tempo_real_input_remainder = 0;  // producer only
+ 
+   MixerFifo m_dma_mixer{this, FIXED_SAMPLE_RATE_DIVIDEND / 32000};
+   MixerFifo m_streaming_mixer{this, FIXED_SAMPLE_RATE_DIVIDEND / 48000};
+diff --git a/Source/Core/AudioCommon/AudioTempo.h b/Source/Core/AudioCommon/AudioTempo.h
+new file mode 100644
+--- /dev/null
++++ b/Source/Core/AudioCommon/AudioTempo.h
+@@ -0,0 +1,271 @@
++// SPDX-License-Identifier: GPL-3.0-or-later
++// Isolated offline prototype. Not connected to GalaxyPad's mixer or controls.
++#pragma once
++
++#include <algorithm>
++#include <array>
++#include <atomic>
++#include <cmath>
++#include <cstddef>
++#include <cstdint>
++
++namespace galaxypad::experiment {
++
++// 32 kHz stereo WSOLA ahead of a fixed-rate output resampler. Push has one
++// producer, Pull one consumer. Reset requires both sides stopped, like replacing
++// a sound stream. Construction/reset and all processing allocate no memory.
++// Fixed input/synthesis capacity is an input-time bound, NOT wall latency at
++// reduced tempo. Offline source-provenance tests separately gate actual wall age.
++class AudioTempo final {
++ public:
++  struct Frame {float left = 0, right = 0;};
++  static constexpr std::size_t SampleRate = 32000;
++  static constexpr std::size_t Hop = 128;
++  static constexpr std::size_t Window = Hop * 2;
++  // +/-12 ms covers half a period down to about 42 Hz. A shorter search can
++  // track input phase drift instead of finding the next matching bass period.
++  static constexpr std::size_t Search = 384;
++  static constexpr std::size_t RingSize = 4096;
++  static constexpr std::size_t MaxInput = 3584;
++  static constexpr std::size_t ResamplerReserve = 128;
++  static constexpr std::size_t TargetInput = 2048;
++  static constexpr std::uint64_t NoSource = ~std::uint64_t{};
++  static_assert(MaxInput + Hop + ResamplerReserve == SampleRate * 120 / 1000);
++  static_assert(std::atomic<std::uint64_t>::is_always_lock_free);
++
++  struct Statistics {
++    std::uint64_t inputAccepted = 0, inputRetired = 0, inputRejected = 0;
++    std::uint64_t retainedInputDiscardedOnStall = 0, retainedInputDiscardedOnFlush = 0;
++    std::uint64_t outputFrames = 0, synthesizedHops = 0, bypassHops = 0;
++    std::uint64_t unityEntries = 0, unityExits = 0;
++    // Counts an actual unavailable analysis window on every attempted hop.
++    // No replay path increments input supply or conceals a failed request.
++    std::uint64_t unavailableWindows = 0, startupFrames = 0;
++    std::uint64_t maximumBufferedFrames = 0;
++    double supplyRatio = 1, analysisRatio = 1;
++  };
++
++  void Reset(bool paused = false) {
++    m_paused = paused;
++    m_head = 0; m_rejected = 0; m_stats = {};
++    ResetConsumerState(0);
++  }
++
++  // Consumer-only pause/resume flush, safe while the producer remains active.
++  // Never resets or rewrites producer head. Call between Pull invocations;
++  // the host emits silence while paused and flushes stale data before resuming.
++  void FlushOnConsumer() {
++    const auto head = m_head.load(std::memory_order_acquire);
++    m_stats.retainedInputDiscardedOnFlush += head-m_tail.load(std::memory_order_relaxed);
++    ResetConsumerState(head);
++  }
++
++  // Producer-only diagnostic snapshot. Head cannot advance on another thread;
++  // loading tail first also avoids subtracting a newer tail from an older head.
++  std::size_t BufferedInputFramesOnProducer() const {
++    const auto tail = m_tail.load(std::memory_order_acquire);
++    return m_head.load(std::memory_order_relaxed) - tail;
++  }
++
++  std::size_t Push(const Frame* source, std::size_t count) {
++    if (m_paused) return 0;  // Lifecycle reset is quiescent, not concurrent.
++    const auto head = m_head.load(std::memory_order_relaxed);
++    const auto tail = m_tail.load(std::memory_order_acquire);
++    const auto accepted = std::min<std::uint64_t>(count, MaxInput - (head - tail));
++    for (std::size_t i = 0; i < accepted; ++i) m_input[(head + i) & Mask] = source[i];
++    m_head.store(head + accepted, std::memory_order_release);
++    if (count != accepted) m_rejected.fetch_add(count - accepted, std::memory_order_relaxed);
++    return accepted;
++  }
++
++  void Pull(Frame* output, std::size_t count, std::uint64_t* oldestSource = nullptr) {
++    if (!count) return;
++    if (m_paused) {
++      std::fill_n(output, count, Frame{});
++      if (oldestSource) std::fill_n(oldestSource, count, NoSource);
++      return;
++    }
++    const auto head = m_head.load(std::memory_order_acquire);
++    m_epochRequested += count;
++    m_windowProduced += head-m_observedHead;
++    m_windowRequested += count;
++    if (m_windowRequested >= SampleRate / 4) {
++      if (double(m_windowProduced) / m_windowRequested >= .99)
++        m_fullSpeedWindows = std::min(2u,m_fullSpeedWindows+1);
++      else m_fullSpeedWindows = 0;
++      m_windowRequested = 0; m_windowProduced = 0;
++    }
++    // Input observations use requested output duration; no clocks or locks in
++    // the callback. A 60 ms estimator reacts to a 1.0 -> 0.67 speed step before
++    // its cumulative deficit can consume the lookahead reserve.
++    const double alpha = std::min(1., double(count) / (SampleRate * .060));
++    if (count) m_supply += alpha * (double(head - m_observedHead) / count - m_supply);
++    // Smooth the control rate separately from fast starvation/bypass detection.
++    // Otherwise clipping the troughs of packetized supply to the minimum tempo
++    // biases average consumption upward, eventually draining a healthy stream.
++    const double rateAlpha = std::min(1., double(count) / (SampleRate * .100));
++    m_rateEstimate += rateAlpha * (m_supply-m_rateEstimate);
++    m_observedHead = head;
++    const auto queued = head - m_tail.load(std::memory_order_relaxed);
++    m_stats.maximumBufferedFrames = std::max<std::uint64_t>(
++        m_stats.maximumBufferedFrames, queued + Hop - m_pendingIndex);
++    if (!m_started) {
++      // The long-term target includes retained search history; startup has no
++      // such history yet. Do not add that history allowance to initial delay.
++      if (queued < TargetInput - Search - Hop) {
++        std::fill_n(output, count, Frame{});
++        if (oldestSource) std::fill_n(oldestSource, count, NoSource);
++        m_stats.startupFrames += count; return;
++      }
++      m_started = true;
++      // Preserve initial normal-speed identity without treating an isolated
++      // packet as sustained full-speed input during a slowed stream.
++      m_unity = double(head-m_epochHead) / m_epochRequested >= .995;
++    }
++    // Queue error adjusts input advance, not sample frequency. Bounds explicitly
++    // limit this prototype to slowdown compensation, rather than unbounded replay.
++    m_ratio = std::clamp(m_rateEstimate + .50 * (double(queued) - TargetInput) / TargetInput,
++                         .60, 1.03);
++    // Stay bit-transparent at normal speed despite producer packet jitter.
++    // Enter tempo processing only when real forward reserve is being drained;
++    // return to bypass only after sustained supply has rebuilt that reserve.
++    const auto forward = head - static_cast<std::uint64_t>(m_position);
++    const auto pending = Hop-m_pendingIndex;
++    const auto neededHops = count > pending ? (count-pending+Hop-1)/Hop : 0;
++    const auto unityNeed = neededHops ? Window+(neededHops-1)*Hop : 0;
++    const bool wasUnity = m_unity;
++    if (m_unity && forward < unityNeed) m_unity = false;
++    else if (!m_unity && m_fullSpeedWindows >= 2 && m_supply >= .995 &&
++             forward >= TargetInput-Search-Hop) m_unity = true;
++    if (wasUnity != m_unity) {
++      if (m_unity) ++m_stats.unityEntries; else ++m_stats.unityExits;
++    }
++    const bool unity = m_unity;
++    if (unity) m_ratio = 1.;
++    for (std::size_t i = 0; i < count; ++i) {
++      if (m_pendingIndex == Hop) {
++        if (!Synthesize(unity)) {
++          ++m_stats.unavailableWindows;
++          // A genuine stall drains the already-held overlap once, then silence.
++          // It never rewinds input, creates fake supply, or waits indefinitely.
++          if (m_overlapValid) {
++            for (std::size_t j = 0; j < Hop; ++j) {
++              const float fade = float(Hop - 1 - j) / (Hop - 1);
++              m_pending[j] = Scale(m_overlap[j], fade);
++              m_pendingSource[j] = fade ? m_overlapSource[j] : NoSource;
++            }
++            m_overlapValid = false;
++          } else {m_pending = {}; m_pendingSource.fill(NoSource);}
++          m_pendingIndex = 0;
++          if (!m_recovering) {
++            // Old lookahead must not emerge a second late after a long stall.
++            // Discard retained input explicitly once; subsequent failed requests
++            // count normally while fresh input accumulates for recovery.
++            const auto restart = m_head.load(std::memory_order_acquire);
++            const auto oldTail = m_tail.load(std::memory_order_relaxed);
++            m_stats.retainedInputDiscardedOnStall += restart-oldTail;
++            m_position = double(restart);
++            m_tail.store(restart,std::memory_order_release);
++            m_recovering = true;
++          }
++        }
++      }
++      if (oldestSource) oldestSource[i] = m_pendingSource[m_pendingIndex];
++      output[i] = m_pending[m_pendingIndex++];
++    }
++    m_stats.outputFrames += count;
++  }
++
++  // Call on consumer or after stopping both sides. Producer-owned values atomic.
++  Statistics ReadStatistics() const {
++    auto result = m_stats;
++    result.inputAccepted = m_head.load(std::memory_order_acquire);
++    result.inputRetired = m_tail.load(std::memory_order_relaxed);
++    result.inputRejected = m_rejected.load(std::memory_order_relaxed);
++    result.supplyRatio = m_supply; result.analysisRatio = m_ratio;
++    return result;
++  }
++
++ private:
++  static constexpr std::size_t Mask = RingSize - 1;
++  void ResetConsumerState(std::uint64_t head) {
++    m_observedHead = head; m_epochHead = head; m_position = double(head); m_lastStart = head;
++    m_epochRequested = 0; m_windowRequested = 0; m_windowProduced = 0; m_fullSpeedWindows = 0;
++    m_pendingIndex = Hop; m_started = false; m_overlapValid = false; m_unity = true;
++    m_recovering = false; m_supply = 1; m_rateEstimate = 1; m_ratio = 1;
++    m_overlap = {}; m_pending = {};
++    m_tail.store(head,std::memory_order_release);
++  }
++  static Frame Scale(Frame a, float s) {return {a.left * s, a.right * s};}
++  static Frame Blend(Frame a, Frame b, float s) {
++    return {a.left + (b.left - a.left) * s, a.right + (b.right - a.right) * s};
++  }
++  const Frame& At(std::uint64_t index) const {return m_input[index & Mask];}
++
++  bool Synthesize(bool unity) {
++    const auto head = m_head.load(std::memory_order_acquire);
++    const auto tail = m_tail.load(std::memory_order_relaxed);
++    const auto nominal = static_cast<std::uint64_t>(m_position);
++    std::uint64_t start = nominal;
++    const auto low = nominal > Search ? std::max(tail, nominal - Search) : tail;
++    // A complete nominal analysis window is mandatory. Forward phase-search
++    // candidates are optional: never declare starvation merely because the
++    // producer has not supplied the entire positive search margin yet.
++    if (head < nominal + Window) return false;
++    const auto high = std::min(nominal + Search, head - Window);
++    bool direct = unity && (!m_overlapValid || nominal == m_lastStart + Hop);
++    if (m_overlapValid && !direct) {
++      // A shared offset for both channels preserves stereo phase relationships.
++      double best = -2.;
++      double overlapEnergy = 1.e-20;
++      for (const auto a : m_overlap) overlapEnergy += a.left*a.left + a.right*a.right;
++      for (auto candidate = low; candidate <= high; ++candidate) {
++        double dot = 0., energy = 1.e-20;
++        for (std::size_t i = 0; i < Hop; ++i) {
++          const auto a = m_overlap[i], b = At(candidate + i);
++          dot += a.left*b.left + a.right*b.right;
++          energy += b.left*b.left + b.right*b.right;
++        }
++        // Mild center preference breaks ties in quiet/periodic regions, keeping
++        // analysis position independent from phase-alignment corrections.
++        const double score = dot / std::sqrt(overlapEnergy * energy) -
++            .0001 * std::abs(double(candidate) - m_position) / Search;
++        if (score > best) {best = score; start = candidate;}
++      }
++    }
++    for (std::size_t i = 0; i < Hop; ++i) {
++      const Frame fresh = At(start + i);
++      m_pending[i] = m_overlapValid && !direct ?
++          Blend(m_overlap[i], fresh, float(i) / (Hop - 1)) : fresh;
++      m_pendingSource[i] = m_overlapValid && !direct && i < Hop - 1 ?
++          (i ? std::min(m_overlapSource[i], start+i) : m_overlapSource[i]) : start+i;
++      m_overlap[i] = At(start + Hop + i);
++      m_overlapSource[i] = start + Hop + i;
++    }
++    if (direct) ++m_stats.bypassHops; else ++m_stats.synthesizedHops;
++    m_overlapValid = true; m_lastStart = start; m_pendingIndex = 0;
++    m_recovering = false;
++    if (unity && !direct) m_position = double(start);
++    m_position += Hop * m_ratio;
++    const auto next = static_cast<std::uint64_t>(m_position);
++    const auto retired = next > Search ? next - Search : 0;
++    m_tail.store(std::max(tail, retired), std::memory_order_release);
++    return true;
++  }
++
++  alignas(64) std::array<Frame, RingSize> m_input{};
++  alignas(64) std::atomic<std::uint64_t> m_head{0};
++  alignas(64) std::atomic<std::uint64_t> m_tail{0};
++  std::atomic<std::uint64_t> m_rejected{0};
++  std::array<Frame, Hop> m_overlap{}, m_pending{};
++  std::array<std::uint64_t, Hop> m_overlapSource{}, m_pendingSource{};
++  std::uint64_t m_observedHead = 0, m_lastStart = 0;
++  std::uint64_t m_epochHead = 0, m_epochRequested = 0, m_windowProduced = 0, m_windowRequested = 0;
++  unsigned m_fullSpeedWindows = 0;
++  double m_position = 0, m_supply = 1, m_rateEstimate = 1, m_ratio = 1;
++  std::size_t m_pendingIndex = Hop;
++  bool m_paused = false, m_started = false, m_overlapValid = false, m_unity = true;
++  bool m_recovering = false;
++  Statistics m_stats{};
++};
++}  // namespace galaxypad::experiment
