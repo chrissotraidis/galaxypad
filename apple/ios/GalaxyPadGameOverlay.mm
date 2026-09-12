@@ -1886,6 +1886,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     if (!_pointerContact) return;
     CGRect viewport = [self gameplayViewport];
     CGPoint point = [_pointerContact locationInView:self];
+    _touchState.pointerContact = true;
     _touchState.pointerVisible = !CGRectIsEmpty(viewport) && CGRectContainsPoint(viewport, point);
     if (_touchState.pointerVisible) {
         _touchState.pointerX = (point.x - viewport.origin.x) / viewport.size.width;
@@ -1919,12 +1920,14 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     (void)event;
     if (_pointerContact && [touches containsObject:_pointerContact]) {
         [self updatePointer]; _pointerContact = nil;
+        _touchState.pointerContact = false; [self publishInput];
     }
 }
 - (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     (void)event;
     if (_pointerContact && [touches containsObject:_pointerContact]) {
-        _pointerContact = nil; _touchState.pointerVisible = false; [self publishInput];
+        _pointerContact = nil; _touchState.pointerVisible = false;
+        _touchState.pointerContact = false; [self publishInput];
     }
 }
 @end

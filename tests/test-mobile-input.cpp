@@ -42,9 +42,17 @@ int main() {
   controller.tiltY=.8f; controller.pointerVisible=true; controller.pointerX=.2f;
   mixer.set(InputSource::Controller,controller);
   touch.buttons=B; touch.moveX=.5f; touch.pointerVisible=true; touch.pointerX=.7f;
+  touch.pointerContact=true;
   mixer.set(InputSource::Touch,touch);
   auto s=mixer.consume();
   assert(s.buttons==(B|Z) && s.moveX==-.9f && s.tiltY==.8f && s.pointerX==.7f);
+  touch.pointerContact=false; mixer.set(InputSource::Touch,touch); s=mixer.consume();
+  assert(s.pointerX==.2f && s.buttons==(B|Z)); // lift returns aim, preserves holds
+  controller.pointerVisible=false; mixer.set(InputSource::Controller,controller);
+  s=mixer.consume(); assert(s.pointerVisible && s.pointerX==.7f); // retained touch aim
+  touch.buttons=A; mixer.set(InputSource::Touch,touch); s=mixer.consume();
+  assert(s.pointerX==.7f && (s.buttons&A)); // separate A still uses retained touch
+  controller.pointerVisible=true; mixer.set(InputSource::Controller,controller);
   mixer.clear(InputSource::Touch); s=mixer.consume();
   assert(s.buttons==Z && s.pointerX==.2f);
   controller.buttons=Spin; mixer.set(InputSource::Controller,controller);

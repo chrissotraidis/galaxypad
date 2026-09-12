@@ -4,6 +4,23 @@ This is an unreleased development candidate. The user reports that the new iPad
 build is stable and promising, but still slows down and does not reliably respond
 to Xbox Start/Menu. Physical gameplay acceptance remains open.
 
+## September 13 correction: depth access was disabled
+
+The packaged `Sys/GameSettings/RMG.ini` in both the Simulator and installed iPad
+candidate sets `EFBAccessEnable = False`. This performance shortcut makes skipped
+`GXPeekZ` reads return zero. Galaxy's 3D pointer target test uses depth to reject
+occluded targets, while its 2D menu pointer can still work. Initial Simulator dome
+tests show cursor overlap without Pull Star activation. A source candidate now
+forces EFB access on before runtime startup. The same Terrace dome now acquires
+the hand cursor, pulls Luigi up with held A, opens galaxy selection and enters
+Loopdeeloop Galaxy. Physical controller acceptance remains pending.
+
+The FPS/audio comparisons below used the same disabled-depth policy in both arms.
+They remain evidence of a relative threading/audio gain, but **are not acceptance
+of a correct playable configuration**. Prior zero EFB counters do not establish
+that the game needs no depth reads. The depth-enabled candidate's heavy-scene
+performance must be measured anew, and level selection must actually work.
+
 ## What improved
 
 The iOS host previously left Dolphin's CPU-thread setting at its single-thread
@@ -170,3 +187,139 @@ and shoots Star Bits. The current report remains an unresolved pointer/interacti
 blocker, not an assumed user mapping error. Reproduce the exact dome, verify hand
 cursor acquisition and held-A delivery, then confirm galaxy selection opens before
 accepting a fix. Simulator reproduction and controller-path audit are in progress.
+
+## September 13 continuation: merge and pointer ownership
+
+The September 12 checkpoint was pushed and merged in PR #1. Main commit is
+`892ff71e208b07d3d790c697b83e63678361d5f4`; it includes the controller Menu event fix,
+CPU/render overlap, experimental audio sources, exact evidence and open blockers.
+The physical iPad still has the earlier signed host listed above.
+
+A subsequent source audit found a mixed-input defect: after a touch lifted, its
+retained visible cursor could indefinitely override right-stick aim. The follow-up
+separates active contact from retained touch aim. Active contact wins, then visible
+controller aim, then retained touch aim. This preserves touch-only aim followed by
+a separate A/B press. It is not established as the cause of the user's dome report,
+whose screenshot has auto-hidden touch controls.
+
+ASan/UBSan mixer tests, controller pause regressions and the full UIKit Simulator
+fixture pass, including held A, touch lift, controller restoration and cancellation.
+A fresh Simulator host rebuilt all 13 host objects against the unchanged accepted
+v8 audio core and matching Mixer headers. The core dependency graph has no
+GalaxyPadInput.h consumers. Candidate host:
+`02c7e5e498183e3c065a9c36be4fd517b2c70307a060cca08abaa65125dcfeed`.
+Private build recipe/log: `generated/build/ios-simulator-pointer-handoff-20260913/`.
+UIKit evidence: `generated/experiments/pointer-handoff-20260913/uikit.log`.
+Product route and physical promotion remain pending.
+
+The dome's reference source first enters its Pointing state when it recognizes
+the target, then requires a fresh A trigger. This supports aim until hand cursor,
+then press and hold A/RB. It does not prove that the installed pointer path works.
+Actual dome reproduction is the next acceptance gate; no guest behavior has been
+changed to bypass target acquisition.
+
+
+## September 13: Pull Star cause reproduced and corrected
+
+The control host `02c7e5e498183e3c065a9c36be4fd517b2c70307a060cca08abaa65125dcfeed`
+showed pointer overlap without a hand cursor or pull in the Terrace dome. Its
+packaged RMG EFB access was disabled. `StarPointerPeekZ` uses GXPeekZ;
+`StarPointerController` projects that depth and `StarPointerTarget` rejects the
+3D target when the returned depth is zero. The host now explicitly enables
+`GFX_HACK_EFB_ACCESS_ENABLE` before Run. Real depth and target checks are retained.
+
+Fresh Simulator host SHA-256:
+`0baf09083c5accb108f32a77b95bc4ae64b4ab7cb2c57a25459b79b60825dd41`.
+Build command: `python3 generated/build/ios-simulator-pointer-depth-20260913/rebuild.py`.
+All 13 host objects were rebuilt; accepted v8 core and validated PGO module were
+unchanged. Recipe, commands, source hashes and signing verification are retained
+in that private build directory.
+
+Private route evidence: `generated/runtime/ipad-iteration-1/pull-star-depth-20260913/`.
+`star-hover.png` shows the hand cursor; `star-held-a.png` shows genuine galaxy
+selection. `galaxy-select-2.png` selects Loopdeeloop, `fly-confirm.png` shows its
+mission star and `mission-select.png` actually shows Luigi inside that level.
+A diagnostic input idle/disconnect dialog appeared between actions and was
+acknowledged with neutral-stick A; that dialog is not performance evidence.
+The control's grid1–5 images instead show Luma conversation/Universe Map and
+are excluded as Pull Star evidence. The user pictured a different dome; the
+shared interaction now works in the Terrace, but their physical Xbox route is
+not yet accepted.
+
+At the centered dome floor, reproduce the successful interaction with:
+
+```sh
+python3 scripts/simulator-input.py generated/ios-dev-input.json '{"pointerVisible":1,"pointerX":0.53,"pointerY":0.24,"buttons":1}' --aim-first 2 --seconds 8
+```
+
+The depth-enabled stationary Observatory logging-off 60-second window reads
+46.0, 45.5, 45.5, 45.0, 47.0, 45.4 and 49.0 frame events/s. All seven window
+images were reviewed: same central scene, no modal or disconnect dialog.
+Process snapshots span 111.8–122.7% CPU and 749472–750896 KiB RSS. Host and thermal
+snapshots are retained. Sparse HUD values do not provide a continuous frame-time
+tail, speed or audio acceptance. The earlier 56–60 result was depth-disabled;
+it must not be used as acceptance for this corrected configuration.
+
+Decision: retain the gameplay correctness fix; reject EFB-disabled operation as
+a performance solution. The next measured hypothesis is depth-readback cache
+miss/submission cost with real EFB access enabled. Existing caching already batches
+async refreshes. Measure sync misses and service time separately from FPS; only
+then compare the existing full-EFB tile setting against 64-pixel tiles if multiple
+misses justify it. Do not remove waits, fabricate depth or reinstate disabled EFB.
+Recheck audio underruns and frame tails on this correct configuration before
+claiming the earlier audio results generalize. Physical build/promotion pending.
+
+
+## September 13 physical update
+
+The corrected host is now installed in place and launch plus a fresh running-process
+inventory succeeded. Signed host SHA-256:
+`13b32e380581253ca0da7d076ce18c7eb0a54d2e136dec83a449df33089cadc8`.
+Unsigned host: `5d398ab6ebe5678a114127aa89339757d2ea2e86718c4be06ec04e4a1f8954ed`.
+Signed nested module: `a45788153abfc39b90bf332de7d623874224f6ce66f8b25ac0dcc3858d9a898d`.
+The physical module code was retained; both nested module and outer app were signed
+with the existing identity/profile, and deep strict verification passed.
+
+All 13 host objects were recompiled against the unchanged physical v8 audio core
+`7fe0ea02261edb7d89853e6d83f8a687b5783cf3f50b0b67671591d6effb4e5a`.
+Private rebuild/verification: `generated/build/ios-device-pointer-depth-20260913/`.
+Deployment recipe: `python3 generated/runtime/ipad-iteration-1/physical-pointer-depth-20260913/promote.py`
+with sequential `prepare`, `backup`, `install`, `launch` steps. This one-use recipe
+retains exact commands and private signing/device lookup; do not replay without
+fresh state and output directories.
+
+Preinstall backup and postinstall-before-launch readback contain the same 33 files,
+all byte-identical, including GameData.bin, configuration and preferences. The
+existing game image remained in the container; no uninstall, erasure or save
+replacement occurred. Receipt, manifests, signature logs and launch/process proof
+are in `generated/runtime/ipad-iteration-1/physical-pointer-depth-20260913/`.
+These hashes identify staged installed artifacts, not a readback of the installed
+executable. User confirmation of Pull Star activation, Xbox Menu repeat pause,
+touch/controller handoff and audible audio remains pending. This correctness
+repair is promoted despite its exposed performance cost; it is not an accepted
+FPS optimization or a release candidate.
+
+## Correct-depth diagnostic: reject the whole-EFB cache hypothesis
+
+A separate logging-on, visually checked Observatory window retained 5,273 paired
+EFB/dispatch reads across 40.691 seconds and 1,758 frame ordinals. Service totaled
+10,184.049 ms (25.03% of wall time, not CPU utilization or GPU execution time).
+The fixed pointer read at (520,377) accounts for 99.9575% of service: 1,757 reads,
+median 6.455 ms, p95 8.459 ms. Corner and moving reads together cost about 4.3 ms
+in the entire window. Only four frame ordinals contain multiple service spans
+above 100 microseconds. Larger cache tiles are therefore rejected as the next
+optimization for this scene: additional tile misses are negligible.
+
+The interior native counter interval is 36.900783 seconds: zero new underruns,
+backlog/full drops, short callbacks or producer gaps >=50 ms. All 1,771,520
+requested output frames were produced and nonzero. There were 166 new frame gaps
+>=33 ms, none >=100 ms. Lifetime maximum counters cannot establish a window maximum.
+This is diagnostic evidence, not FPS acceptance, listening or physical audio proof.
+
+Private evidence: `generated/runtime/ipad-iteration-1/depth-enabled-diagnostic-20260913/`.
+`analyze-depth-window.py` records complete-line CSV snapshots, their hashes and
+clock calibration: libc++ steady_clock differs from Python/native mach time;
+eight cumulative EFB anchors validate the converted bounds. Start/end screenshots
+show the same central scene without a modal. Next hypothesis: copy/setup versus
+Metal completion inside the one dominant read. Reuse the existing opt-in staging
+probe in a separate candidate, preserving real depth and the unchanged FPS control.

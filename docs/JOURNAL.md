@@ -1,14 +1,25 @@
 # GalaxyPad journal
 
-## Latest blocker: dome Pull Star / galaxy selection
+## September 13: Pull Star fixed in Simulator; performance baseline corrected
 
-User reports right-stick aim plus A fails to activate the blue Pull Star, blocking
-level entry. Original controls require hand-cursor acquisition then held A; Xbox
-RB duplicates A, while RT is B and spends Star Bits. Exact dome reproduction and
-held-input/coordinate audit are in progress. Do not infer playability from its
-60.0 HUD screenshot. See [current handoff](PERFORMANCE-2026-09-12.md#newly-reported-level-entry-blocker).
-The controller Menu event fix passes host regression and the full Simulator UIKit
-fixture, but is not yet on the physical iPad. Release remains NO-GO.
+Disabled EFB depth access caused the dome target failure. The source now enables
+real EFB reads. Simulator hand-cursor acquisition, held-A pull, galaxy selection
+and entry into Loopdeeloop Galaxy pass on host
+`0baf09083c5accb108f32a77b95bc4ae64b4ab7cb2c57a25459b79b60825dd41`.
+Physical update is installed and launch-verified; all 33 protected files remained
+byte-identical. Signed host is
+`13b32e380581253ca0da7d076ce18c7eb0a54d2e136dec83a449df33089cadc8`.
+Xbox/gameplay acceptance still needs user confirmation. Menu event and mixed
+pointer ownership fixes are included in this fresh host.
+
+Correct-depth heavy-scene logging-off samples are 45.0–49.0 frame events/s over
+60 seconds. Earlier 56–60 results below used disabled depth and are historical
+relative comparisons, not playable-config acceptance. Audio/tails need a new
+separate run. Next: measure cache misses and EFB service cost, preserve true depth,
+then test a small justified change against this corrected control. Build commands,
+exact hashes and private evidence paths are in the
+[current handoff](PERFORMANCE-2026-09-12.md#september-13-pull-star-cause-reproduced-and-corrected).
+Release remains NO-GO. Previous main checkpoint is `892ff71e208b07d3d790c697b83e63678361d5f4`.
 
 ## 2026-09-12 — installed performance/audio candidate; physical feedback and Start fix
 

@@ -22,6 +22,7 @@ struct InputState {
   float moveX=0, moveY=0, tiltX=0, tiltY=0;
   float pointerX=0.5f, pointerY=0.5f; // normalized gameplay viewport, top-left origin
   bool pointerVisible=false, connected=false;
+  bool pointerContact=false; // touch is down; visibility may persist after lift
 };
 enum class InputSource { Touch, Controller };
 
@@ -71,8 +72,10 @@ public:
       } else t.pointerVisible=false;
       }
     }
-    // An active viewport touch owns the pointer; otherwise use the controller.
-    const auto& pointer=t.pointerVisible?t:c;
+    // A finger owns aim while down. After lift, return to visible controller
+    // aim; retain touch aim when no controller pointer is available so touch
+    // users can aim first and press A/B separately.
+    const auto& pointer=t.pointerVisible && (t.pointerContact || !c.pointerVisible)?t:c;
     out.pointerVisible=pointer.pointerVisible;
     out.pointerX=pointer.pointerX; out.pointerY=pointer.pointerY;
     out.connected=t.connected||c.connected;
