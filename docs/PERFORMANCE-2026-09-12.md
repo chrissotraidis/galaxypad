@@ -298,3 +298,28 @@ executable. User confirmation of Pull Star activation, Xbox Menu repeat pause,
 touch/controller handoff and audible audio remains pending. This correctness
 repair is promoted despite its exposed performance cost; it is not an accepted
 FPS optimization or a release candidate.
+
+## Correct-depth diagnostic: reject the whole-EFB cache hypothesis
+
+A separate logging-on, visually checked Observatory window retained 5,273 paired
+EFB/dispatch reads across 40.691 seconds and 1,758 frame ordinals. Service totaled
+10,184.049 ms (25.03% of wall time, not CPU utilization or GPU execution time).
+The fixed pointer read at (520,377) accounts for 99.9575% of service: 1,757 reads,
+median 6.455 ms, p95 8.459 ms. Corner and moving reads together cost about 4.3 ms
+in the entire window. Only four frame ordinals contain multiple service spans
+above 100 microseconds. Larger cache tiles are therefore rejected as the next
+optimization for this scene: additional tile misses are negligible.
+
+The interior native counter interval is 36.900783 seconds: zero new underruns,
+backlog/full drops, short callbacks or producer gaps >=50 ms. All 1,771,520
+requested output frames were produced and nonzero. There were 166 new frame gaps
+>=33 ms, none >=100 ms. Lifetime maximum counters cannot establish a window maximum.
+This is diagnostic evidence, not FPS acceptance, listening or physical audio proof.
+
+Private evidence: `generated/runtime/ipad-iteration-1/depth-enabled-diagnostic-20260913/`.
+`analyze-depth-window.py` records complete-line CSV snapshots, their hashes and
+clock calibration: libc++ steady_clock differs from Python/native mach time;
+eight cumulative EFB anchors validate the converted bounds. Start/end screenshots
+show the same central scene without a modal. Next hypothesis: copy/setup versus
+Metal completion inside the one dominant read. Reuse the existing opt-in staging
+probe in a separate candidate, preserving real depth and the unchanged FPS control.
