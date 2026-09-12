@@ -21,6 +21,14 @@ exact hashes and private evidence paths are in the
 [current handoff](PERFORMANCE-2026-09-12.md#september-13-pull-star-cause-reproduced-and-corrected).
 Release remains NO-GO. Previous main checkpoint is `892ff71e208b07d3d790c697b83e63678361d5f4`.
 
+Latest merge: PR #2, `2941a9b5d40eb056e2d0e6df2f5c95dfd8578d4b`.
+The follow-up Metal probe found median 5.697 ms host wait versus 0.05777 ms
+command-buffer GPU execution; copy and handler bodies are small. Next investigate
+submission/completion latency, preserving real depth. Whole-EFB caching is rejected
+for this scene. Correct-depth audio diagnostic had zero new underruns over its
+36.901-second interior interval. See the handoff for scope and exact evidence.
+
+
 ## 2026-09-12 — installed performance/audio candidate; physical feedback and Start fix
 
 Current summary: [performance and hardware handoff](PERFORMANCE-2026-09-12.md).

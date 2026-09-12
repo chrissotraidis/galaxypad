@@ -323,3 +323,40 @@ eight cumulative EFB anchors validate the converted bounds. Start/end screenshot
 show the same central scene without a modal. Next hypothesis: copy/setup versus
 Metal completion inside the one dominant read. Reuse the existing opt-in staging
 probe in a separate candidate, preserving real depth and the unchanged FPS control.
+
+## Correct-depth Metal split and merge checkpoint
+
+PR #2 merged as `2941a9b5d40eb056e2d0e6df2f5c95dfd8578d4b`; it includes the
+source fixes, physical deployment record and first correct-depth diagnostic.
+
+A separate private diagnostic host
+`89adc4273677670a326b6328196038db6a5bbf4b138400edbe6247f07789acf7`
+reuses all 13 accepted host objects and changes only the two existing opt-in Metal
+probe objects in a copied core archive. The other 1,408 members remain identical.
+Private build: `generated/build/ios-simulator-depth-metal-diagnostic-20260913/`.
+The probe was armed after visual confirmation of the central Observatory scene;
+its 4,096 records span 4.319 seconds. All 190 waits match a unique same-buffer
+completion handler with valid, ordered GPU clock values.
+
+Median wait is 5.697 ms, while the associated command buffer GPU execution median
+is 0.05777 ms. Wait-start to GPU-start median is 3.574 ms; GPU-end to handler-entry
+median is 1.516 ms; handler-end to wait-end median is 0.0135 ms. These medians must
+not be added or subtracted as though they were one sample. Copy setup totaled
+10.848 ms across 1,707 calls; handler bodies totaled 0.714 ms across 2,009 calls.
+The measured cost lies primarily in queue/scheduling/completion latency, not the
+copy or handler body. This does not identify a driver defect or prove hardware
+has the same timing. Logging/Simulator overhead remains a confounder.
+
+Evidence and commands: `generated/runtime/ipad-iteration-1/depth-metal-diagnostic-20260913/`;
+`python3 scripts/summarize-metal-staging.py <evidence>/staging.csv` produces
+`summary.json`. `queue-timing.json` retains the additional clock calculation.
+Capture uses `GALAXYPAD_METAL_STAGING_TRACE` plus a marker path in
+`GALAXYPAD_METAL_STAGING_ARM_FILE`; write `1` after confirming the scene.
+This diagnostic was not installed on hardware and is not FPS acceptance.
+
+Next measured hypothesis: command-buffer submission/completion latency under
+correct-depth CPU/render overlap. Compare current queue behavior before changing
+submission policy; earlier R403/R405 experiments must be reviewed to avoid repeating
+rejected changes. Do not spin-wait, skip synchronization or fake depth. Restore
+the unchanged logging-off host after diagnostics; restoration evidence is in
+`generated/runtime/ipad-iteration-1/depth-restored-after-diagnostics-20260913/`.
