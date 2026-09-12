@@ -26,6 +26,13 @@ struct GalaxyPadAudioCounters {
   uint64_t underruns;
   uint64_t backlogDrops;
   uint64_t fullDrops;
+  uint64_t queueMin;
+  uint64_t queueMax;
+  uint64_t producerMaxGapNs;
+  uint64_t gapsGe50ms;
+  uint64_t gapsGe100ms;
+  uint64_t firstUnderrunEnqueue;
+  uint64_t lastUnderrunEnqueue;
   galaxypad::audio::OutputSnapshot output;
 };
 // Main-thread API. busy stays true until runtime destruction completes; callers

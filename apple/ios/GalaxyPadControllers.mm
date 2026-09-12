@@ -13,10 +13,11 @@
   GalaxyPadControllerSlots _slots;
   galaxypad::ControllerInput _input;
   GCController *_owner;
+  uint64_t _ownerGeneration;
   NSTimer *_timer;
   CFTimeInterval _lastTick, _lastReconcile;
   uint32_t _lastRawButtons;
-  BOOL _controllerNeutral;
+  BOOL _menuPressed, _optionsPressed;
 }
 - (void)start {
   NSAssert(NSThread.isMainThread, @"Controller API requires main thread");
@@ -43,13 +44,16 @@
 - (void)dealloc {
   [_timer invalidate];
   _owner.extendedGamepad.valueChangedHandler=nil;
+  _owner.extendedGamepad.buttonMenu.pressedChangedHandler=nil;
+  _owner.extendedGamepad.buttonOptions.pressedChangedHandler=nil;
   _owner.playerIndex=GCControllerPlayerIndexUnset;
   [NSNotificationCenter.defaultCenter removeObserver:self];
 }
 - (void)reset {
   _input.reset();
   _lastRawButtons = 0;
-  _controllerNeutral = NO;
+  // Keep event-time pause-button state across UI resets. Re-reading the live
+  // snapshot here can erase a queued press and turn one hold into two toggles.
 }
 - (void)reloadMapping { _input.setMapping(GalaxyPadControllerMappingStore.mapping); }
 - (void)connectionChanged:(NSNotification *)notification {
@@ -70,9 +74,16 @@
     if ((uintptr_t)(__bridge void *)controller==_slots.InstanceAt(0)) { next=controller; break; }
   if (next==_owner) return;
   _owner.extendedGamepad.valueChangedHandler=nil;
+  _owner.extendedGamepad.buttonMenu.pressedChangedHandler=nil;
+  _owner.extendedGamepad.buttonOptions.pressedChangedHandler=nil;
   _owner.playerIndex=GCControllerPlayerIndexUnset;
   _owner=next;
-  GalaxyPadLog(@"controller ownership: connected=%d extended_controllers=%lu right_stick=pointer speed=1.2x right_stick_click=recenter RB=A RT=B LB=tilt Menu=hold_plus",
+  ++_ownerGeneration;
+  // A newly owned controller may already be held: require its release first.
+  // A neutral initial snapshot arms the very first press without a prior event.
+  _menuPressed=_owner.extendedGamepad.buttonMenu.isPressed;
+  _optionsPressed=_owner.extendedGamepad.buttonOptions.isPressed;
+  GalaxyPadLog(@"controller ownership: connected=%d extended_controllers=%lu right_stick=pointer speed=1.2x right_stick_click=recenter RB=A RT=B LB=tilt Menu=toggle_pause",
     _owner != nil, (unsigned long)instances.size());
   [self reset];
   if (self.ownershipChanged) self.ownershipChanged();
@@ -82,11 +93,38 @@
   _owner.handlerQueue=dispatch_get_main_queue();
   __weak GalaxyPadControllers *weakSelf=self;
   __weak GCController *weakOwner=_owner;
+  const uint64_t ownerGeneration=_ownerGeneration;
+  GCControllerButtonValueChangedHandler pauseChanged=^(GCControllerButtonInput *button, float value, BOOL pressed) {
+    (void)value;
+    GalaxyPadControllers *host=weakSelf;
+    GCController *controller=weakOwner;
+    if (!host || !controller || host->_owner!=controller ||
+        host->_ownerGeneration!=ownerGeneration) return;
+    if ([GCController.controllers indexOfObjectIdenticalTo:controller]==NSNotFound) {
+      [host reconcile]; return;
+    }
+    // Use the event's pressed argument. The live isPressed snapshot may already
+    // be released when a quick tap's queued main-thread callback executes.
+    GCExtendedGamepad *pad=controller.extendedGamepad;
+    const BOOL wasHeld=host->_menuPressed || host->_optionsPressed;
+    if (button==pad.buttonMenu) host->_menuPressed=pressed;
+    else if (button==pad.buttonOptions) host->_optionsPressed=pressed;
+    else return;
+    if (!pressed || wasHeld || !host.pauseRequested ||
+        !host.pauseToggleAllowed || !host.pauseToggleAllowed()) return;
+    GalaxyPadLog(@"controller native pause requested source=%@",
+      button==pad.buttonMenu ? @"Menu" : @"Options");
+    [host reset];
+    host.pauseRequested();
+  };
+  _owner.extendedGamepad.buttonMenu.pressedChangedHandler=pauseChanged;
+  _owner.extendedGamepad.buttonOptions.pressedChangedHandler=pauseChanged;
   _owner.extendedGamepad.valueChangedHandler=^(GCExtendedGamepad *pad, GCControllerElement *element) {
     (void)pad; (void)element;
     GalaxyPadControllers *host=weakSelf;
     GCController *controller=weakOwner;
-    if (!host || !controller || host->_owner!=controller) return;
+    if (!host || !controller || host->_owner!=controller ||
+        host->_ownerGeneration!=ownerGeneration) return;
     // Never let a queued event from an unlisted/disconnected controller revive input.
     if ([GCController.controllers indexOfObjectIdenticalTo:controller]==NSNotFound) {
       [host reconcile]; return;
@@ -99,7 +137,11 @@
   if ([GCController.controllers indexOfObjectIdenticalTo:_owner]==NSNotFound) {
     [self reconcile]; return;
   }
-  if (!self.inputAllowed || !self.inputAllowed()) { [self reset]; return; }
+  const BOOL gameplayAllowed = self.inputAllowed && self.inputAllowed();
+  const BOOL pauseAllowed = self.pauseToggleAllowed && self.pauseToggleAllowed();
+  // Native pause blocks gameplay, but its Menu/Options release and next press
+  // must still be observed so the same button can resume.
+  if (!gameplayAllowed && !pauseAllowed) { [self reset]; return; }
   GCExtendedGamepad *pad=_owner.extendedGamepad;
   if (!pad) { [self reconcile]; return; }
   const uint32_t rawButtons =
@@ -124,24 +166,20 @@
   if (rawButtons != _lastRawButtons) {
     GalaxyPadLog(@"controller raw_buttons=%u menu=%d options=%d neutral=%d ready=%d",
       rawButtons, (rawButtons & 256u) != 0, (rawButtons & 512u) != 0,
-      neutral, _controllerNeutral);
+      neutral, !(_menuPressed || _optionsPressed));
   }
-  const BOOL menuRising = (rawButtons & 256u) && !(_lastRawButtons & 256u);
-  const BOOL optionsRising = (rawButtons & 512u) && !(_lastRawButtons & 512u);
-  if (neutral) _controllerNeutral = YES;
+  // Menu/Options pause edges belong exclusively to pressedChangedHandler.
+  // Snapshot polling must not re-arm a held event or deliver the same edge twice.
   _lastRawButtons = rawButtons;
-  if (_controllerNeutral && (menuRising || optionsRising) && self.pauseRequested &&
-      (!self.inputAllowed || self.inputAllowed())) {
-    GalaxyPadLog(@"controller native pause requested source=%@",
-      menuRising ? @"Menu" : @"Options");
-    self.pauseRequested();
-  }
+  if (!gameplayAllowed) { _input.reset(); return; }
   galaxypad::ControllerSnapshot snapshot;
   snapshot.a=pad.buttonA.isPressed; snapshot.b=pad.buttonB.isPressed;
   snapshot.x=pad.buttonX.isPressed; snapshot.y=pad.buttonY.isPressed;
   snapshot.leftShoulder=pad.leftShoulder.isPressed; snapshot.rightShoulder=pad.rightShoulder.isPressed;
   snapshot.leftTrigger=pad.leftTrigger.isPressed; snapshot.rightTrigger=pad.rightTrigger.isPressed;
-  snapshot.menu=pad.buttonMenu.isPressed; snapshot.options=pad.buttonOptions.isPressed;
+  // These two buttons are reserved for native pause on iOS. A general pad
+  // callback may run before the button callback; never leak guest Plus/Minus.
+  snapshot.menu=false; snapshot.options=false;
   snapshot.recenter=pad.rightThumbstickButton.isPressed;
   snapshot.up=pad.dpad.up.isPressed; snapshot.down=pad.dpad.down.isPressed;
   snapshot.left=pad.dpad.left.isPressed; snapshot.right=pad.dpad.right.isPressed;

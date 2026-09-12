@@ -7,6 +7,7 @@
 @property(nonatomic, copy) void (^pauseRequested)(void);
 @property(nonatomic, copy) void (^ownershipChanged)(void);
 @property(nonatomic, copy) BOOL (^inputAllowed)(void);
+@property(nonatomic, copy) BOOL (^pauseToggleAllowed)(void);
 - (void)start;
 - (void)reset;
 - (void)reconcile;

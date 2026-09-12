@@ -146,8 +146,16 @@ static double GalaxyPadResidentMiB(void) {
   };
   _controllers.pauseRequested = ^{
     GalaxyPadGameViewController *view = weakSelf;
-    if (view && view->_host.busy && !view->_menuPresented && !view->_host.paused)
-      [view->_overlay presentNativePause];
+    if (view) [view->_overlay toggleNativePause];
+  };
+  _controllers.pauseToggleAllowed = ^BOOL {
+    GalaxyPadGameViewController *view = weakSelf;
+#if TARGET_OS_SIMULATOR
+    if (view && view->_simulatorInputPath.length) return NO;
+#endif
+    return view && view->_applicationActive && view->_host.busy &&
+      !view.presentedViewController && !view->_import && !view->_removingGameData &&
+      (!view->_menuPresented || view->_overlay.nativePauseVisible);
   };
   _controllers.inputAllowed = ^BOOL {
     GalaxyPadGameViewController *view = weakSelf;
@@ -218,8 +226,13 @@ static double GalaxyPadResidentMiB(void) {
       view->_fpsLabel.accessibilityLabel = [NSString stringWithFormat:@"%.1f frame events per second", fps];
       view->_fpsTime = now; view->_fpsFrames = frames;
       if (view->_logFrameRateWindows) {
+        // A three-dot UIMenu blocks gameplay input but deliberately leaves
+        // the runtime running. Keep that interval in the diagnostic window so
+        // a menu-open freeze is observable instead of being filtered out.
+        // Explicit pause/modal UI is excluded by the host pause request (and
+        // by the paused-state check), preserving active-gameplay semantics.
         const BOOL eligible = view->_host.busy && !view->_host.paused &&
-          view->_applicationActive && !view->_menuPresented && frames > 0;
+          view->_applicationActive && !view->_runtimePauseRequested && frames > 0;
         if (!eligible || frames < view->_frameWindowFrames) {
           view->_frameWindowStart = 0;
         } else if (view->_frameWindowStart == 0) {
@@ -237,10 +250,11 @@ static double GalaxyPadResidentMiB(void) {
             const auto cadence = [view->_host cadenceEstimate];
             // 'presented' is retained for old parsers; this counter originates
             // at after_frame_event, not a display-completion callback.
-            GalaxyPadLog(@"[GalaxyPad frame window] counter_source=after_frame_event mono=%.6f seconds=%.6f presented=%llu fps=%.6f min_observed_fps=%.3f max_observation_seconds=%.3f vi_rate_estimate=%.3f emulation_speed_estimate=%.6f",
+            GalaxyPadLog(@"[GalaxyPad frame window] counter_source=after_frame_event mono=%.6f seconds=%.6f presented=%llu fps=%.6f min_observed_fps=%.3f max_observation_seconds=%.3f vi_rate_estimate=%.3f emulation_speed_estimate=%.6f native_menu=%d ui_blocked=%d pause_requested=%d",
                   now, seconds, (unsigned long long)count, count / seconds,
                   view->_frameWindowMinFPS, view->_frameWindowMaxObservationSeconds,
-                  cadence.viRate, cadence.speed);
+                  cadence.viRate, cadence.speed, view->_overlay.nativeMenuVisible,
+                  view->_menuPresented, view->_runtimePauseRequested);
             const double cpu = GalaxyPadProcessCPUSeconds();
             const auto runtime = [view->_host runtimeCounters];
             GalaxyPadLog(@"[GalaxyPad performance] mono=%.6f seconds=%.3f process_cpu_percent=%.2f resident_mib=%.1f thermal_state=%ld low_power=%d active_render_scale=%ld output_max_hz=%ld cpu_percent_scope=all_threads_one_core_100",
@@ -265,11 +279,19 @@ static double GalaxyPadResidentMiB(void) {
             const auto audio = [view->_host audioCounters];
             const double audioAfter = CACurrentMediaTime();
             if (audio.valid) {
-              GalaxyPadLog(@"[GalaxyPad audio counters] mono_before=%.6f mono_after=%.6f dma_enqueues=%llu dma_underruns=%llu dma_backlog_drops=%llu dma_full_drops=%llu output_counters_available=%d output_callbacks=%llu output_requested_frames=%llu output_frames=%llu output_nonzero_frames=%llu output_short_callbacks=%llu output_peak=%u",
+              GalaxyPadLog(@"[GalaxyPad audio counters] mono_before=%.6f mono_after=%.6f dma_enqueues=%llu dma_underruns=%llu dma_backlog_drops=%llu dma_full_drops=%llu dma_queue_min=%llu dma_queue_max=%llu dma_producer_max_gap_ms=%.3f dma_gaps_ge_50ms=%llu dma_gaps_ge_100ms=%llu dma_first_underrun_enqueue=%llu dma_last_underrun_enqueue=%llu output_counters_available=%d output_callbacks=%llu output_requested_frames=%llu output_frames=%llu output_nonzero_frames=%llu output_short_callbacks=%llu output_peak=%u",
                     audioBefore, audioAfter, (unsigned long long)audio.enqueues,
                     (unsigned long long)audio.underruns,
                     (unsigned long long)audio.backlogDrops,
-                    (unsigned long long)audio.fullDrops, audio.output.available,
+                    (unsigned long long)audio.fullDrops,
+                    (unsigned long long)audio.queueMin,
+                    (unsigned long long)audio.queueMax,
+                    audio.producerMaxGapNs / 1e6,
+                    (unsigned long long)audio.gapsGe50ms,
+                    (unsigned long long)audio.gapsGe100ms,
+                    (unsigned long long)audio.firstUnderrunEnqueue,
+                    (unsigned long long)audio.lastUnderrunEnqueue,
+                    audio.output.available,
                     (unsigned long long)audio.output.callbacks,
                     (unsigned long long)audio.output.requestedFrames,
                     (unsigned long long)audio.output.frames,
@@ -665,7 +687,9 @@ static double GalaxyPadResidentMiB(void) {
      "renderScaleSelectedForNextLaunch=%ld activeRenderScale=%ld performanceLogging=%d; "
      "platform=%@ os=%@ thermalState=%ld lowPowerMode=%d; "
      "audioCountersAvailable=%d dmaEnqueues=%llu dmaUnderruns=%llu "
-     "dmaBacklogDrops=%llu dmaFullDrops=%llu; "
+     "dmaBacklogDrops=%llu dmaFullDrops=%llu dmaQueueMin=%llu dmaQueueMax=%llu "
+     "dmaProducerMaxGapMs=%.3f dmaGapsGe50ms=%llu dmaGapsGe100ms=%llu "
+     "dmaFirstUnderrunEnqueue=%llu dmaLastUnderrunEnqueue=%llu; "
      "counterScope=cumulative_current_session_not_timed_window; "
      "frameEvents are not display completion; thermalState 0=nominal_or_unsupported,1=fair,2=serious,3=critical; "
      "pointerMode=classic; loaded module identity, signature and dispatch diagnostics not yet integrated",
@@ -675,7 +699,12 @@ static double GalaxyPadResidentMiB(void) {
     TARGET_OS_SIMULATOR ? @"simulator" : @"device", UIDevice.currentDevice.systemVersion,
     (long)NSProcessInfo.processInfo.thermalState, NSProcessInfo.processInfo.lowPowerModeEnabled,
     audio.valid, (unsigned long long)audio.enqueues, (unsigned long long)audio.underruns,
-    (unsigned long long)audio.backlogDrops, (unsigned long long)audio.fullDrops];
+    (unsigned long long)audio.backlogDrops, (unsigned long long)audio.fullDrops,
+    (unsigned long long)audio.queueMin, (unsigned long long)audio.queueMax,
+    audio.producerMaxGapNs / 1e6, (unsigned long long)audio.gapsGe50ms,
+    (unsigned long long)audio.gapsGe100ms,
+    (unsigned long long)audio.firstUnderrunEnqueue,
+    (unsigned long long)audio.lastUnderrunEnqueue];
 }
 - (void)presentDiagnosticReportURL:(NSURL *)url {
   if (url) {
@@ -757,7 +786,7 @@ static double GalaxyPadResidentMiB(void) {
   NSArray *games=@[@"A", @"B", @"Spin", @"C", @"Z"];
   NSArray *physical=@[@"A", @"B", @"X", @"Y", @"Left Trigger"];
   UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"Controller Button Mapping"
-    message:@"Assignments swap to keep every action reachable. Left stick moves; right stick aims; click right stick to recenter. Hold Left Shoulder for right-stick tilt. Right Shoulder is also A; Right Trigger is also B, so you can aim while using either action. Menu or Options pauses the app immediately; the touch Start + remains Galaxy’s held pause input. D-pad controls the camera. Connect a controller to test."
+    message:@"Assignments swap to keep every action reachable. Left stick moves; right stick aims; click right stick to recenter. Hold Left Shoulder for right-stick tilt. Right Shoulder is also A; Right Trigger is also B, so you can aim while using either action. Menu or Options toggles app pause: press again to resume. Touch Start + opens Galaxy’s menu; point at Back and press A to return to gameplay. D-pad controls the camera. Connect a controller to test."
     preferredStyle:UIAlertControllerStyleAlert];
   __weak GalaxyPadGameViewController *weakSelf=self;
   for (unsigned i=0;i<5;++i) {

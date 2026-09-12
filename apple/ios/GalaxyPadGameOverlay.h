@@ -30,6 +30,8 @@
 - (void)setTouchControlsHidden:(BOOL)hidden animated:(BOOL)animated;
 - (void)refreshControllerVisibility;
 - (void)presentNativePause;
+@property(nonatomic, readonly) BOOL nativePauseVisible;
+- (void)toggleNativePause;
 - (void)applySettings;
 - (void)reset;
 @end

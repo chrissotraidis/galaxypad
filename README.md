@@ -4,7 +4,9 @@
 
 A native Apple app experience for Super Mario Galaxy, built around an exact-game
 ahead-of-time recompilation pipeline, Metal rendering, and SunPad-derived touch
-controls and native menus.
+controls and native menus. Game code is compiled to native ARM64 ahead of time;
+a Dolphin-derived runtime still supplies Wii hardware emulation and interpreter
+fallbacks. iOS does not use a runtime PowerPC JIT.
 
 **Private development build · not release-ready · no game data included**
 
@@ -18,12 +20,14 @@ touch ergonomics, lifecycle reliability, and physical-device testing remain open
 | Platform | Current boundary |
 | --- | --- |
 | Apple silicon Mac | Packaged app and gameplay; one measured stationary plaza window reached 59.95 VI/s. Sustained performance across the game is not accepted. |
-| iPad Simulator | Native UIKit/Metal app and gameplay; comparable plaza runs measured 30.69 and 49.38 VI/s. Slowdowns remain unresolved. |
+| iPad Simulator | Matched late-game route improved from 41.8–46.4 to roughly 56–60 frame events/s with CPU/render overlap. Separate audio diagnostics improved from 157 underruns to zero. Longer and broader acceptance remains open. |
 | iPhone Simulator | A persisted new file loads into the opening plaza and diagnostic movement works. Recent gameplay windows were about 31–46 frame events/s under concurrent host load; touch and sustained performance are not accepted. |
-| Physical iPhone / iPad | Device build/staging lane exists; installation, sustained gameplay, touch, audio and thermal acceptance are unproven. |
+| Physical iPad | Latest private threading/audio candidate installed in place. User reports stable gameplay, remaining slowdowns and unreliable Xbox Start/Menu. A follow-up button-event fix awaits physical retest. |
+| Physical iPhone | Current candidate has no physical performance acceptance. |
 
-VI/s measures guest video events, **not guaranteed displayed FPS**. The difference
-between Simulator runs is not an established optimization gain. Simulator results
+HUD readings measure frame events, **not guaranteed displayed FPS**. Logging-off
+performance and separate audio/tail diagnostics are reported in the
+[September 12 performance handoff](docs/PERFORMANCE-2026-09-12.md). Simulator results
 cannot establish how the app performs on physical hardware.
 
 See [current status](docs/STATUS.md), [development journal](docs/JOURNAL.md),
@@ -104,8 +108,8 @@ Double-click **Install on iPad.command** for native Mac setup dialogs:
 
 Follow [Install on iPad](docs/INSTALL_IPAD.md). An Apple signing identity and
 matching provisioning profile are still required; the assistant does not create
-them or ask for your Apple password. The candidate is experimental and has not
-yet run on physical hardware. No game image or save is included or uploaded.
+them or ask for your Apple password. The candidate is experimental; installation and early iPad gameplay do not
+establish release readiness. No game image or save is included or uploaded.
 
 ## First launch and game data
 

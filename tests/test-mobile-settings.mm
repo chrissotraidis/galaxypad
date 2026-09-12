@@ -34,7 +34,7 @@ int main() {
     [defaults setVolatileDomain:limits forName:NSArgumentDomain];
     settings = [GalaxyPadSettings new];
     assert(settings.renderScale == 4);
-    assert(settings.aspectRatioMode == GalaxyPadAspectRatioWidescreen);
+    assert(settings.aspectRatioMode == GalaxyPadAspectRatioOriginal);
     assert(settings.controlOpacity == 0.25);
     assert(settings.controlSizeScale == 1.35);
     assert([settings sizeScaleForControl:@"A"] == 1.75);

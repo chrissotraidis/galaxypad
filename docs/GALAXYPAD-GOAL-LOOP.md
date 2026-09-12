@@ -1,7 +1,410 @@
 # GalaxyPad goal-based loop
 
+## Latest blocker: dome Pull Star / galaxy selection
+
+User reports right-stick aim plus A fails to activate the blue Pull Star, blocking
+level entry. Original controls require hand-cursor acquisition then held A; Xbox
+RB duplicates A, while RT is B and spends Star Bits. Exact dome reproduction and
+held-input/coordinate audit are in progress. Do not infer playability from its
+60.0 HUD screenshot. See [current handoff](PERFORMANCE-2026-09-12.md#newly-reported-level-entry-blocker).
+The controller Menu event fix passes host regression and the full Simulator UIKit
+fixture, but is not yet on the physical iPad. Release remains NO-GO.
+
+## 2026-09-12 — installed performance/audio candidate; physical feedback and Start fix
+
+Current summary: [performance and hardware handoff](PERFORMANCE-2026-09-12.md).
+Logging-off matched-route gain is roughly 44→58 frame events/s. Separate diagnostic
+control recorded 157 underruns; combined candidate recorded zero. Actual mixer PCM
+has no sustained silence in its 60–120 second gameplay interval; listening and
+physical audio acceptance remain open. These measurements must not be conflated.
+
+Installed signed physical host:
+`85d84c887cae4b3736b5304cbf757a0543d74e99b4e418e3618184c73b00d0ad`.
+Signed nested module:
+`aa7d6b6f38d0fae938dcc83509672e6d5ef822567eb0d5d005e5547b3c1e55d2`.
+Evidence: `generated/runtime/ipad-iteration-1/physical-dual-core-audio-tempo-20260912/`.
+In-place install and process inventory establish launch; the game save readback is
+identical. Six configuration/history/preference files changed while the user
+started playing; do not claim complete snapshot equality or restore older data.
+Selected render scale became 2×; active physical resolution remains unverified.
+
+User reports stable, promising gameplay with remaining slowdowns and intermittent
+Xbox Start/Menu. New source fix uses event-time button state; exact old source
+fails the queued quick-tap regression and current source passes. Evidence:
+`generated/experiments/controller-menu-event-20260912/result.json`.
+The installed hash above predates this follow-up. Next: validate the new controller
+candidate, merge the documented work, then rebuild/retest before another hardware
+promotion. Confirm physical Xbox behavior directly with the user. Compare known
+active 1× and 2× physical settings before attributing slowdowns or extrapolating
+to iPhone. Four-minute Simulator capture still needs review and a matched control.
+
+The app runs native AOT ARM64 game code with a Dolphin-derived Wii runtime and
+interpreter fallbacks; it is not emulator-free. No release acceptance is claimed.
+
+## 2026-09-12 — repeated dual-core gain and real-game tempo continuity
+
+Dual-core repeat logging-off HUD over120s:54.5,55.5,58,60,58,57,59,59,59,57.2,
+60,59.1,58.2. Fresh unchangedcontrol60s:43,41.8,44,45,41.8,46.4,44.5. Two
+candidate windows support the threading bottleneck fix; continuous frame tails
+are not established by sparse HUD. Summary: generated/runtime/ipad-iteration-1/
+dual-core-comparison-20260912/summary.json. Private candidate retained for gates.
+Separate dual-core original-audio diagnostic:21new underruns/57.999946s,
+97.1365%nonzero output,13946real enqueues. This improves supply but still fails
+no-recurring-underrun target. Three-dot runtime/inputblock and nativepause/resume
+checked through Simulator UI with counters; initial idle-disconnect dialog phase
+explicitly excluded. Evidence: dual-core-lifecycle-20260912/review.json.
+
+Full isolated tempo-v8 core rebuild passes1550compiler-policy entries,18core
+Mixer layout consumers plushostconsumer,platform/signatureand45controlhashes.
+Host bb8b49859d1573122ce5bcb8c001b7bc91f7827c47a838cb66c2c802a8aabba9.
+Single-core logging-off audio candidate HUD41,42,44,44.6,43.6,45.5,45.5; no
+performance win claimed. Actual separatediagnostic58.099106s:0newunderruns,
+0newfull/backlogdrops,0shortcallbacks,2788864/2788864nonzero outputframes,
+10580real128-frame enqueues (~23309inputframes/s). Evidence:
+generated/runtime/ipad-iteration-1/audio-tempo-v8-diagnostic-20260912/candidate/audio-summary.json.
+Cumulative26underruns precededthiswindow;321full-drop events also predatedit,
+including200duringnavigation. Newdropunit is rejected8-frameinputcalls whereas
+oldFIFOeventsrepresented128-framegranules; do notcomparethosecounts directly.
+No resets/suppression. Soundquality/startup/pause andphysicalacceptance remain.
+
+Combined private dual-core+tempo-v8 host built/signed with matchedMixerheaders:
+ef9898603ebf4eddf7fb01f6406f862aa20e03ad808025cf48078b50bcc69953,
+generated/build/ios-simulator-dual-core-audio-tempo-20260912/GalaxyPad.app.
+Nowunderlogging-off120sroute, followedbyactualaudioandlifecyclegates. OldPGOmodule
+90e24dfb4e96597686b8fccf09bb55efdcbd7d059dd3ff710a9f32fab26f353f remainsunchanged.
+No physicalinstall. Physicalrecipeaudit foundseparateIOSsignedcontrolmodule919b…;
+Simulator90e… isnotdevice-compatible. DevicefullaudioABI rebuildpreparedonly.
+
+
+## 2026-09-12 — dual-core gain under repeat; audio tempo v8 source gate passed
+
+The isolated session-only MAIN_CPU_THREAD=true host produced logging-off HUD
+56.4,55.5,58.0,58.0,58.0,59.1,59.1 FPS over60s. All8scene/window images were
+directly verified as active121-star Observatory gameplay. Live executable SHA
+ad0add304f633bacae5bb97565038417208c268a31cec8e28efa19d025a17d86 and separate CPU
+and Video threads confirmed after acceptance window. Original module remains
+90e24dfb4e96597686b8fccf09bb55efdcbd7d059dd3ff710a9f32fab26f353f. This is a
+promising provisional gain, not sustained60FPS or physical acceptance. Fresh
+control and120srepeat are being run without build contention. Sparse HUD does
+not establish frame tails, speed or audio. Evidence and exact launch manifests:
+generated/runtime/ipad-iteration-1/dual-core-comparison-20260912/.
+
+Audio tempo copied integration v8 passes30 exact48k Mixer cases plus sanitizers,
+including slow67-100%production, bursts, steps and actual pause/restore paths.
+Measured oldest sample age max118.625ms; unavailable windows zero in supported
+producing cases,234 during real1sstarvation. Real enqueue counters remain real.
+These are offline tests, not realgame acceptance. Full core+host dependents must
+rebuild because Mixer layout changed. Frozen source under
+generated/experiments/audio-tempo-integration-v8-20260912/; Mixer.cpp SHA
+102a876d8efe784e2c37c4cadae46eadc4479f0776797a8388d16d31215565e1.
+First configure stopped at a false source-set gate: duplicate sources collapsed
+1550target entries to1539. The strict gate is repaired and1550commands match
+control, with7regression checks. Fresh recipe ready under
+generated/build/ios-simulator-audio-tempo-isolated-retry-20260912/; compilation
+waits for logging-off windows. Normal startup DMA32k is supported; any other
+DMA rate latches candidate failure and must be checked in actual diagnostics.
+No120msbuffer increase, physical install or release selected.
+
+
+## 2026-09-12 — actual audio replay rejection; tempo prototype underway
+
+The user reiterated fixing audio underruns. Actual matched-scene diagnostic
+intervals (not FPS acceptance) reject simple replay: candidate236 underruns over
+~53.2s (4.436/s), control184 over~58.1s (3.167/s), approximately2359guestframes each.
+Candidate nonzero output100%; control69.1624%. Producer23672.8/21665.2samples/s
+tracks emulated44.342/40.602FPS, so sustained CPU slowdown explains the supply
+shortfall. Both diagnostic image sets were verified in the same gameplay scene.
+No counter suppression, physical promotion or audio-quality acceptance.
+Exact logs, counters, hashes, scene reviews and decisions:
+generated/runtime/ipad-iteration-1/audio-gap-fill-diagnostic-20260912/comparison-summary.json.
+Logging-off audio candidate HUD42,43,45.5,46,45.5,45,44.6; no improvement selected.
+
+A new isolated pitch-preserving tempo prototype is being tested in
+experiments/audio-tempo/AudioTempo.h with tests/audio-tempo.cpp and
+tests/test-audio-tempo.py. It has not been integrated into the app. Current work
+covers actual32k→48k callback sizes,67%production/bursts, pitch/stereo/transients,
+startup/stall recovery and measured source wall-age within120ms, not merely
+input-frame capacity. Tests exposed spurious unity re-entry and stale recovery;
+those are being corrected before integration. Reset must be quiescent; live
+pause handling needs consumer-only flush. No new audio-buffer increase accepted.
+If prototype passes, changing Mixer layout requires a complete isolated core
+and dependent allocation rebuild, plus legacy-unity-output and realgame gates.
+
+CPU scheduling audit excludes E-core starvation in the observed interval:
+CPUthread99.27% walltime; at least97.44% execution on Pcores. Whole-chunk restrict
+is unsafe through callback aliases. Evidence: generated/cpu-scheduling-audit-20260912/
+and generated/cpu-state-alias-audit-20260912/. No priority/alias hack selected.
+
+## 2026-09-12 — O3 rejected; audio gap-fill candidate running
+
+O3+oldPGO module aa8760b88656aa05f9f3e0c6c6becaace47f3b2802ad5193682413d85a622d11
+shows no gain versus unchanged O2+oldPGO. All14candidate/immediate-control images
+were directly reviewed: same scene, no dialogs/crash. OCR means44.429/45.286;
+manual review differs in three small candidate HUD readings, retained separately.
+Either reading rejects a gain. Exact records/limits:
+generated/runtime/ipad-iteration-1/o3-old-pgo-comparison-20260912/summary.json.
+Earlier delayed control windows invalidated by guest idle disconnect are excluded.
+Capture now supports --provisional immediately after launch, with mandatory later
+visual review; stale scene checks remain. Do not insert model/build delays between
+route and capture. No capture is accepted based solely on route success.
+
+M3 tuning rejected before fullbuild: actual Apple backend emitted identical
+native and linked instructions for both hotTUs. Evidence:
+generated/target-tuning-source-audit-20260912/two-tu-screen/summary.json.
+
+Next actual audio source candidate restores the configured generic gap filler
+while Running; Apple DMA earlyreturn had bypassed AudioFillGaps. Offline exact
+FIFO tests at44/60 production removed recurring~122ms zero-output spans; fullspeed,
+disabledgapfill, stalls and pause/resume checks pass O2/ASan/UBSan. Musical replay
+quality and runtime underruns remain unverified; do not claim sound accepted.
+Host4e8d29281a536d35e9960e0a4adccbce937fef2f1c29e9903ec177842468bce8:
+generated/build/ios-simulator-audio-gap-fill-app-20260912/GalaxyPad.app.
+Normal controlmodule90e24 remains unchanged. OneMixerobject selected in linkmap;
+baseline relink reproduced b3ed exactly, signatures pass. Patch/tests/buildrecipe:
+generated/experiments/audio-gap-fill-20260912/. Immediate route/capture:
+generated/runtime/ipad-iteration-1/audio-gap-fill-comparison-20260912/candidate.
+No physical promotion. Next: evaluate logging-offFPS, then separate actualaudio
+output/underrun diagnostics against unchangedcontrol; reject regressions honestly.
+
+## 2026-09-12 — fresh LUT rejection; O3 with validated PGO building
+
+Fresh LUT run stayed in gameplay:43.6,44.6,43.6,44.5,43,43.7,44 HUD FPS,
+mean43.857 versus controls44.614/44.786. Reject as performancecandidate;
+memoryreduction alone does not meet the selection rule. Exact retained evidence:
+generated/runtime/ipad-iteration-1/coarse-lut-comparison-20260912/summary.json.
+
+Next build command: python3 scripts/prepare-o3-old-pgo-experiment.py --output
+generated/build/ios-simulator-o3-old-pgo-20260912 --execute --jobs 4.
+This changes only final frontendO2→O3 while retaining validatedoldPGO, strictFP,
+normalABI and unchangedThinLTOlinkpolicy. PreviousO3trialwasunprofiledand cannot
+answerthiscomparison. Recipe checks source/input stamps, compile/linkparity,
+profilediagnostics and module-table parity. Build log:
+generated/runtime/ipad-iteration-1/o3-old-pgo-build-20260912.log.
+Matched freshcontrol route: generated/runtime/ipad-iteration-1/o3-old-pgo-comparison-20260912/control.
+Wait for compilers/linkers to end before timing. No candidate selected/deployed.
+
+## 2026-09-12 — two CPU source screens rejected
+
+MEM1-first precedence-preserving helper passed1.2M mapping cases plus callback,
+overlap, journal and reservation checks at O2 and ASan/UBSan. Exact old-PGO
+func805170A0 codegen grew23467→24116 instructions, addingregisterpreservation for
+onlyoneinstruction saved on its firstMEM1 path. Reject beforefullbuild.
+Evidence: generated/experiments/mem1-first-precedence-20260912/.
+
+Shared ps_madds0/1 multiplier rounding passed960,016 completeCPU/host-FPflag cases.
+Fair separate-TU ThinLTO+oldPGO microcomparison regressed madds0 +12.56%, madds1
++10.13%, losing everypair. Reject beforefullmodulelink; profile-free microgain
+is superseded. Evidence: generated/shared-ps-rounding-20260912-final/policy-cost-summary.json.
+These source/codegen/cost screens are not game FPS acceptance.
+
+The invalid LUT-window Wii Remote disconnect OSD maps to guest HCI_CMD_DISCONNECT;
+neutral reports continue and A activates the emulated remote. No hostkeepalive or
+automaticinput hack is justified. Sourceaudit: generated/runtime/ipad-iteration-1/coarse-lut-comparison-20260912/idle-disconnect-source-audit.md.
+Fresh LUT repeat is underway after external compiler jobs ended; no gainselected.
+
+## 2026-09-12 — coarse LUT remains unselected; guest Back verified
+
+Coarse LUT host3c63d8085e42fb45af142b3d7d6194f01ecc433ae3c5d1d9ad2cacceb9724ec8
+with unchanged old PGO launched the correct scene. First window became invalid
+when the emulated Wii Remote disconnected and a dialog reported60FPS. This is
+not a gain. After A reconnect, pointer(0.5,0.45),2s aim then2s A selected Back and
+returned to gameplay, confirming the original guest menu exit route.
+Updated controller help source explains Back+A; native Xbox toggle remains separate.
+
+Repeat HUD45,45.5,44,41.8,45,32.7,33.6; last dips coincided with CPU allocation
+88.6/88.5% and numerous external compiler jobs appearing in host-after inventory.
+Candidate remains unselected pending comparable host conditions. RSS about700864KiB
+is lower than the roughly763000KiB control, but no FPS gain is established.
+Exact commands, hashes, images, manifests and decision:
+generated/runtime/ipad-iteration-1/coarse-lut-comparison-20260912/summary.json.
+Next prepared source screens: safe MEM1-first address selection preserving live
+metadata and MEM2 overlap precedence; shared exact multiplier rounding in
+ps_madds0/1. No unsafe fixed-map contract or altered FP behavior accepted.
+
+## 2026-09-12 — dispatch boundary measured and rejected
+
+Both preserve_none variants completed the fixed logging-off Observatory window.
+V1 mean43.043 HUD FPS; corrected inline v2 mean43.586; repeated unchanged control
+44.786. Reject both for no improvement. V2 final linked assembly eliminated the
+normal ABI spill bridge, but that source change did not improve this scene.
+Exact seven-point readings, manifests and hashes:
+generated/runtime/ipad-iteration-1/preserve-none-comparison-20260912/summary.json.
+V2 module SHA42380a4cdc0f03458e6789fdbced98bce1c1395d9cdbe79a6194ccfa62e0e2fb;
+host90fdd93b7f0f66d67ae2cb6f75c9839b4336d1675403b2b1870352b276a55546.
+A separate post-window sample is diagnostic only. Sparse HUD windows do not prove
+frame tails, audio or physical controls; no physical deployment.
+
+Next small source candidate: validated32-byte eligibility lookup buckets reduce
+88MiB to11MiB; generic unaligned modules retain4-byte fallback. Actual-source
+ASan/UBSan fixture passed81scenarios/423,360address and invalidation comparisons.
+Copied source/patch/buildrecipe: generated/coarse-chunk-lut-20260912-final/.
+Build command: python3 generated/coarse-chunk-lut-20260912-final/build-host.py.
+Uses normal ABI and unchanged old PGO independently of the rejected ABI variants.
+
+## 2026-09-12 — measured PGO rejection; dispatch boundary next
+
+Logging-off, visually verified 121-star Observatory route, scale 1, aspect 0,
+same pause-toggle host b3edb1647b350bc35256f8fba8c2e63878b842b7b5111b8df0864c7eb2018d43:
+old PGO control averaged 44.614 HUD FPS (44–45.5); fresh heavy-profile candidate
+averaged 43.671 (42.7–44.6). Reject the fresh profile; retain control module
+90e24dfb4e96597686b8fccf09bb55efdcbd7d059dd3ff710a9f32fab26f353f.
+Exact observations/hashes: generated/runtime/ipad-iteration-1/heavy-profile-comparison-20260912/summary.json.
+These are seven sparse HUD observations over 60 seconds, not continuous frame-tail
+or timed audio acceptance.
+
+Extended TSP module 01c45a1be01c7b603f933c48bb563c52497a448f081c403fc2dd8572638cbb64
+had HUD 29.1,20,30.9,45,45,45.5,44 with matching CPU allocation dips and concurrent
+external builds/emulators. First window inconclusive; unselected pending repeat.
+Evidence: generated/runtime/ipad-iteration-1/ext-tsp-comparison-20260912/candidate.
+
+Next source candidate carries preserve_none through the optional versioned module
+boundary into Run, retaining the normal descriptor fallback. Build succeeded;
+Simulator comparison starts at generated/runtime/ipad-iteration-1/preserve-none-comparison-20260912/candidate.
+Build command: bash generated/experiments/preserve-none-boundary-20260912/build-candidate.sh.
+Host SHA-256: 90fdd93b7f0f66d67ae2cb6f75c9839b4336d1675403b2b1870352b276a55546.
+No physical install or acceptance yet.
+
+Continuous profile output must include %c in LLVM_PROFILE_FILE; overriding the
+embedded filename without it disabled live updates. The harness now rejects this
+invalid training configuration. Explicit flushed interval above remains valid.
+Touch guest Start+ repeat did not close the original guest menu in a separate
+logical input run; B also did not close it. This remains open, distinct from the
+software-tested native Xbox Menu/Options toggle fix. Evidence: heavy-profile-comparison-20260912/candidate/plus-*.png and plus-input-diagnostic.log.
+
+## 2026-09-12 — renewed Simulator performance loop
+
+Latest user instructions supersede the old single-Simulator and single-subagent
+limits: multiple Simulators are allowed, with multiple secondary-account Astra
+high agents for independent source work. Primary owns candidate selection/builds
+and the current Simulator route. Other apps/data are preserved. Work continues;
+no performance success or physical promotion is claimed.
+
+New executable loop: `scripts/galaxypad-simulator-comparison-loop.py`.
+For each one-change candidate, run `launch APP MODULE FRESH_OUTPUT`, visually
+verify `scene.png` (Luigi,121 stars,2324 bits,Observatory map platform), repair
+navigation if needed, then `capture OUTPUT --scene-verified --seconds 60`.
+Repeat unchanged control/candidate under comparable host conditions, record the
+decision, and move to the next measured hypothesis. The loop checks live host and
+module hashes, refuses instrumented modules, verifies scale1/aspect0/loggingNO,
+records concurrent Simulator/host inventory and sparse HUD/process observations.
+The route stops before sampling and backs up Simulator Wii state before reseeding.
+It does not provide continuous frame-tail, speed or timed audio proof; those
+remaining acceptance limits must not be inferred from sparse screenshots.
+
+Current PGO comparison uses identical host
+`b3edb1647b350bc35256f8fba8c2e63878b842b7b5111b8df0864c7eb2018d43`,
+control module `90e24dfb4e96597686b8fccf09bb55efdcbd7d059dd3ff710a9f32fab26f353f`,
+and fresh candidate `54b117d28c18e27241c3241797e42505d00aab3492863db1b147f7773e70d1ec`
+at `generated/build/ios-simulator-heavy-pgo-20260912/gRMGE01_recomp.dylib`.
+Evidence: `generated/runtime/ipad-iteration-1/heavy-profile-comparison-20260912/`.
+Matched windows completed: fresh profile rejected; see newer result above.
+
+Heavy profile capture was repaired: continuous flags did not produce live file
+updates. The first raw file had total count1. An explicit diagnostic LLDB call,
+`expression -- ((int (*)())(void*)__llvm_profile_write_file)()`, appends a complete
+32,388,648-byte record. Extracting the last record before/after a60-second
+stationary Observatory interval, validating identical schemas/nonnegative deltas,
+and merging only those deltas produced profile
+`f46ec57792e9714c694d33998153addc88d6d90d6a015e5796df501bf5f0cd9c`.
+All32,551 functions match;5,562 have positive interval counts. Files, debugger
+commands and timing: `heavy-pgo-training-20260912/retry/flushed-window/` under the
+same evidence root. Debugger/training observations are not FPS acceptance.
+The build uses `GALAXYPAD_PGO_PROFILE=$PWD/generated/runtime/ipad-iteration-1/heavy-pgo-training-20260912/retry/flushed-window/observatory.profdata`
+and `GALAXYPAD_SIMULATOR_MODULE_BUILD=$PWD/generated/build/ios-simulator-heavy-pgo-20260912`
+with `GALAXYPAD_BUILD_JOBS=4 bash scripts/build-ios-simulator-fresh-module.sh`.
+Build passed; no hash mismatch, only existing comment/unprofiled integer-file warnings.
+
+Parallel source decisions: four-stage vertex dispatch unroll rejected after819
+ASan/UBSan parity cases and16 slower paired timing rounds (+2.9–13.7%). Evidence
+`generated/vertex-stage-unroll-20260912-screen/`. Simple per-chunk `preserve_none`
+ABI also rejected: wrapper preservation offsets the savings;46,080 O2/UBSan
+state/memory/callback cases pass but complete boundary code grows. Evidence
+`generated/runtime/ipad-iteration-1/audio-generated-source-audit-20260912/REPORT.md`.
+A versioned optional dispatch ABI reaching the actual host Run loop is now being
+screened separately, with canonical ABI unchanged. No speculative audio-buffer
+increase: existing audio sample mostly waits and does not establish mixer cost
+as the CPU bottleneck. Zero short callbacks is not callback deadline proof.
+
+## 2026-09-12 — Menu resume regression reproduced and fixed in Simulator
+
+The production controller adapter previously stopped reading input whenever native
+pause blocked gameplay. The second Menu press therefore could not resume. It now
+observes Menu/Options release and press while the native pause panel is visible,
+and toggles that panel; unrelated dialogs still block the shortcut. Pause re-arm
+requires Menu/Options release, not perfectly centered sticks. Touch Start + remains
+the guest Wii Plus input pending a separate live-game repeat-press check.
+
+The isolated UIKit controller test reproduced the old gate failure, then passed
+with the corrected adapter. Evidence:
+`generated/runtime/ipad-iteration-1/pause-toggle-20260912/before-console.log`
+(`FAIL: second Menu press resumes while gameplay is blocked`) and
+`after-console.log` (`GALAXYPAD_UI_TEST_PASS`). These use software controller
+snapshots on the sole existing Simulator, not physical Xbox acceptance. The added
+held-stick regression also passes in `after-held-stick-console.log`; the final
+host gameplay comparison remains in progress. Fresh Simulator host:
+`generated/build/ios-simulator-pause-toggle-app/GalaxyPad.app/GalaxyPad`, SHA-256
+`b3edb1647b350bc35256f8fba8c2e63878b842b7b5111b8df0864c7eb2018d43`.
+Built with `cmake --build generated/build/ios-simulator-pause-toggle-app -j 4`,
+then `codesign --force --sign -` on that app and strict deep verification passed.
+Test app built with `bash tests/build-mobile-ui.sh`; executable SHA-256
+`0cae6f819cb9c6dc9d8b58eb1e03b86d22f73ba032adcfa426c7fe66edc7f1c1`.
+
+The module build script also now clears cached C and shared-linker profile flags
+when switching back to unprofiled mode. A real CMake cache probe reproduced stale
+flags and verified the fix; see `pgo-mode-reset-20260912/result.txt` under the same
+runtime evidence root. This is build correctness, not an FPS claim.
+
+The first Observatory training capture is rejected for profile generation: its
+counter-before copy occurred after termination, so it cannot isolate the verified
+60-second scene from lengthy title/navigation training. Preserve
+`heavy-pgo-training-20260912/observatory-35979.profraw` as diagnostic evidence only.
+Next: capture before/train/stop/after in one sequence after visual scene verification,
+validate counter deltas, then build an isolated profile-use module. The unchanged
+PGO control remains selected; physical app and saves are untouched. Goal stays active.
+
+## Existing Simulator test resumed — 2026-09-12
+
+Reused the sole booted Simulator without changing MeleePad. Verified the actual
+121-star Observatory, reproduced low-40 FPS, tested the handoff guard and rejected
+the unprofiled module (37–38 FPS versus 44–45.5 with PGO). The canonical harness
+now rejects the old zero-star seed and uses the verified advanced save. See the
+latest performance-loop/resume entries for exact evidence and next heavy-scene
+PGO training hypothesis. Goal active; no physical promotion.
+
+## 2026-09-12 scene-identity correction
+
+The default unattended seed `717f7fb3…e36c` is the old zero-star save,
+not the 121-star save. The resumed logging-off screenshot shows Star Festival.
+Prior unattended results using that seed are not late-game acceptance.
+See the newest entry in `IPAD-PERFORMANCE-LOOP-2026-09-11.md` for artifacts,
+the reproduced hidden-touch pointer-handoff fix, and the pending advanced-scene
+control gate. The canonical PGO module and physical installation are preserved.
+
 Operating loop for the autonomous build of GalaxyPad. The requirements live in
 `docs/GALAXYPAD-PRD.md`; this document is how you run. Written 4 Sep 2026.
+
+## Self-audit follow-up — 2026-09-12
+
+The performance issue remains unresolved. The current control still reaches the
+seeded late-game scene at about 56.4 emulator FPS with logging off, and its
+sample remains dominated by `StaticRecompCore::Run` and `chassis_dispatch`.
+The previous work window did not produce a promoted performance change; it
+spent too much time on rejected micro-candidates and diagnostics while the
+host was carrying unrelated CPU-heavy work.
+
+The host audit found and terminated only twelve stale read-only MeleePad
+`afcclient` transfers that had been consuming about 92–99% CPU each. QEMU and
+system services remain active, so the new control is still qualified. The
+physical iPad and unrelated Simulators were not touched.
+
+The current Simulator module is an unprofiled `-O2`/ThinLTO build. The
+historical PGO profile and active-module marker are absent, and the old iOS
+PGO builder points at those missing artifacts. The fresh Simulator module
+builder now accepts an optional `GALAXYPAD_PGO_PROFILE` without changing its
+default. The next valid iteration is therefore current-input instrumentation
+and representative PGO training on a quiet, roomier host, followed by one
+matched candidate/control run. Until that exists, another source micro-edit is
+not an evidence-led step.
 
 ## Active goal loop — 2026-09-11
 
@@ -56,6 +459,45 @@ the raw excerpt is retained at
 `generated/runtime/ipad-iteration-1/controller-hotplug-console-20260911.log`.
 These are bounded input changes; the performance loop remains separate and
 must continue to use logging-off matched scenes plus opt-in profiles.
+
+## Menu-inclusive diagnostic recheck — 2026-09-11
+
+The canonical Simulator host was rebuilt so opt-in frame windows no longer
+discard the runtime interval while the three-dot menu is visible. The logger
+records `native_menu`, `ui_blocked`, and `pause_requested`; normal gameplay
+still starts with frame logging off. Focused settings and UIKit overlay tests
+pass, and the rebuilt app completed the seeded route with the unchanged save
+seed hash. Eighteen qualified windows averaged 59.109 frame events/s, with a
+49.058 lowest window and a late 98.728 ms guest DMA producer gap. Output audio
+had zero short callbacks, but DMA underruns rose 1 → 14; unrelated QEMU and
+`afcclient` load invalidates this as a clean performance comparison. No source
+performance candidate passed, the canonical module remains selected, and the
+physical iPad remains untouched.
+
+## Self-audit and reorientation — 2026-09-11
+
+The performance problem is not resolved. The work completed in this loop was
+diagnostic and preventative rather than a speed fix: audio starvation was
+shown to follow guest-producer gaps, the CPU sample consistently led into
+`StaticRecompCore::Run` and `chassis_dispatch`, and EFB readback was absent.
+The host was also carrying an Android emulator, file-transfer workers, and
+other CPU-heavy processes, so the Simulator numbers were qualified rather
+than clean device-equivalent acceptance.
+
+Five bounded candidates were rejected for no repeatable runtime benefit,
+regression, or unsafe boundary behavior. A fresh generated-module `-O3`
+candidate reduced module text by 371,864 bytes versus the current `-O2`
+module, but its matched route was 56.730 versus 56.987 frame events/sec,
+with equal phase-trace DMA underruns (70) and backlog drops (6). Its average
+process CPU was lower (73.247% versus 75.615%), but the frame/audio result was
+not a material or clean win; it was not promoted.
+
+The loop is reoriented around causal measurement before another source edit:
+obtain a clean matched baseline when unrelated host load is absent, identify
+exclusive cost in the exact retained heavy scene, and require a repeatable
+frame-pacing and audio improvement. If that cannot be done in the Simulator,
+the remaining blocker is the missing unattended physical-iPad input/profile
+path, not a reason to keep generating micro-optimizations.
 
 ## Reoriented unattended loop — 2026-09-11
 
@@ -940,3 +1382,152 @@ When blocked, escalate through these in order. Journal each rung used.
 5. Remove incomplete import staging directories only after verifying they are not the original input or required evidence.
 6. Run repository safety checks before any commit.
 7. Leave one unambiguous next step for the lowest unmet goal.
+
+## Current unattended performance loop status — 2026-09-11
+
+The Simulator loop now has a measured candidate/control gate with frame windows,
+host CPU, audio underrun counters, save-seed identity, screenshots, and CPU samples.
+The normal-reader pointer candidate passed its offline parity gate but failed the
+end-to-end gate: 58.416 FPS average and +25 underruns versus 58.817 FPS and +15
+underruns for control. The candidate is parked/rejected, the canonical core archive
+is restored, and no physical-device install was performed. The remaining performance
+defect is still the shared native execution/dispatch path under the seeded late-game
+scene; the next loop step is one separately measured candidate there or an opt-in EFB
+dispatch trace, not another resolution/logging toggle or vertex-reader rewrite.
+
+## Self-audit reorientation — 2026-09-12
+
+The goal loop did not deliver a speed improvement in the preceding work window.
+It produced useful negative results and a partial diagnosis, but I continued
+through several low-leverage candidates after the evidence had shifted to the
+shared native execution path. No candidate was promoted and no physical device
+or save was changed.
+
+The next loop step is therefore measurement, not another patch: capture
+timestamped stacks and scheduler state during the stationary seeded scene and
+correlate them with DMA underrun gaps. `RunCost` percentages and phase-file
+writes are not exclusive attribution. The host must be quiet enough for a
+matched comparison; unrelated QEMU, transfer, and build jobs remain out of
+scope and must not be killed by this loop.
+
+The harness has an opt-in System Trace path. macOS rejected the first live
+`spindump` attempt without root, and the unprivileged Simulator `xctrace`
+attach could not resolve the Simulator PID. These are recorded tooling
+failures, not game results. Advance to a source optimization only after two
+captures show one lane accounts for at least 60% of combined underrun-gap time.
+
+## Packed texture-coordinate candidate — rejected — 23:04 JST
+
+Secondary Astra Medium reviewed the retained profile and selected one bounded
+candidate in the u16-indexed signed-16 two-component texture-coordinate path.
+The ARM64 object gate passed with a 12-byte text reduction and no calls or
+spills, but the matched five-second phase trace did not: 19 DMA underruns for
+the candidate versus 18 for control, and 231 versus 253 terminal frames.
+The source was reverted and the canonical Simulator core/app rebuilt. The
+physical iPad and unrelated Simulators were left untouched.
+
+## Dispatcher duplicate-PC-store candidate — rejected — 23:18 JST
+
+A generated-module candidate removed the duplicate `ctx->pc = address` store
+from the private original-call helper. It passed the static module-size gate
+with an 8-byte `__text` reduction, but matched five-second phase traces were
+worse: 252 terminal frames and 19 DMA underruns versus 256 frames and 17 for
+the canonical control. It was rejected; the canonical Simulator app/module
+remain selected and the physical iPad was untouched.
+
+## Latest unattended iteration — 22:26 JST
+
+The rebuilt canonical Simulator app completed a bounded logging-off contract run
+on the dedicated iPad Simulator. Startup logged `aspect_ratio_mode=0` (4:3) and
+`frame_logging=0`; the 2064x2752 capture shows the expected 4:3 gameplay viewport.
+The loop now records `host-top-before.log` and `host-top-after.log` beside each
+profile so concurrent Android/QEMU, indexing, or other host work is visible in
+the evidence. This run was host-pressure-qualified because unrelated QEMU was
+over 100% CPU.
+
+A branch-hint experiment against the measured vertex cache branches increased
+the ARM64 object text sizes (Normal 12,236 to 12,856 bytes; Position 6,456 to
+7,116 bytes), so it was reverted and not promoted. The canonical module remains
+selected, the physical iPad remains untouched, focused checks pass, and the
+full repository suite remains limited by the known missing private THP fixture
+`generated/thp-kernels-r198-exits/candidate.c`.
+The page-table and 16-bit lookup variants were also measured and rejected; the
+baseline remains the only installed Simulator candidate.
+
+The following EFB trace attempt was diagnostic only. With
+`GALAXYPAD_SIMULATOR_EFB_TRACE` enabled, the baseline route produced no
+`efb-trace.csv` and reported zero EFB peeks in every runtime snapshot. This
+route did not enter EFB readback, so the next performance hypothesis remains
+the shared native execution/dispatch path (or, separately, making trace
+activation reportable), not an EFB semantic change. The run still captured a
+295.192 ms maximum frame gap and DMA underruns increasing from 2 to 23; its
+full evidence is under
+`generated/runtime/ipad-iteration-1/simulator-baseline-efb-trace-20260911/`.
+
+The opt-in phase capture at
+`generated/runtime/ipad-iteration-1/simulator-baseline-phase-trace-20260911/`
+adds 73,451 timestamped events. It records 43 DMA underruns, producer enqueue
+gaps up to 223.194 ms, frame-end gaps up to 441.205 ms, queue depth only 1–35,
+zero queue-full drops, and zero short output callbacks. The first underruns
+fall inside 59.040, 114.069, and 188.675 ms producer gaps; subsequent bursts
+occur after the queue has drained to two-to-six entries. This is diagnostic
+confirmation of guest-side producer starvation under CPU pressure. The phase
+trace is not an FPS acceptance run because its per-event file writes perturb
+timing.
+
+Prebuilt 1024 and 512 C-loop variants were both tested but are not valid
+budget-only differentials because their compile commands omitted the baseline
+module's ThinLTO flag. The 1024 run measured 57.295 FPS average, 38.455 FPS
+minimum, 72.53% CPU, and 48 underruns; 512 measured 58.055 FPS average,
+44.815 FPS minimum, 69.05% CPU, and 27 underruns; the matched telemetry
+baseline measured 58.540 FPS average, 47.170 FPS minimum, 68.46% CPU, and 23
+underruns. Both are rejected as package candidates, with no selection or
+physical install. A proper ThinLTO-preserving budget build is required before
+making a budget conclusion.
+
+The fair ThinLTO-preserving 1024-cycle candidate then completed on the same
+seeded replay. It measured 58.080 FPS average, 44.999 FPS minimum, 43.644 FPS
+minimum observed, 69.925% average CPU, and 33 cumulative DMA underruns,
+versus the canonical telemetry baseline at 58.540 FPS, 47.170 FPS minimum,
+39.095 FPS minimum observed, 68.461% average CPU, and 23 underruns. It is
+rejected as slower and less audio-stable; the canonical module remains
+selected and no physical install changed. Evidence is under
+`generated/runtime/ipad-iteration-1/simulator-loop1024-ipo-candidate-20260911/`.
+
+The fair ThinLTO-preserving 512-cycle candidate also completed on the same
+seeded replay. It measured 58.632 FPS average, 47.883 FPS minimum, 46.365 FPS
+minimum observed, 69.542% average CPU, 25 cumulative DMA underruns, and three
+backlog drops, versus the canonical telemetry baseline at 58.540 FPS, 47.170
+FPS minimum, 39.095 FPS minimum observed, 68.461% average CPU, 23 underruns,
+and two backlog drops. The slight frame-rate increase does not offset worse
+CPU/audio counters, so the candidate is rejected; the canonical module remains
+selected and no physical install changed. Evidence is under
+`generated/runtime/ipad-iteration-1/simulator-loop512-ipo-candidate-20260911b/`.
+
+The existing opt-in run-cost census was exercised in a temporary diagnostic
+build. Adding periodic reporting made the disabled path regress to 57.880 FPS
+average, 75.14% average CPU, and 43 cumulative DMA underruns, so that change
+was reverted and the canonical app/core were rebuilt. The temporary run
+recorded 12.002 seconds of CPU-thread time; its one-in-256 samples extrapolate
+to about 81.19% native execution and 1.03% non-native routing, with the
+remainder outside those selected lanes. This is coarse attribution only, not
+an FPS/audio acceptance run, but it lowers the priority of fallback/interpreter
+routing and keeps the hotspot on generated native execution
+(`StaticRecompCore::Run` -> `chassis_dispatch`, led by `func_805170A0`).
+Evidence is under
+`generated/runtime/ipad-iteration-1/simulator-baseline-run-cost-20260911b/`;
+no module selection or physical install changed. The post-revert replay is
+qualified because the host simultaneously carried an unrelated QEMU process
+above 100% CPU and other workloads; it is not a clean performance comparison.
+
+## Current unattended performance loop status — 2026-09-11
+
+The Simulator loop now has a measured candidate/control gate with frame windows,
+host CPU, audio underrun counters, save-seed identity, screenshots, and CPU samples.
+The normal-reader pointer candidate passed its offline parity gate but failed the
+end-to-end gate: 58.416 FPS average and +25 underruns versus 58.817 FPS and +15
+underruns for control. The candidate is parked/rejected, the canonical core archive
+is restored, and no physical-device install was performed. The remaining performance
+defect is still the shared native execution/dispatch path under the seeded late-game
+scene; the next loop step is one separately measured candidate there or an opt-in EFB
+dispatch trace, not another resolution/logging toggle or vertex-reader rewrite.

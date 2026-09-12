@@ -1,6 +1,15 @@
 # GalaxyPad release readiness
 
-Updated 2026-09-09, R851. **NO-GO for publication or shipping.**
+Updated 2026-09-12. **NO-GO for publication or shipping.**
+
+The latest [performance and hardware handoff](PERFORMANCE-2026-09-12.md) supersedes
+the historical candidate identities below. CPU/render overlap and experimental
+audio adaptation improved the fixed Simulator route, and the private iPad build
+is installed. The newly reported dome Pull Star failure blocks level entry. Remaining physical
+slowdowns, Xbox Start retest, audio listening,
+long-session behavior and iPhone performance prevent release acceptance.
+
+The remaining detailed audit below was recorded on September 9 (R851).
 This is a preliminary evidence index, not a completed release audit. The full
 [PRD](GALAXYPAD-PRD.md) remains authoritative. Its Section 12.5 references
 D1–D11/rows1–35, but Section2 also requires D12 and the matrix includes row36;
