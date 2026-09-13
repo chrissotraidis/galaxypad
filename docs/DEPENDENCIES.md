@@ -1,5 +1,9 @@
 # Dependencies
 
+For the current maintenance assessment, ARM64 fallback evidence, and fork migration
+criteria, see [Upstream integration review](UPSTREAM-REVIEW.md). The dated entries
+below describe how the patch stack grew; they are not a complete current inventory.
+
 ## September 7 opt-in decoder line policy (R279)
 
 Dependency revisions unchanged. ModernGekko0021-dcbz-loop-policy.patch SHA256

@@ -1,5 +1,7 @@
 # Third-party code and source
 
+See [Credits and provenance](CREDITS.md) for linked upstream projects and their roles.
+
 GalaxyPad integration files retain their per-file SPDX identifiers and attribution.
 GPL-3.0-or-later integration code is distributed under the accompanying LICENSE.
 Other upstream files retain their own licenses.

@@ -13,14 +13,26 @@
 ![Mario exploring a grassy planet in GalaxyPad](docs/images/galaxypad-mario-planet.png)
 
 <p align="center">
-  <strong>Super Mario Galaxy running natively on iOS, iPadOS, and macOS through ahead-of-time recompilation.</strong><br>
+  <strong>An experimental Super Mario Galaxy Apple integration built on ModernGekko and DolRecomp.</strong><br>
   An Apple app for iPhone, iPad, and Apple silicon Mac, with Metal rendering, touch controls, and controller support.
 </p>
 
-GalaxyPad compiles Super Mario Galaxy's game code to native ARM64 ahead of time
-and presents it in an Apple app with Metal rendering, customizable touch controls,
-and Apple GameController support. Supply your own supported game image;
-GalaxyPad does not download or include the game.
+GalaxyPad uses [ExpansionPak's ModernGekko](https://github.com/ExpansionPak/ModernGekko)
+and [DolRecomp](https://github.com/ExpansionPak/DolRecomp) to run ahead-of-time
+recompiled game code on a [RecompCore](https://github.com/ExpansionPak/RecompCore)
+/ [Dolphin](https://github.com/dolphin-emu/dolphin) compatibility runtime. These
+upstream projects provide the recompilation and hardware implementation that make
+this integration possible.
+
+GalaxyPad's work focuses on Apple app integration, Galaxy-specific input and touch
+controls, packaging, and performance/correctness work for the supported revision.
+It is not a from-scratch game engine or recompiler. The immediate goal is reliable
+play of the original game; new levels or other content modifications are not a
+requirement of that goal. Supply your own supported game image.
+
+See [credits and tool provenance](CREDITS.md),
+[upstream review and known gaps](docs/UPSTREAM-REVIEW.md), and
+[contribution guidelines](CONTRIBUTING.md).
 
 ## Experimental preview
 
