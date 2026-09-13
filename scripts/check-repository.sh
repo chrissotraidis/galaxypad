@@ -5,6 +5,10 @@ root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 cd "$root"
 
 git diff --check
+bash scripts/check-public-content.sh
+bash tests/test-repository-safety.sh
+python3 tests/test-public-content.py
+python3 tests/test-preview-archive-audit.py
 python3 tests/test-ios-icons.py
 python3 tests/test-ipad-install-assistant.py
 
@@ -171,27 +175,3 @@ python3 ./tests/test-lc-pair-host.py --empty-rel
 python3 ./tests/test-empty-rel-resolution.py
 bash ./tests/test-lc-default.sh
 bash ./tests/test-native-diagnostics.sh
-
-prohibited="$(git ls-files | rg '(^|/)(ref|generated|extracted|game-data|runtime-data|modules|saves|save|nand|docs/artifacts|artifacts)/|\.(iso|gcm|rvz|wia|wbfs|gcz|dol|rel|rso|dylib|ipa|xcarchive|mobileprovision|provisionprofile|p12|pem|key|gci|sav|raw|crash|ips|trace|log|profraw|profdata)$' || true)"
-if [[ -n "$prohibited" ]]; then
-  echo "prohibited tracked material:" >&2
-  echo "$prohibited" >&2
-  exit 1
-fi
-
-if git grep -n -I -E 'BEGIN [A-Z ]*PRIVATE KEY|github_pat_[A-Za-z0-9_]{20,}|gh[pousr]_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}' -- .; then
-  echo "possible credential material found" >&2
-  exit 1
-fi
-
-if git grep -n -I -E '(^|[^[:alnum:]_])/Users/[^ ]+' -- . ':!scripts/check-repository.sh' ':!tests/test-mobile-diagnostics.mm'; then
-  echo "personal absolute path found" >&2
-  exit 1
-fi
-
-if git ls-files --error-unmatch ref >/dev/null 2>&1; then
-  echo "ref must never be tracked" >&2
-  exit 1
-fi
-
-echo "Repository safety checks passed"

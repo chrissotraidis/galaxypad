@@ -2,6 +2,16 @@
 
 Last updated: 2026-09-13
 
+## September 13: public experimental preview
+
+The repository and [preview release](PREVIEW-2026-09-13.md) are now public.
+The preview ships mobile build 13 and a separate Apple silicon Mac package.
+The owner confirmed responsive iPad controller input and repeat pause/resume
+after disabling Universal Control pointer sharing. Equivalent latest-build
+iPhone acceptance, sustained performance, audio and full-game coverage remain
+open. Stable-release acceptance has not been granted. The dated development
+entries below retain their historical results and candidate identities.
+
 ## September 13: Pull Star fixed in Simulator; performance baseline corrected
 
 Disabled EFB depth access caused the dome target failure. The source now enables

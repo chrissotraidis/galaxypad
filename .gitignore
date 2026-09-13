@@ -11,24 +11,21 @@ extracted/
 game-data/
 runtime-data/
 modules/
+*.[gG][cC][mM]
+*.[iI][sS][oO]
+*.[wW][bB][fF][sS]
+*.[rR][vV][zZ]
+*.[wW][iI][aA]
+*.[gG][cC][zZ]
 *.dol
 *.rel
 *.rso
-*.iso
-*.ISO
-*.wbfs
-*.WBFS
-*.rvz
-*.RVZ
-*.wia
-*.WIA
-*.gcz
-*.GCZ
 
 # Saves, NAND, and build products.
 saves/
 save/
 nand/
+GameData.bin
 *.gci
 *.raw
 *.sav
