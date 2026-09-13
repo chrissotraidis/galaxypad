@@ -8,10 +8,6 @@ from efb_source import without_dispatch_overlay
 
 root = Path(__file__).resolve().parents[1]
 header = root/'patches/experiments/efb-read-context.h'
-bootstrap = (root/'scripts/bootstrap-dependencies.sh').read_text()
-assert bootstrap.index('apply --reverse "$efb_context_patch"') < bootstrap.index('apply --reverse "$audio_events_patch"')
-assert bootstrap.index('apply_patch_once "$ref/ModernGekko/vendor/dolphin" "$efb_context_patch"') > bootstrap.index('apply_patch_once "$ref/ModernGekko/vendor/dolphin" "$audio_events_patch"')
-assert bootstrap.index('apply_patch_once "$ref/ModernGekko/vendor/dolphin" "$efb_context_patch"') < bootstrap.index('verify_patch_scope "$ref/ModernGekko/vendor/dolphin" "DolRecomp"')
 program = r'''
 #include "context.h"
 #include <cassert>

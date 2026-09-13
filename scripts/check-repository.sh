@@ -24,7 +24,8 @@ python3 tests/test-preview-archive-audit.py
 python3 tests/test-ios-icons.py
 python3 tests/test-ipad-install-assistant.py
 python3 tests/test-preview-module-interface.py
-python3 tests/test-dependency-tree.py
+python3 tests/test-dependency-lock.py
+python3 scripts/dependency-lock.py
 
 for script in scripts/*.sh tests/*.sh; do
   [[ -e "$script" ]] || continue
@@ -124,7 +125,6 @@ python3 ./tests/test-xf-partial-command.py
 python3 ./tests/test-fifo-compaction.py
 python3 ./tests/test-gather-write-widths.py
 python3 ./tests/test-xf-origin.py
-python3 ./tests/test-xf-patch-order.py
 python3 ./tests/test-thread-state-alignment.py
 python3 ./tests/test-host-pressure-probe.py
 python3 ./tests/test-host-pressure-alignment.py

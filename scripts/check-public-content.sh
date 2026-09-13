@@ -4,7 +4,12 @@ set -euo pipefail
 root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 cd "$root"
 
-prohibited="$(git ls-files | rg -i '(^|/)(ref|generated|extracted|game-data|runtime-data|modules|saves|save|nand|docs/artifacts|artifacts)/|\.(iso|gcm|rvz|wia|wbfs|gcz|dol|rel|rso|dylib|ipa|xcarchive|mobileprovision|provisionprofile|p12|pem|key|cer|gci|sav|raw|crash|ips|trace|log|profraw|profdata)$|(^|/)GameData\.bin$' || true)"
+# Permit only the dependency gitlink, never source/data files under ref/.
+tracked="$(git ls-files --stage | awk '
+  $1 == "160000" && $4 == "ref/ModernGekko" { next }
+  { sub(/^[^\t]*\t/, ""); print }
+')"
+prohibited="$(printf '%s\n' "$tracked" | rg -i '(^|/)(ref|generated|extracted|game-data|runtime-data|modules|saves|save|nand|docs/artifacts|artifacts)/|\.(iso|gcm|rvz|wia|wbfs|gcz|dol|rel|rso|dylib|ipa|xcarchive|mobileprovision|provisionprofile|p12|pem|key|cer|gci|sav|raw|crash|ips|trace|log|profraw|profdata)$|(^|/)GameData\.bin$' || true)"
 if [[ -n "$prohibited" ]]; then
   echo "prohibited tracked material:" >&2
   echo "$prohibited" >&2
@@ -18,11 +23,6 @@ fi
 
 if git grep -l -I -E '(^|[^[:alnum:]_])/Users/[^ ]+' -- . ':!scripts/check-public-content.sh' ':!tests/test-mobile-diagnostics.mm'; then
   echo "personal absolute path found" >&2
-  exit 1
-fi
-
-if git ls-files --error-unmatch ref >/dev/null 2>&1; then
-  echo "ref must never be tracked" >&2
   exit 1
 fi
 

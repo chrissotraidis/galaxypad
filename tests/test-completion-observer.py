@@ -1,11 +1,12 @@
 """Test a patch against pinned upstream headers, not an already modified checkout."""
 from pathlib import Path
+import json
 import subprocess
 import tempfile
 
 root = Path(__file__).resolve().parents[1]
 dolphin = root/'ref/ModernGekko/vendor/dolphin'
-pin = '13e492094902644b0d113c586300d358640f9e19'
+pin = json.loads((root/'config/dependencies.lock.json').read_text())['repositories']['recompCore']['upstreamRevision']
 with tempfile.TemporaryDirectory(prefix='galaxypad-completion-observer-') as temporary:
     stage = Path(temporary)
     common = stage/'Source/Core/Common'

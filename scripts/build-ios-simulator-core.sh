@@ -11,13 +11,9 @@ case "${GALAXYPAD_IOS_SDK:-iphonesimulator}" in
   *) echo "GALAXYPAD_IOS_SDK must be iphonesimulator or iphoneos" >&2; exit 2 ;;
 esac
 build="$root/generated/build/$lane-core"
-[[ "$(git -C "$runtime" rev-parse HEAD)" == 0514d9f03f8602809f66fc92fdca87d30e752997 ]]
-[[ "$(git -C "$runtime/vendor/dolphin" rev-parse HEAD)" == 13e492094902644b0d113c586300d358640f9e19 ]]
-patch="$root/patches/ios-simulator-framebuffer-fetch.patch"
-if ! git -C "$runtime/vendor/dolphin" apply --reverse --check "$patch" 2>/dev/null; then
-  git -C "$runtime/vendor/dolphin" apply --check "$patch"
-  git -C "$runtime/vendor/dolphin" apply "$patch"
-fi
+python3 "$root/scripts/dependency-lock.py"
+# Simulator framebuffer support is committed in the pinned RecompCore fork.
+
 cmake -S "$runtime" -B "$build" -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE="$root/scripts/$lane-toolchain.cmake" \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \

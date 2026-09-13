@@ -28,4 +28,16 @@ with tempfile.TemporaryDirectory() as temporary:
         assert check() != 0, f"accepted prohibited fixture: {name}"
         subprocess.run(["git", "rm", "-q", "-f", name], cwd=root, check=True)
     assert check() == 0
+    subprocess.run(['git', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+                    'commit', '-qm', 'fixture'], cwd=root, check=True)
+    commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
+    subprocess.run(['git', 'update-index', '--add', '--cacheinfo',
+                    f'160000,{commit},ref/ModernGekko'], cwd=root, check=True)
+    assert check() == 0, 'The exact dependency gitlink must be allowed'
+    subprocess.run(['git', 'update-index', '--force-remove', 'ref/ModernGekko'], cwd=root, check=True)
+    blob = subprocess.check_output(['git', 'hash-object', '-w', '--stdin'], cwd=root,
+                                   input='not a dependency gitlink', text=True).strip()
+    subprocess.run(['git', 'update-index', '--add', '--cacheinfo',
+                    f'100644,{blob},ref/ModernGekko'], cwd=root, check=True)
+    assert check() != 0, 'A regular file at the exception path must still be rejected'
 print("Public content positive and negative fixtures passed")

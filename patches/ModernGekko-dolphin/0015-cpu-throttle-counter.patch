@@ -1,9 +1,0 @@
-diff --git a/Source/Core/VideoCommon/PerformanceMetrics.h b/Source/Core/VideoCommon/PerformanceMetrics.h
---- a/Source/Core/VideoCommon/PerformanceMetrics.h
-+++ b/Source/Core/VideoCommon/PerformanceMetrics.h
-@@ -35,3 +35,5 @@
-   void CountThrottleSleep(DT sleep);
-+  // CPU-thread only, like CountThrottleSleep; not an any-thread metric.
-+  DT GetCPUThrottleElapsed() const { return m_time_sleeping; }
-   void AdjustClockSpeed(s64 ticks, u32 new_ppc_clock, u32 old_ppc_clock);
-   void CountPerformanceMarker(s64 ticks, u32 ticks_per_second);

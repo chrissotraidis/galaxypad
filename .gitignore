@@ -1,7 +1,8 @@
 .DS_Store
 **/.DS_Store
 
-# All reference checkouts, downloaded tools, and user-supplied game data are local only.
+# Reference data stays local. The exact ref/ModernGekko gitlink is tracked;
+# its contents belong to the pinned dependency repositories.
 ref/
 
 # Extracted and generated game-derived material.

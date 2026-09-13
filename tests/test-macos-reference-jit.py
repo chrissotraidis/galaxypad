@@ -18,15 +18,6 @@ with tempfile.TemporaryDirectory() as tmp:
     copy = base/'src/runtime/dolphin_runtime.cpp'
     copy.parent.mkdir(parents=True)
     copy.write_bytes(original)
-    # R557 added canonical built-in descriptors, unrelated to CPU selection.
-    # Prove this exact patch accounts for all drift from the original JIT fixture.
-    builtin_patch = root/'patches/ModernGekko/0028-builtin-mod-descriptors.patch'
-    subprocess.run(['git', 'apply', '--reverse', '--include=src/runtime/dolphin_runtime.cpp',
-                    str(builtin_patch)], cwd=base, check=True)
-    assert hashlib.sha256(copy.read_bytes()).hexdigest() == '053fa6748d38014b068cb0c097878221d722f226d9cb864d57d1d734f4db5cdb'
-    subprocess.run(['git', 'apply', '--include=src/runtime/dolphin_runtime.cpp',
-                    str(builtin_patch)], cwd=base, check=True)
-    assert copy.read_bytes() == original
     subprocess.run(['git', 'apply', str(patch)], cwd=base, check=True)
     changed = copy.read_text()
     begin = changed.index('#if defined(__APPLE__) && defined(_M_ARM_64) && !defined(MODERNGEKKO_HAVE_IOS)')

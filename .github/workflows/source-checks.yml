@@ -1,0 +1,31 @@
+name: Source checks
+on:
+  pull_request:
+  push:
+    branches: [main, 'codex/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: source-checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-checks:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Record toolchain
+        run: |
+          xcodebuild -version
+          clang --version
+          python3 --version
+      - name: Check out pinned runtime sources
+        run: bash scripts/bootstrap-dependencies.sh --sources-only
+      - name: Run source and dependency regression checks
+        run: bash scripts/check-repository.sh
+      - name: Verify tests left dependency sources unchanged
+        run: python3 scripts/dependency-lock.py

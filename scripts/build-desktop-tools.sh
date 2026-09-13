@@ -11,6 +11,8 @@ build_dir="${GALAXYPAD_DESKTOP_BUILD:-$root/generated/build/moderngekko-desktop}
   exit 1
 }
 
+python3 "$root/scripts/dependency-lock.py"
+
 cmake -S "$source_dir" -B "$build_dir" -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \

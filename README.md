@@ -10,11 +10,12 @@
   <a href="https://discord.gg/xwHfUD2bxW"><img alt="Join the GalaxyPad Discord" src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&amp;logoColor=white"></a>
 </p>
 
-Built with [ModernGekko](https://github.com/ExpansionPak/ModernGekko) and
-[DolRecomp](https://github.com/ExpansionPak/DolRecomp), by ExpansionPak and their
-contributors, on the [RecompCore](https://github.com/ExpansionPak/RecompCore) /
-[Dolphin](https://github.com/dolphin-emu/dolphin) runtime. Their work provides the
-recompilation tools and Wii hardware implementation behind GalaxyPad.
+Built with [ModernGekko](https://github.com/ExpansionPak/ModernGekko), by Hyperway,
+ExpansionPak and contributors, and [DolRecomp](https://github.com/ExpansionPak/DolRecomp),
+on the [RecompCore](https://github.com/ExpansionPak/RecompCore) /
+[Dolphin](https://github.com/dolphin-emu/dolphin) runtime. These projects and their
+contributors provide the recompilation tools and Wii hardware implementation
+behind GalaxyPad.
 [Full credits](CREDITS.md).
 
 ![Mario exploring a grassy planet in GalaxyPad](docs/images/galaxypad-mario-planet.png)
@@ -193,6 +194,10 @@ evidence in ignored local storage. Never commit those files.
 Development currently targets Apple silicon with full Xcode and its iOS SDKs,
 CMake, Ninja, and the pinned dependencies listed in
 [DEPENDENCIES](docs/DEPENDENCIES.md) and the [dependency lock](config/dependencies.lock.json).
+GalaxyPad keeps its runtime and compiler changes in maintained forks—copies of
+the upstream projects with the Apple changes recorded as commits. The app selects
+exact versions through submodules; it does not rename those tools or claim their
+original work. See [the dependency guide](docs/DEPENDENCIES.md) for the source graph.
 Configured minimums are macOS 14 and iOS/iPadOS 16; these are not tested-device
 compatibility promises. The pinned Intel WIT tool also requires Rosetta.
 
@@ -206,6 +211,12 @@ Run commands from the repository root. Source setup and exact-image verification
 bash scripts/bootstrap-dependencies.sh
 bash scripts/verify-disc.sh ref/supermariogalaxy.wbfs
 ```
+
+For source checks alone, `bash scripts/bootstrap-dependencies.sh --sources-only`
+prepares ModernGekko, RecompCore and DolRecomp without their third-party build
+dependencies. The default command above also initializes the required Apple build
+dependencies. Add `--references` when you need the optional pinned SunPad, Petari
+and template research references.
 
 With the verified extraction already prepared at `generated/extracted/run1`,
 the desktop stages are:
@@ -353,10 +364,11 @@ does not prove game completion, smooth presentation, audio, or device readiness.
 | `apple/ios/` | Native mobile host, Metal view, active `GalaxyPadGameOverlay.mm` and menu adapters |
 | `apple/shared/` | Input, settings, diagnostics and shared integration |
 | `config/` | Exact disc identity and pinned dependencies |
-| `patches/` | Reviewed integration patches and isolated experiments |
+| `patches/` | Explicitly opt-in experiments; normal dependency changes live in forks |
 | `scripts/`, `tests/` | Build, audit and regression tools |
 | `docs/` | PRD, goal loop, evidence and handoffs |
-| `ref/`, `generated/` | Ignored local dependencies/data and build/runtime artifacts |
+| `ref/ModernGekko/` | Pinned runtime fork, with nested RecompCore and DolRecomp dependencies |
+| Other `ref/` paths, `generated/` | Local references/data and build/runtime artifacts |
 
 ## Credits, legal and contributing
 
@@ -366,8 +378,11 @@ the [dependency lock](config/dependencies.lock.json). Preserve upstream notices
 and license obligations when adapting code. Nintendo's game and trademarks belong
 to their respective owners; this project is not affiliated with Nintendo.
 
-Contributions should be small, testable and consistent with the original PRD.
-Record visible results and known failures, not just counters or successful builds.
+Follow [CONTRIBUTING](CONTRIBUTING.md) and the repository's [agent instructions](AGENTS.md).
+Changes should be small and explainable, with regressions for behavioral fixes and
+the full source suite passing. Record visible results and known failures, not just
+counters or successful builds. Runtime/compiler changes belong in the maintained
+forks; new releases require recorded build inputs and artifact identities.
 Do not include retail content, generated game code, modules, or saves.
 Only submit screenshots you are authorized to share. This README is not a distribution license; consult
 [RIGHTS-STATUS](docs/RIGHTS-STATUS.md) before any publication.

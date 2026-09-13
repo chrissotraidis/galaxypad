@@ -2,17 +2,17 @@
 set -euo pipefail
 root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 python3 - "$root" <<'PY'
-import ast, pathlib, re, subprocess, sys, tempfile
+import ast, json, pathlib, re, subprocess, sys, tempfile
 root = pathlib.Path(sys.argv[1])
 checkout = root / 'ref/ModernGekko/vendor/dolphin/DolRecomp'
 # Test the retained experiment in a temporary tree, never the default generator.
 emitter = subprocess.check_output(['git', '-C', str(checkout), 'show',
-    'fa0cf619e8d7eb8cba7eaf55267a12caaebb46aa:src/backend/emitter.c'], text=True)
+    json.loads((root/'config/dependencies.lock.json').read_text())['repositories']['dolRecomp']['upstreamRevision'] + ':src/backend/emitter.c'], text=True)
 with tempfile.TemporaryDirectory(prefix='galaxypad-cntlzw-emitter-') as temporary:
     candidate = pathlib.Path(temporary) / 'src/backend/emitter.c'
     candidate.parent.mkdir(parents=True)
     candidate.write_text(emitter)
-    subprocess.run(['git', 'apply', str(root / 'patches/DolRecomp/0001-cntlzw-intrinsic.patch')],
+    subprocess.run(['git', 'apply', str(root / 'patches/experiments/cntlzw-intrinsic.patch')],
                    cwd=temporary, check=True)
     emitter = candidate.read_text()
 case = emitter.split('case PPC_OP_CNTLZW:', 1)[1].split('break;', 1)[0]

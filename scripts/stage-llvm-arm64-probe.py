@@ -23,7 +23,8 @@ if args.memory_state and args.context_state:
     parser.error('state experiments are mutually exclusive')
 original=root/'ref/ModernGekko/vendor/dolphin/DolRecomp'
 pin=subprocess.check_output(['git','rev-parse','HEAD'],cwd=original,text=True).strip()
-assert pin=='fa0cf619e8d7eb8cba7eaf55267a12caaebb46aa'
+lock=json.loads((root/'config/dependencies.lock.json').read_text())
+assert pin==lock['repositories']['dolRecomp']['revision']
 out=args.destination.resolve()
 out.mkdir(parents=True,exist_ok=False)
 for directory in ('src','tests','tools'):

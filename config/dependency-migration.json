@@ -1,0 +1,1005 @@
+{
+  "schemaVersion": 1,
+  "sourceProjectCommit": "36bf9fc3561ae380bd9d0f53558d9c472f337d40",
+  "sourceBootstrapSha256": "df92a4b78e3d41a8acefd17dd4dd6ad09b2a887f784b6419684e2c7acef9104c",
+  "repositories": {
+    "DolRecomp": {
+      "checkout": "ModernGekko/vendor/dolphin/DolRecomp",
+      "base": "fa0cf619e8d7eb8cba7eaf55267a12caaebb46aa",
+      "upstream": "https://github.com/ExpansionPak/DolRecomp.git",
+      "child": null,
+      "patches": [
+        {
+          "path": "patches/DolRecomp/0002-midblock-entry-cycles.patch",
+          "sha256": "99b2e3b16dd5df387f2fdcaa57250de717657eadd717598b0cf22bc9cbf7e11e",
+          "commit": "448e98f2caa4cec7938dedd3fd43448d5a348004",
+          "changedPaths": [
+            "src/backend/c_cfg.c",
+            "src/backend/emitter.c"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        }
+      ],
+      "sourceHead": "448e98f2caa4cec7938dedd3fd43448d5a348004",
+      "sourceTree": "340511dbaf90d7d6b3cde2f9e99f77da98c88560",
+      "verifiedFileCount": 100,
+      "url": "https://github.com/chrissotraidis/DolRecomp.git",
+      "branch": "codex/galaxypad-integration",
+      "head": "448e98f2caa4cec7938dedd3fd43448d5a348004",
+      "tree": "340511dbaf90d7d6b3cde2f9e99f77da98c88560",
+      "deliberateGraphDifferences": [],
+      "sourceIdentityVerified": true,
+      "sourceBlobIdentitySha256": "5801f459e15955f3dc6b1e0f72daf23338f6eb5e33dfad9f8857d9842595b525",
+      "canonicalBaselineFilesSha256": "4b7f00ebf43278f060548f9d8d6eb5c76d3446dac857e903f0140f71e974ea0e",
+      "canonicalBaselineFileManifest": "DolRecomp-source-files.json",
+      "upstreamUrl": "https://github.com/ExpansionPak/DolRecomp.git",
+      "upstreamRevision": "fa0cf619e8d7eb8cba7eaf55267a12caaebb46aa",
+      "revision": "448e98f2caa4cec7938dedd3fd43448d5a348004"
+    },
+    "RecompCore": {
+      "checkout": "ModernGekko/vendor/dolphin",
+      "base": "13e492094902644b0d113c586300d358640f9e19",
+      "upstream": "https://github.com/ExpansionPak/RecompCore.git",
+      "child": {
+        "name": "DolRecomp",
+        "path": "DolRecomp",
+        "revision": "448e98f2caa4cec7938dedd3fd43448d5a348004",
+        "url": "https://github.com/chrissotraidis/DolRecomp.git"
+      },
+      "patches": [
+        {
+          "path": "ref/sunpad-reviewed/patches/ModernGekko-dolphin/0001-sunpad-ios-runtime.patch",
+          "sha256": "b872dfe002d3d106af92f5dbc3dfcd3d20c43358e7681084ad41ee367cad214a",
+          "commit": "8b1ea7456049a3a45188cd02e9cd1e6661ead078",
+          "changedPaths": [
+            "CMakeLists.txt",
+            "Source/Core/AudioCommon/AudioCommon.cpp",
+            "Source/Core/AudioCommon/CMakeLists.txt",
+            "Source/Core/AudioCommon/CoreAudioSoundStream.cpp",
+            "Source/Core/AudioCommon/CoreAudioSoundStream.h",
+            "Source/Core/AudioCommon/Mixer.cpp",
+            "Source/Core/AudioCommon/Mixer.h",
+            "Source/Core/Common/CMakeLists.txt",
+            "Source/Core/Common/FileUtil.cpp",
+            "Source/Core/Common/FilesystemWatcher_iOS.cpp",
+            "Source/Core/Common/GL/GLContext.cpp",
+            "Source/Core/Common/Logging/Log.h",
+            "Source/Core/Common/Logging/LogManager.cpp",
+            "Source/Core/Common/MemoryUtil.cpp",
+            "Source/Core/Core/CMakeLists.txt",
+            "Source/Core/Core/Config/MainSettings.h",
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore.cpp",
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore.h",
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Hooks.cpp",
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_SMC.cpp",
+            "Source/Core/Core/USB/LibusbUtils_iOS.cpp",
+            "Source/Core/DolphinNoGUI/Platform.h",
+            "Source/Core/DolphinNoGUI/PlatformIOS.mm",
+            "Source/Core/InputCommon/CMakeLists.txt",
+            "Source/Core/InputCommon/ControllerInterface/ControllerInterface.h",
+            "Source/Core/InputCommon/GCAdapter_iOS.cpp",
+            "Source/Core/UICommon/UICommon.cpp",
+            "Source/Core/VideoBackends/Metal/MTLGfx.mm",
+            "Source/Core/VideoBackends/Metal/MTLStateTracker.mm",
+            "Source/Core/VideoBackends/Metal/MTLUtil.h",
+            "Source/Core/VideoBackends/Metal/MTLUtil.mm"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/sunpad.git",
+          "sourceRevision": "efd42ca45457af5950e0558c66703cb766959e11"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0003-galaxypad-diagnostics-header.patch",
+          "sha256": "e4498014739c15a102ce0e86729f69d7b06e4b1c97fb3ba8a93b47f3bc1757af",
+          "commit": "f7f4d26615d578e62eaead6c56b348652cdc87d2",
+          "changedPaths": [
+            "Source/Core/Common/GalaxyPadDiagnostics.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0002-galaxypad-runtime-diagnostics.patch",
+          "sha256": "17b48cebc5eb1e5f372dda98d0885705bb47d2329ce84ccfa1b809104b118dd0",
+          "commit": "922acd04f2ded2f6d0e6788e2bf4c4a23fc96237",
+          "changedPaths": [
+            "Source/Core/AudioCommon/CubebStream.cpp",
+            "Source/Core/AudioCommon/Mixer.cpp",
+            "Source/Core/Core/HW/WiimoteEmu/WiimoteEmu.cpp",
+            "Source/Core/VideoCommon/EFBInterface.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0004-apple-staticrecomp-audio-reserve.patch",
+          "sha256": "984481b78034018c67ed2f0ed79c8b86833045a159f47ab924c17af483bffbfe",
+          "commit": "0349c22700bb856af5c6db205ae1e6bdd311f240",
+          "changedPaths": [
+            "Source/Core/AudioCommon/Mixer.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0005-indexed-module-tables.patch",
+          "sha256": "6afff9e65b5ef0664e8a71e11d359f8abb772c806f6b35a96765630c577810c8",
+          "commit": "902f38a5ed69e823dd9c13152c4f1b900f632e94",
+          "changedPaths": [
+            "module-template/gen_module_tables.py"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0006-efb-frame-trace.patch",
+          "sha256": "e21fdd2bc2c01df20c671e0e2fdf452e7c2f75a1e7acb76df659a20500498cd2",
+          "commit": "1ddd454dca481e1846fa340d268231e991116dc7",
+          "changedPaths": [
+            "Source/Core/Common/GalaxyPadDiagnostics.h",
+            "Source/Core/VideoCommon/EFBInterface.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0007-phase-trace.patch",
+          "sha256": "a9b9ad03be58554a984e91310bcecd996fa90e3c9bea43fee97915ea28f18d55",
+          "commit": "de344abadd47f4a04c4214fadff9c6bf5c394892",
+          "changedPaths": [
+            "Source/Core/Common/GalaxyPadDiagnostics.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0008-macos-window-close-shutdown.patch",
+          "sha256": "11b547780a986bc3fc7ec1078491ddb7b3e48b40cd92a14d3d4b97452cde9f0f",
+          "commit": "f4c0f9f998ff9dde171cf7518eeebb6d6f5d3d2f",
+          "changedPaths": [
+            "Source/Core/DolphinNoGUI/PlatformMacos.mm"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0009-macos-pause-indicator.patch",
+          "sha256": "a23f92e1a6a4a00aeaa4107c2952a63bbff0905315945f058e9e9515386f0d5c",
+          "commit": "147a2e2f862bf369f8a7c03a2e70aac956acef22",
+          "changedPaths": [
+            "Source/Core/DolphinNoGUI/PlatformMacos.mm"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0010-apple-sys-platform.patch",
+          "sha256": "9c065043c15f941a73705d7809ab5e0a90a145ad7bd304346507aad80150b6d9",
+          "commit": "4f936057df2605905e78d7c5b58dd02364ae859c",
+          "changedPaths": [
+            "Source/Core/Common/FileUtil.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0011-pixel-store-trace.patch",
+          "sha256": "5f49e731e9c72d6231fe2030c31db7b9a5b60e77a9d16b456597987e1118e023",
+          "commit": "9f554418aa6a85fa500a93f21c66461737b4e4f8",
+          "changedPaths": [
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Hooks.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0012-lc-byte-fast.patch",
+          "sha256": "d980680c30fda3e54593930d6815d78ead4c78cd26a9b074f77fbac77394f126",
+          "commit": "0fc6893d1043f36c9e61a33ace887adc9b3a403a",
+          "changedPaths": [
+            "Source/Core/Core/PowerPC/MMU.h",
+            "Source/Core/Core/PowerPC/MMU_Tables.cpp",
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Hooks.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/experiments/lc-pair-host.patch",
+          "sha256": "87d3d595ff69f2619ce0a7dc90b290e6882b36e7dba5eb16f4946db9b4b950a1",
+          "commit": "6410d8aad9efd80106db2e8cbe173052da46fd2d",
+          "changedPaths": [
+            "Source/Core/Core/PowerPC/MMU.h",
+            "Source/Core/Core/PowerPC/MMU_Tables.cpp",
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Hooks.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0013-lc-pair-runtime.patch",
+          "sha256": "d05dda85e73b20f41f7042b1a6df2476fc30c971664c922ccfd7bd6f66483975",
+          "commit": "35a07a19ddd56ebfb2f69433e2847c281af62b91",
+          "changedPaths": [
+            "GXRuntime/src/core/cpu.c"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0014-deferred-fprf-helpers.patch",
+          "sha256": "661f2a2452e2240018140fedae6baaeea3b5c3e723d9266e3644f42581d1d019",
+          "commit": "206ec087e9853ad1273b8b3483ccfaedcc1e8343",
+          "changedPaths": [
+            "GXRuntime/src/core/cpu_interpreter_float.c"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0015-cpu-throttle-counter.patch",
+          "sha256": "15ae34e6ad58c5d3995aa1b8591b041f5bc405ddc7ab901366bcac3d8a47f68f",
+          "commit": "e6dd2c3cb88818c582ac49f1f994e99bce149b56",
+          "changedPaths": [
+            "Source/Core/VideoCommon/PerformanceMetrics.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0016-idle-wait-timing.patch",
+          "sha256": "63970dcc657af8239d2ccf64da74cf88395721e5aaec945fedf88f9388e776c1",
+          "commit": "486fc557d7df683dfbe9d4c17d5328555e286e41",
+          "changedPaths": [
+            "Source/Core/Common/GalaxyPadIdleWaitTiming.h",
+            "Source/Core/Core/CoreTiming.cpp",
+            "Source/Core/VideoCommon/PerformanceMetrics.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0017-completion-timing.patch",
+          "sha256": "cba14f51f95284ab097a1b0d5aef6f99bb8dd6571bd7b7e8b39efd56bc5933c4",
+          "commit": "4364ae094b5c94bca6a86825896af871dfe8cfe6",
+          "changedPaths": [
+            "Source/Core/Common/BlockingLoop.h",
+            "Source/Core/Common/completion-events.h",
+            "Source/Core/Common/completion-recorder.h",
+            "Source/Core/Common/completion-session.h",
+            "Source/Core/Core/CoreTiming.cpp",
+            "Source/Core/VideoCommon/Fifo.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0018-completion-flight.patch",
+          "sha256": "c40a8223d07fa85f0dccb33f13ed886f9c53b15ca60af5f1813598b31968466b",
+          "commit": "b21c48a309c4a201447272ca25d5fa0ce37096ab",
+          "changedPaths": [
+            "Source/Core/Common/GalaxyPadIdleWaitTiming.h",
+            "Source/Core/Common/completion-flight-options.h",
+            "Source/Core/Common/completion-flight-recorder.h",
+            "Source/Core/Common/completion-session.h",
+            "Source/Core/Common/completion-trigger.h",
+            "Source/Core/Common/recent-completion-events.h",
+            "Source/Core/Core/CoreTiming.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0019-dvd-wait-timing.patch",
+          "sha256": "22f1385f2d2ca5e667354b08daa8e33e3bb3e5ca85a6346fac617eec3a7caeba",
+          "commit": "2354b1bcdd721cfa68dc7f976fd8bb3ac6eadd9f",
+          "changedPaths": [
+            "Source/Core/Core/HW/DVD/DVDThread.cpp",
+            "Source/Core/VideoCommon/PerformanceMetrics.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/experiments/lc-empty-rel.patch",
+          "sha256": "94a970ed151b50fc1820f2850fcfce7f6164386240fa2fc68862a2dc312eb067",
+          "commit": "7f291010d2da6ca4147b4743715c6dc2d702d21f",
+          "changedPaths": [
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Hooks.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0020-gather-wait-timing.patch",
+          "sha256": "e17a99eb10881d6a68713806b4cdf1f1b38a49d483d65026b1bede8d4c6eadc9",
+          "commit": "a2a1cb53d008ebadbe29ba96e0926096f2c77bb0",
+          "changedPaths": [
+            "Source/Core/VideoCommon/CommandProcessor.cpp",
+            "Source/Core/VideoCommon/PerformanceMetrics.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0021-wakeup-notification-timing.patch",
+          "sha256": "a5478ac7b988642fe57a7f38d7ab242dacdfe6f66a9fe21806b589faf42c8bdd",
+          "commit": "4fbf6623d9052ed96da8d23c97dfb01f2047c32b",
+          "changedPaths": [
+            "Source/Core/Common/BlockingLoop.h",
+            "Source/Core/VideoCommon/Fifo.cpp",
+            "Source/Core/VideoCommon/PerformanceMetrics.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0022-psq-store-scale.patch",
+          "sha256": "74ca7e8c82bf32d25af12bde4cf1b4318ceb7a34ad7e0925540e415227fd7486",
+          "commit": "4f2a480bd10288eedb85d1f13412a4ffaa6ca64a",
+          "changedPaths": [
+            "GXRuntime/src/core/cpu.c"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/experiments/audio-phase-events.patch",
+          "sha256": "d0f1d941e552e4baa85b9fe623922dcf8ded804d393708d3f4e321276d99bc89",
+          "commit": "982015e72c1330c8fcfeb557b77140db4f87a2b8",
+          "changedPaths": [
+            "Source/Core/Common/GalaxyPadDiagnostics.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/experiments/efb-live-read-context.patch",
+          "sha256": "4d5782faa59f0dc77bdc31c3bef75c2e8215088b427a308337bbfe21d410b775",
+          "commit": "5495383e55d926f8dda8f3de1a933e4d3a9eec07",
+          "changedPaths": [
+            "Source/Core/Common/GalaxyPadEFBReadContext.h",
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Hooks.cpp",
+            "Source/Core/VideoCommon/EFBInterface.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/experiments/efb-dispatch-timing.patch",
+          "sha256": "5226881b8ce0f00b0b2673b68f40040fa4490771d170aade1289db00ae19b638",
+          "commit": "ef07082bfdd75f259e2d813713e65b6f59d6c261",
+          "changedPaths": [
+            "Source/Core/Common/GalaxyPadEFBDispatchTiming.h",
+            "Source/Core/VideoCommon/EFBInterface.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0023-pointer-reacquisition.patch",
+          "sha256": "8310e45ac65c4743924f1edf902dc056da4d54fc8eee925a474d157c1443233d",
+          "commit": "3453f4fc9e774e9a26820fd2bdef8af53c89c951",
+          "changedPaths": [
+            "Source/Core/Core/HW/WiimoteEmu/Dynamics.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0024-malformed-xf-context.patch",
+          "sha256": "8ae3658143fc2f7cfaf3e2f35f48a1921d81b09088ebbf8e4607429902d94ab4",
+          "commit": "c3226a593e603e42758e7d474387040894f7600e",
+          "changedPaths": [
+            "Source/Core/VideoCommon/OpcodeDecoding.cpp",
+            "Source/Core/VideoCommon/OpcodeDecoding.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0025-development-checkpoint-undo-release.patch",
+          "sha256": "d35867c46664e050bd3184672e5811a544f36781020fe53ea68c8add0b6dcb9e",
+          "commit": "b00d74789922d19683d10eb62c80e9bae20bf2f0",
+          "changedPaths": [
+            "Source/Core/Core/State.cpp",
+            "Source/Core/Core/State.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0026-guarded-direct-call-boundary.patch",
+          "sha256": "f9c905b4e0f23e5a39989825bd583c678dd3c0a114315a56c25079c2ce34f408",
+          "commit": "65f0fc976863a51ece96b05c3b7fe5a82ea803ec",
+          "changedPaths": [
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore.cpp",
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore.h",
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Run.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0027-fallback-pc-histogram.patch",
+          "sha256": "0d46c23073de589bf9fcb8e28c59e5dd3634301feab58197d6b8f7122f640cd4",
+          "commit": "bde2f475e9c42c0b5414bbbf68ee0da68c9e22e6",
+          "changedPaths": [
+            "Source/Core/Core/PowerPC/StaticRecomp/FallbackHistogram.h",
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore.cpp",
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore.h",
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Hooks.cpp",
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Run.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0028-malformed-xf-origin.patch",
+          "sha256": "4f6eaad058addedd2ed7dd55123a9a6863cc90e6d8a652681ecc2986677411ec",
+          "commit": "d3e8362ea0c756ee7142d24630df1763301702b3",
+          "changedPaths": [
+            "Source/Core/VideoCommon/OpcodeDecoding.cpp",
+            "Source/Core/VideoCommon/OpcodeDecoding.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0029-sampled-run-cost.patch",
+          "sha256": "8db2920cc54c923ff07bcda7b878308702db1e734023ea77e159fa6b72f5185c",
+          "commit": "a8e1a453f3620cc2846a6680526d97acc6f7bb55",
+          "changedPaths": [
+            "Source/Core/Core/PowerPC/StaticRecomp/RunCost.h",
+            "Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Run.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko-dolphin/0030-remoteio-output-counters.patch",
+          "sha256": "496f03aadca777baaefb46cf30842400c7051eeab54393b9dd9a475203448514",
+          "commit": "67ea4111d143344d09f295fe3df6f7be775f3070",
+          "changedPaths": [
+            "Source/Core/AudioCommon/CoreAudioSoundStream.cpp",
+            "Source/Core/Common/GalaxyPadAudioOutputCounters.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ios-simulator-framebuffer-fetch.patch",
+          "sha256": "e64cd61170da314bd222f290647e67090195e384dcc54661a743f21179573447",
+          "commit": "ab622bb3a9b458802a6b0028588b350e097de22a",
+          "previouslyOptional": true,
+          "changedPaths": [
+            "Source/Core/VideoBackends/Metal/MTLUtil.mm"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        }
+      ],
+      "sourceHead": "ab622bb3a9b458802a6b0028588b350e097de22a",
+      "sourceTree": "b56e89856116564f14535f76c1a56cec20db9a13",
+      "verifiedFileCount": 7310,
+      "canonicalBaselineSourceHead": "67ea4111d143344d09f295fe3df6f7be775f3070",
+      "url": "https://github.com/chrissotraidis/RecompCore.git",
+      "branch": "codex/galaxypad-integration",
+      "integrationCommit": "5d535c77501148c58511a82a13fd678e89615502",
+      "head": "5d535c77501148c58511a82a13fd678e89615502",
+      "tree": "b51bf55a15b50d8dd3f1148e026a4f745feb59bf",
+      "deliberateGraphDifferences": [
+        {
+          "path": ".gitmodules",
+          "expected": [
+            "100644",
+            "561ebd58ad6b7489c324f719c0add402803e19a9"
+          ],
+          "actual": [
+            "100644",
+            "331d80bd2379154c932271c8bde60c967ca090e9"
+          ]
+        },
+        {
+          "path": "DolRecomp",
+          "expected": [
+            "160000",
+            "fa0cf619e8d7eb8cba7eaf55267a12caaebb46aa"
+          ],
+          "actual": [
+            "160000",
+            "448e98f2caa4cec7938dedd3fd43448d5a348004"
+          ]
+        }
+      ],
+      "sourceIdentityVerified": true,
+      "sourceBlobIdentitySha256": "845123caf0b335e723bccea3ba07b92b62f928c76c12b0881b41d19f524c3f9f",
+      "canonicalBaselineFilesSha256": "05ec2290a86f6b4a77ba867b7944311a4b8a1457711f3d01072628b67e70cd1b",
+      "canonicalBaselineFileManifest": "RecompCore-source-files.json",
+      "upstreamUrl": "https://github.com/ExpansionPak/RecompCore.git",
+      "upstreamRevision": "13e492094902644b0d113c586300d358640f9e19",
+      "revision": "5d535c77501148c58511a82a13fd678e89615502"
+    },
+    "ModernGekko": {
+      "checkout": "ModernGekko",
+      "base": "0514d9f03f8602809f66fc92fdca87d30e752997",
+      "upstream": "https://github.com/ExpansionPak/ModernGekko.git",
+      "child": {
+        "name": "RecompCore",
+        "path": "vendor/dolphin",
+        "revision": "5d535c77501148c58511a82a13fd678e89615502",
+        "url": "https://github.com/chrissotraidis/RecompCore.git"
+      },
+      "patches": [
+        {
+          "path": "ref/sunpad-reviewed/patches/ModernGekko/0001-sunpad-apple-runtime.patch",
+          "sha256": "aa06ac920002fc94f8f96f684309f291e6b8cb882c694f894a9226d100abadbe",
+          "commit": "ef1d43f5ace82eadac93f42bf1d6ef4a72dabc09",
+          "changedPaths": [
+            "CMakeLists.txt",
+            "include/moderngekko/runtime.hpp",
+            "src/runtime/dolphin_runtime.cpp",
+            "tools/frontend_config.cpp",
+            "tools/frontend_config.hpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/sunpad.git",
+          "sourceRevision": "efd42ca45457af5950e0558c66703cb766959e11"
+        },
+        {
+          "path": "patches/ModernGekko/0002-headless-no-shader-wait.patch",
+          "sha256": "60d60d41d792c426f428fc3aaf2fce57962d870cefb181cee7fba90846948ce0",
+          "commit": "a11c972150ad02d776248a9d252e346e57b688de",
+          "changedPaths": [
+            "src/runtime/dolphin_runtime.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0003-runner-graphics-diagnostics.patch",
+          "sha256": "db85b6f6eceab1e3f0d9663f04f0dc5fc5745993d6ee546242865c1fc06978f0",
+          "commit": "a9179409aecc74d639f78974730acde2a765263d",
+          "changedPaths": [
+            "tools/moderngekko_run.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0004-runner-io-diagnostics.patch",
+          "sha256": "69a455e348f79246519a511944b8ed691660d3eea5fae0fd42dfdf7aacfdd79d",
+          "commit": "1695d028de4ad8858f230d39f9050fe9d40d8846",
+          "changedPaths": [
+            "include/moderngekko/runtime.hpp",
+            "src/runtime/dolphin_runtime.cpp",
+            "tools/moderngekko_run.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0005-headless-explicit-audio.patch",
+          "sha256": "ca5b3908ecc2312cf04a0295274d8a3155d0f7013b17dd947f9616ffa7a73ef7",
+          "commit": "eb7e99eafd56895f4b860197b036f28f7c80443e",
+          "changedPaths": [
+            "src/runtime/dolphin_runtime.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0006-runner-cadence-diagnostics.patch",
+          "sha256": "73dbe799b0d878edba640ffced0bcb9a0d1451427719371e2d7761c3001d57eb",
+          "commit": "81f61e5bb6dffea5350cd973a09a3d88a584210b",
+          "changedPaths": [
+            "include/moderngekko/runtime.hpp",
+            "src/runtime/dolphin_runtime.cpp",
+            "tools/moderngekko_run.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0007-rmge01-staticrecomp-idle.patch",
+          "sha256": "f432d83b07ffbb11a66d3ef4da10ff7d8a01718099def9a3cb6b3578a55d53d7",
+          "commit": "30f96ef8e246ac952693f8a766df2f76be810c27",
+          "changedPaths": [
+            "src/runtime/dolphin_runtime.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0008-module-cache-codegen-options.patch",
+          "sha256": "03de37c00dee2d4920be17b9489834556c86676606a6b8ce85c3f8da7a714845",
+          "commit": "8114085483f271befb11c7d4ca9dde5edc8c6aaf",
+          "changedPaths": [
+            "tools/moderngekko_port.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0009-efb-frame-correlation.patch",
+          "sha256": "4acf23252cc91ed60fd6e69a6ec740f4da882aa42764c576f5bbda63ea6a1531",
+          "commit": "5d787aebe6981dcb41e5bb76ebf781e50eb997f2",
+          "changedPaths": [
+            "include/moderngekko/runtime.hpp",
+            "src/runtime/dolphin_runtime.cpp",
+            "tools/moderngekko_run.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0010-phase-trace-hooks.patch",
+          "sha256": "fc402fa49ba044a70db2ad91bab83d952669c23afa71d5efd70a77dd36e83a81",
+          "commit": "91548fbdf414b0e699c1596837581722d747a0af",
+          "changedPaths": [
+            "src/runtime/dolphin_runtime.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0011-profile-guided-module-build.patch",
+          "sha256": "da9578771b6ccfe1c70918ecd973c19e7c76925601a082b2826e8e1ef5fe7c0f",
+          "commit": "f84ec4e5e3e20d258e50d1a8866d63cf4e6f9416",
+          "changedPaths": [
+            "tools/moderngekko_port.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0012-native-resolution-default.patch",
+          "sha256": "9078f60d32584fb7c79ab3757a790674f7712e03e415425f4c19c27c8d6b13c9",
+          "commit": "48bb6d1a7c239b7e35a8347aea9440f762a83a70",
+          "changedPaths": [
+            "tests/frontend_config_test.cpp",
+            "tools/frontend_config.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0013-galaxypad-frontend-controls.patch",
+          "sha256": "8304632c1cc9dbb81e1c56dbc87f328a91c2bef824737127a6cfa1bf78653891",
+          "commit": "9fececb0a2aacdcf02a0d2a61ce2bc943725dbf5",
+          "changedPaths": [
+            "tests/frontend_config_test.cpp",
+            "tools/frontend_config.cpp",
+            "tools/moderngekko_launcher.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0027-frontend-launch-progress.patch",
+          "sha256": "c150fe4fd3feafa8583e23861872737a8e4b60972494a47f3c0b56b044635703",
+          "commit": "95adea60f253f1e1399bdb6d0c92483e0441a557",
+          "changedPaths": [
+            "tools/moderngekko_launcher.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0014-module-source-identity.patch",
+          "sha256": "d3640ee79866a4a48482d90b44410a83d538c4b8be7fa72cc30b192e33278431",
+          "commit": "17847b7079840289b10503f0bd28ce86bb363542",
+          "changedPaths": [
+            "tools/moderngekko_port.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0015-rmge01-fprf-policy.patch",
+          "sha256": "881996463a31728375b651b5cdf96f165f5a087ccc5c85d94851fc4a21421488",
+          "commit": "b41f0a350d603e8520db3918210b7220a846f7cd",
+          "changedPaths": [
+            "tools/moderngekko_port.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0016-rmge01-thp-kernels.patch",
+          "sha256": "ef25620e8ec254b1c5eecf2bfa386ad60c06f085ac3cca0a1996cba611cf8f6f",
+          "commit": "55b63dd7680c4b8ae70addce6a76288c1039bd11",
+          "changedPaths": [
+            "tools/galaxypad_thp_policy.inc",
+            "tools/moderngekko_port.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0021-dcbz-loop-policy.patch",
+          "sha256": "ef5ce417866cd67f6fd314f8585a6ea7716e50bcf824a044c4b8d4020c3c0e3b",
+          "commit": "4f0c16376f72f6f5347ae5b3757be4523fc3a137",
+          "changedPaths": [
+            "tools/galaxypad_dcbz_policy.inc",
+            "tools/moderngekko_port.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0025-rmge01-two-range-policy.patch",
+          "sha256": "1a8378b059fc3ef9ff00285c23d491200ed404a2245ac789e90d8413c4d169bc",
+          "commit": "0e828919ac0806dc0880d38785c5a1314b7bfc33",
+          "changedPaths": [
+            "tools/galaxypad_two_range_policy.inc",
+            "tools/moderngekko_port.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0017-vi-timing-recorder.patch",
+          "sha256": "c5a2da36a4de45e3a6c440ccd03593971649f9109f0cafa64cdae81536a02b6e",
+          "commit": "ec785736356e89af26705ddcd5ea5b8c63b24662",
+          "changedPaths": [
+            "src/runtime/dolphin_runtime.cpp",
+            "src/runtime/vi-timing-buffer.h",
+            "src/runtime/vi-timing-recorder.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0018-idle-wait-recorder.patch",
+          "sha256": "fd268ed85ae8ad14624ac402cc399b9a38f440b116a2bfa44322e30490c75967",
+          "commit": "5971c5e72ad16cf0649db0e8991d3b38dd3cc08a",
+          "changedPaths": [
+            "src/runtime/dolphin_runtime.cpp",
+            "src/runtime/vi-timing-buffer.h",
+            "src/runtime/vi-timing-recorder.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0019-completion-recorder.patch",
+          "sha256": "01c931eb6103d5e0c0437231ee386a6ed5802dfca5c5c574dcd5006178e71186",
+          "commit": "cc7aeef5e763bdfe816695b550ff379b51f9096c",
+          "changedPaths": [
+            "src/runtime/dolphin_runtime.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0020-completion-flight.patch",
+          "sha256": "c72c94b29bb419f423218deb4a8d3fcb2762b911273dc0d64df20c187d6d3172",
+          "commit": "3cb788c3fb36b012bf4a2903122f666005532f79",
+          "changedPaths": [
+            "src/runtime/dolphin_runtime.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0022-dvd-wait-recorder.patch",
+          "sha256": "9ce037d4df807985ad626afa2fc6b967b07cc079998b3867c76d2b118c33bcd6",
+          "commit": "e78c8c0d2022751fcb8d0534543037ddd7781379",
+          "changedPaths": [
+            "src/runtime/dolphin_runtime.cpp",
+            "src/runtime/vi-timing-buffer.h",
+            "src/runtime/vi-timing-recorder.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0023-gather-wait-recorder.patch",
+          "sha256": "c8e58096449a7cb60843d21d38946d486ca484c35b63f060f4cdd189b93ca3e0",
+          "commit": "7f6dd1872992302a2448f949764c83a829fb8aff",
+          "changedPaths": [
+            "src/runtime/dolphin_runtime.cpp",
+            "src/runtime/vi-timing-buffer.h",
+            "src/runtime/vi-timing-recorder.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0024-wakeup-recorder.patch",
+          "sha256": "2fab078afc255d0f278c476a3b86c67bef901aadc97962737c34f51558916350",
+          "commit": "94bae621ada0de16715d3ecb65d194b3d808244e",
+          "changedPaths": [
+            "src/runtime/dolphin_runtime.cpp",
+            "src/runtime/vi-timing-buffer.h",
+            "src/runtime/vi-timing-recorder.h"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0029-mod-address-fast-reject.patch",
+          "sha256": "53a3823a06ac00a090065f54a030915110ffbdf997398d36242b52d69845e6c1",
+          "commit": "d741371a53f750af51dc694e0795f78be4961f40",
+          "changedPaths": [
+            "src/runtime/mod_loader.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0030-mod-dispatch-fast-reject.patch",
+          "sha256": "bba8bb0eaab1664fd78230e979d7baa1d559d37606f99802b6da07b467de349e",
+          "commit": "e48543127945e9808f804a784337bdff9b012fed",
+          "changedPaths": [
+            "src/runtime/mod_loader.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0026-runtime-user-directories.patch",
+          "sha256": "eae4e6f3b8476354b5b05e9e006646cbca8ce1e4fe17597d2b6628f498aeb6a2",
+          "commit": "db86b02054a3306c0f6c414b55de8fd4cd2b9707",
+          "changedPaths": [
+            "src/runtime/dolphin_runtime.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        },
+        {
+          "path": "patches/ModernGekko/0028-builtin-mod-descriptors.patch",
+          "sha256": "d198a24f168fd5b589552bcc9474468c70225ec2ec83a93bfdabe58f5eab37c9",
+          "commit": "17eec81c2bbda9efe628c8f476a314ce16a8b825",
+          "changedPaths": [
+            "include/moderngekko/runtime.hpp",
+            "src/runtime/dolphin_runtime.cpp"
+          ],
+          "sourceRepository": "https://github.com/chrissotraidis/galaxypad.git",
+          "sourceRevision": "36bf9fc3561ae380bd9d0f53558d9c472f337d40"
+        }
+      ],
+      "sourceHead": "17eec81c2bbda9efe628c8f476a314ce16a8b825",
+      "sourceTree": "3de111655fda61de17e5a938fb930e8d24f24aed",
+      "verifiedFileCount": 932,
+      "url": "https://github.com/chrissotraidis/ModernGekko.git",
+      "branch": "codex/galaxypad-integration",
+      "integrationCommit": "ab9044b7ce4b8f859423029b05e1ecc398723efc",
+      "head": "ab9044b7ce4b8f859423029b05e1ecc398723efc",
+      "tree": "7834b8b23439f88f4c62dc5cdc7acd5f073ffe47",
+      "deliberateGraphDifferences": [
+        {
+          "path": ".gitmodules",
+          "expected": [
+            "100644",
+            "6a8a946ffa45b3c6d793299122d455433f41c57c"
+          ],
+          "actual": [
+            "100644",
+            "b30c12dbec062fb14dbec85aa00d9e046110d121"
+          ]
+        },
+        {
+          "path": "vendor/dolphin",
+          "expected": [
+            "160000",
+            "13e492094902644b0d113c586300d358640f9e19"
+          ],
+          "actual": [
+            "160000",
+            "5d535c77501148c58511a82a13fd678e89615502"
+          ]
+        }
+      ],
+      "sourceIdentityVerified": true,
+      "sourceBlobIdentitySha256": "3055411b96ac949e398243d7ede07a2eb8a2e5d2c9d1ab07dd46490eae7cfb57",
+      "canonicalBaselineFilesSha256": "869b356e2d42414992c2cc6dbd55cca0c0222d4cf65b32190dcd2ad71c6338f3",
+      "canonicalBaselineFileManifest": "ModernGekko-source-files.json",
+      "upstreamUrl": "https://github.com/ExpansionPak/ModernGekko.git",
+      "upstreamRevision": "0514d9f03f8602809f66fc92fdca87d30e752997",
+      "revision": "ab9044b7ce4b8f859423029b05e1ecc398723efc"
+    }
+  },
+  "optionalOverlays": [
+    {
+      "path": "patches/ios-simulator-framebuffer-fetch.patch",
+      "included": true,
+      "reason": "Maintained in RecompCore so Simulator builds do not mutate dependency checkouts",
+      "commit": "ab622bb3a9b458802a6b0028588b350e097de22a"
+    }
+  ],
+  "identicalHelperCopies": [
+    {
+      "sourceProjectPath": "patches/experiments/completion-trigger.h",
+      "fork": "RecompCore",
+      "forkPath": "Source/Core/Common/completion-trigger.h",
+      "sha256": "68c72bf2eb534cd46f055a0dd2766e261d9e3010a951c273a6ae8ba37eae7412"
+    },
+    {
+      "sourceProjectPath": "patches/experiments/completion-flight-recorder.h",
+      "fork": "RecompCore",
+      "forkPath": "Source/Core/Common/completion-flight-recorder.h",
+      "sha256": "e6880dfa2d0a49b33af8474ed85ae9751e77e58f7536b3d8edc19fc6aa893f21"
+    },
+    {
+      "sourceProjectPath": "patches/experiments/completion-flight-options.h",
+      "fork": "RecompCore",
+      "forkPath": "Source/Core/Common/completion-flight-options.h",
+      "sha256": "90ced85a24d184323df9e1648376319f203b5fb4f7e576960a190e41a07e4985"
+    },
+    {
+      "sourceProjectPath": "patches/experiments/efb-read-context.h",
+      "fork": "RecompCore",
+      "forkPath": "Source/Core/Common/GalaxyPadEFBReadContext.h",
+      "sha256": "f40aac5c0eaf792e4615b7dfac2c281fb9d96b45b41731182fe8c7c607151a2b"
+    },
+    {
+      "sourceProjectPath": "patches/experiments/completion-session.h",
+      "fork": "RecompCore",
+      "forkPath": "Source/Core/Common/completion-session.h",
+      "sha256": "2f345587b9b5b848bc06b6d6122109a56ee7c03c6f1c86cd4e7066ad0516aec9"
+    },
+    {
+      "sourceProjectPath": "patches/experiments/recent-completion-events.h",
+      "fork": "RecompCore",
+      "forkPath": "Source/Core/Common/recent-completion-events.h",
+      "sha256": "a077580dfacce2d82a83c3bbaa8afa79af0b9f97c685cebc061f2455639b49a7"
+    },
+    {
+      "sourceProjectPath": "patches/experiments/completion-recorder.h",
+      "fork": "RecompCore",
+      "forkPath": "Source/Core/Common/completion-recorder.h",
+      "sha256": "9d24fe2274148aa483d3ba842e0ff2eac35eef2a6413c92be717699f2c870ce7"
+    },
+    {
+      "sourceProjectPath": "patches/experiments/completion-events.h",
+      "fork": "RecompCore",
+      "forkPath": "Source/Core/Common/completion-events.h",
+      "sha256": "d478c112b62945c2837d6067df057be1f2a8433699ce6618da8a61bb4cc3a91b"
+    },
+    {
+      "sourceProjectPath": "patches/experiments/efb-dispatch-timing.h",
+      "fork": "RecompCore",
+      "forkPath": "Source/Core/Common/GalaxyPadEFBDispatchTiming.h",
+      "sha256": "fbee4f13c98e89f0a9e0fd89584bfeda6f135019ca6eebc7553c262a71afaa84"
+    },
+    {
+      "sourceProjectPath": "patches/experiments/dcbz-loop-policy.inc",
+      "fork": "ModernGekko",
+      "forkPath": "tools/galaxypad_dcbz_policy.inc",
+      "sha256": "e8a6b3583006e6cd12785ce5b962e8b01354629d96aaea0ac3eea0ce192bc996"
+    },
+    {
+      "sourceProjectPath": "patches/experiments/thp-kernel-policy.inc",
+      "fork": "ModernGekko",
+      "forkPath": "tools/galaxypad_thp_policy.inc",
+      "sha256": "d1a160059a219ca78bb4aedebe24b1a3f93c45c02a906cfe5fa7257f7e3a0cd3"
+    },
+    {
+      "sourceProjectPath": "patches/experiments/vi-timing-recorder.h",
+      "fork": "ModernGekko",
+      "forkPath": "src/runtime/vi-timing-recorder.h",
+      "sha256": "5fbf35b128ec174626eb9f67c853852b508dccea284823c6c3e94617d574a4fa"
+    },
+    {
+      "sourceProjectPath": "patches/experiments/vi-timing-buffer.h",
+      "fork": "ModernGekko",
+      "forkPath": "src/runtime/vi-timing-buffer.h",
+      "sha256": "dd2c7adf001348208eb39e08dc1aa6463ffe0112d7f583c545f2d255b35e1411"
+    },
+    {
+      "sourceProjectPath": "patches/experiments/two-range-policy.inc",
+      "fork": "ModernGekko",
+      "forkPath": "tools/galaxypad_two_range_policy.inc",
+      "sha256": "d3d7743ec668adce7a5e27512f73683dd3e4d423596e06fa3b390bf367a2b725"
+    }
+  ],
+  "verification": {
+    "method": "Reconstruct pinned upstream + ordered SHA256-identified patches in temporary fork-local Git indexes; compare every path, mode and blob against maintained heads. Compare canonical pre-Simulator source bytes and modes directly against separately verified read-only dependency baseline.",
+    "unexplainedDifferences": [],
+    "workingTrees": "clean",
+    "upstreamBasesAreAncestors": true,
+    "gitConnectivity": "passed",
+    "baselineInputs": "Fresh isolated pinned dependency clones; no original dirty source or generated game files included."
+  }
+}

@@ -22,14 +22,15 @@ established in this pass.
 | The normal contributor check stopped on absent ignored, game-derived experiment files. | Separate 18 explicit private-evidence commands from the source/prepared-dependency suite. | Default suite completes without game data. Private mode fails clearly when fixtures are unavailable. |
 
 Implementations: [bootstrap](../scripts/bootstrap-dependencies.sh),
-[source verifier](../scripts/verify-dependency-tree.py),
+[dependency verifier](../scripts/dependency-lock.py),
 [packager](../scripts/package-preview.py),
 [report filtering](../apple/shared/GalaxyPadDiagnostics.mm),
 [THP fallback](../apple/shared/GalaxyPadTHPPatch.c), and
 [About](../apple/ios/GalaxyPadAboutViewController.mm).
 
-The source verifier covers tracked files and nonignored additions against the
-pinned base and patches. Git-ignored generated/build inputs are outside that
+The initial replay verifier has now been replaced by direct pinned-fork validation.
+It checks declared submodule URLs/paths, gitlinks, checked-out commits, tracked
+files and nonignored additions. Git-ignored generated/build inputs are outside that
 comparison. It does not establish complete build-input or binary reproducibility.
 The packager's export check establishes a loader interface, not a valid game
 descriptor or gameplay correctness; the runtime retains its descriptor checks.
@@ -98,26 +99,53 @@ commit is still needed to establish whether they meant a different JIT bug.
 iOS excludes this ARM64 fallback creation path; complete historical iOS build
 provenance remains a separate gap below.
 
+## Completed fork migration
+
+The runtime/compiler changes now live in maintained forks with original upstream
+history. GalaxyPad tracks ModernGekko as a Git submodule; its nested gitlinks pin
+RecompCore and DolRecomp. Bootstrap checks out these commits without applying or
+recovering a production patch stack. Existing dirty dependency trees are preserved.
+
+| Fork | Pinned integration commit |
+| --- | --- |
+| [ModernGekko](https://github.com/chrissotraidis/ModernGekko) | `ab9044b7ce4b8f859423029b05e1ecc398723efc` |
+| [RecompCore](https://github.com/chrissotraidis/RecompCore) | `5d535c77501148c58511a82a13fd678e89615502` |
+| [DolRecomp](https://github.com/chrissotraidis/DolRecomp) | `448e98f2caa4cec7938dedd3fd43448d5a348004` |
+
+[The migration manifest](../config/dependency-migration.json) maps every migrated
+patch to its source revision, hash, integration commit and changed paths. Tracked
+source blobs/modes were compared against the applied baseline: no unexplained
+changes. Deliberate differences are the nested graph declarations and the existing
+Simulator framebuffer compatibility patch, now committed so a Simulator build
+cannot dirty its dependency checkout. Upstream attribution files are unchanged.
+Unused experiments remain opt-in and are not applied by bootstrap.
+
+The complete default source suite passes against fresh checkouts from the public
+forks. Eleven real-Git fixtures cover mismatched pins, missing declarations, wrong
+paths/URLs, local mirror overrides, missing checkouts and dirty source rejection.
+The public-content gate permits only the exact ModernGekko gitlink under `ref/`;
+it rejects ordinary files at that path and other tracked reference material.
+
+[Contribution policy](../CONTRIBUTING.md), [agent instructions](../AGENTS.md), a
+pull-request template and the source-check CI workflow require explainable changes,
+focused regression evidence, exact dependency pins, preserved attribution and
+explicit release/device evidence. CI runs the default suite and checks afterward
+that dependency sources remain unchanged. These checks do not prove a complete
+new runtime build or close the historical iOS release provenance gap.
+
 ## Remaining engineering work, in order
 
-1. **Simplify the dependency graph with pinned forks.** There are 60 patch files
-   across the three main directories, not all active, plus experiments. Preserve
-   the verified applied source while committing necessary DolRecomp changes,
-   then RecompCore with its child pin, then ModernGekko with its child pin.
-   Only after those comparisons and builds pass should the root switch to the
-   pinned fork/submodule graph and remove patch recovery. Template/Petari need
-   no fork merely because they are references. This migration is not implemented.
-2. **Build the next release from a complete frozen source tree.** The current
+1. **Build the next release from a complete frozen source tree.** The current
    supplement explicitly lacks a full historical iOS snapshot for every compiled
    source. Frozen audio inputs do not close that gap. Capture all source,
    generated build inputs, toolchain/configuration and artifact identities before
    promotion, then validate an in-place update with saves preserved.
-3. **Expose retained import storage.** `GalaxyPadImportActivation.h` preserves
+2. **Expose retained import storage.** `GalaxyPadImportActivation.h` preserves
    previous multi-GB imports in recovery directories; removal intentionally keeps
    recovery copies. Repeated imports can consume storage without an in-app way to
    inspect and remove those copies. Add explicit recovery/storage management with
    save isolation and confirmation; automatic deletion is not the repair.
-4. **Validate audio and private optimizations on hardware.** The Apple audio
+3. **Validate audio and private optimizations on hardware.** The Apple audio
    reserve/resampling policy is a deliberate tradeoff needing matched listening
    and gameplay evidence. The THP candidate still needs wider state/timing parity
    before any default activation. Neither should be retuned based on speculation.

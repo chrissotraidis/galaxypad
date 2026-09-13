@@ -19,9 +19,17 @@ also acknowledge SpecialK / aharonahdoot for RecompCore and Literally God /
 MrPoloGit for the recompilation template and macOS support, alongside the Dolphin
 team. Those credits and the upstream contributor histories remain authoritative.
 
-Exact upstream base revisions are in [the dependency lock](config/dependencies.lock.json).
-Effective source also includes integration patches; the base revision alone does
-not describe every compiled input. See [the upstream review](docs/UPSTREAM-REVIEW.md)
+GalaxyPad's maintained copies are [ModernGekko](https://github.com/chrissotraidis/ModernGekko),
+[RecompCore](https://github.com/chrissotraidis/RecompCore), and
+[DolRecomp](https://github.com/chrissotraidis/DolRecomp). Their upstream names,
+contributor histories and licenses remain intact. Forks record the integration
+changes; they do not make the original tools GalaxyPad-authored work.
+
+Exact selected commits and upstream bases are recorded in
+[the dependency lock](config/dependencies.lock.json); see
+[the dependency guide](docs/DEPENDENCIES.md) for the nested submodule graph.
+Historical previews used the earlier patch stack and retain their own source
+supplements and reproduction limits. See [the upstream review](docs/UPSTREAM-REVIEW.md)
 and [third-party notices](THIRD-PARTY-NOTICES.md). This page supplements original
 licenses and per-file attribution; it does not replace them.
 
