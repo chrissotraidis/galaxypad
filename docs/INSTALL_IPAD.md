@@ -1,4 +1,10 @@
-# Install GalaxyPad on your iPad — private test
+# Install GalaxyPad on iPhone or iPad — experimental preview
+
+Download the IPA from the [private preview release](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1). It supports both device families and requires your own Apple signing. Skip the local export step below when using that release IPA. The installation assistant described here is a development helper; its export action remains pinned to an older local candidate.
+
+See [current preview notes](PREVIEW-2026-09-13.md) for build 13 and validation limits. Historical evidence below does not supersede that release record.
+
+## Local development assistant
 
 Double-click **Install on iPad.command** in the project folder. This opens native
 Mac dialogs, not a website. Xcode command-line tools and Python 3 are required.
@@ -9,7 +15,7 @@ from this project. Do not disable Gatekeeper globally.
 uses the prepared R913 candidate in ignored `generated/` on the development Mac.
 On a different checkout it will report that the candidate is missing. Transfer
 your private IPA separately from that Mac, or complete the documented local
-device build with your own verified game input. No release asset is uploaded.
+device build with your own verified game input. The preview release now provides a separate audited IPA; the historical assistant does not produce that artifact.
 
 ### Building a new device candidate without the old private cache
 
@@ -62,8 +68,7 @@ installed directly. This assistant does not request your Apple password, obtain
 certificates, create provisioning profiles or accept Apple agreements.
 
 For development signing, set up your Apple account/team in Xcode and a profile
-for `org.galaxypad.GalaxyPad` covering your iPad. The current Mac has no valid
-signing identity on the last check. Profile expiry, device registration and
+for `org.galaxypad.GalaxyPad` covering your iPad. Profile expiry, device registration and
 entitlements must match; ad-hoc Mac signing with `codesign -s -` is insufficient.
 If your signing tool also installs the IPA, use that tool's install action.
 
@@ -92,7 +97,7 @@ diagnostic report preview before sharing anything. Follow
 [the first hardware test](PHYSICAL-IPAD-FIRST-TEST.md) for comparable scenes.
 The UI and performance are experimental; neither device boot nor60FPS is proven.
 
-## Current evidence and limitations
+## Historical assistant evidence and limitations
 
 R913 private candidate `generated/device-stage.ZaTANc/GalaxyPad.app` is a Release
 IOS/ARM64 build with module48f455eb. Signing/device installation remains untested
