@@ -3,12 +3,14 @@
 set -euo pipefail
 
 root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-marker="$root/generated/modules/RMGE01/active-module.txt"
-info="$root/generated/build/moderngekko-desktop/moderngekko-module-info"
+marker="${GALAXYPAD_MODULE_MARKER:-$root/generated/modules/RMGE01/active-module.txt}"
+info="${GALAXYPAD_MODULE_INFO:-$root/generated/build/moderngekko-desktop/moderngekko-module-info}"
 
 [[ $# -le 1 ]] || { echo "usage: $0 [absolute-candidate-module]" >&2; exit 2; }
 if [[ $# -eq 1 ]]; then
   module="$1"
+elif [[ -n "${GALAXYPAD_MACOS_MODULE:-}" ]]; then
+  module="$GALAXYPAD_MACOS_MODULE"
 else
   [[ -f "$marker" ]] || { echo "missing active RMGE01 module marker" >&2; exit 1; }
   module="$(<"$marker")"

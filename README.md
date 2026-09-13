@@ -5,14 +5,14 @@
   <img alt="Configured macOS target 14+" src="https://img.shields.io/badge/macOS%20target-14%2B-0A84FF?logo=apple">
   <img alt="Native ARM64 game code" src="https://img.shields.io/badge/game%20code-native%20ARM64-FF9F0A">
   <img alt="Metal renderer" src="https://img.shields.io/badge/renderer-Metal-5E5CE6">
-  <img alt="Preview in preparation" src="https://img.shields.io/badge/preview-in%20preparation-FFD60A">
+  <img alt="Experimental preview" src="https://img.shields.io/badge/preview-experimental-FFD60A">
   <img alt="Game data not included" src="https://img.shields.io/badge/game%20data-not%20included-FF453A">
 </p>
 
 ![Mario exploring a grassy planet in GalaxyPad](docs/images/galaxypad-mario-planet.png)
 
 <p align="center">
-  <strong>Super Mario Galaxy running natively on iPad through ahead-of-time recompilation.</strong><br>
+  <strong>Super Mario Galaxy running natively on iOS, iPadOS, and macOS through ahead-of-time recompilation.</strong><br>
   An Apple app for iPhone, iPad, and Apple silicon Mac, with Metal rendering, touch controls, and controller support.
 </p>
 
@@ -21,22 +21,29 @@ and presents it in an Apple app with Metal rendering, customizable touch control
 and Apple GameController support. Supply your own supported game image;
 GalaxyPad does not download or include the game.
 
-## Preview coming soon
+## Experimental preview
 
-The first public iPhone/iPad IPA is **in preparation and has not been published**.
-There is no public download or TestFlight yet. Installation instructions and a
-verified package will accompany the preview. Developers can use the
-[local iPad installation guide](docs/INSTALL_IPAD.md) and the build steps below.
+[Download the preview](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1):
+one IPA for iPhone and iPad, plus a separate Apple silicon macOS app archive.
+The repository and release retain their existing private visibility.
+
+The IPA requires signing with your own Apple account before installation; it is
+not a TestFlight or App Store build. The Mac app is ad-hoc signed and not notarized.
+Both packages contain the AOT game-code module but no game image, extracted game
+assets, or saves. Supply the supported image yourself. Read the
+[preview notes](docs/PREVIEW-2026-09-13.md) for installation and known limitations.
 
 ## Current status
 
-Gameplay is running on iPad, with development builds also exercised on Mac and
-in iPhone/iPad Simulator. Lighter scenes reach 60 FPS; **consistent 60 FPS is not
-achieved**. The current heavy-scene Simulator baseline is about 45–49 frame
-events per second with the depth access needed for Pull Stars enabled. The HUD
-counts frame events rather than guaranteeing displayed frames. Audio underruns
-are still reported, and full-game, sustained-performance, and broader device
-validation remain work in progress.
+Build 13 is installed on the physical iPad Pro; the iPhone 14 remains on build 7.
+The preview IPA uses the build 13 host tested on iPad. Its latest changes have not
+yet had equivalent physical iPhone acceptance. In owner
+playtesting, the iPad generally holds 60 FPS with occasional dips, while the
+iPhone 14 runs around 32 FPS in the reported scenes and needs substantial
+optimization. These are gameplay reports, not matched benchmark results.
+Sustained performance, audio, touch accuracy, and full-game validation remain
+work in progress. The HUD counts frame events rather than guaranteeing
+displayed frames.
 
 | Area | Current result |
 | --- | --- |
@@ -44,7 +51,7 @@ validation remain work in progress.
 | Rendering | Metal gameplay; corrected depth access restores tested Pull Star activation and level entry |
 | Controls | Touch movement and pointer aim, Wii actions, controller input, and editable touch layouts |
 | Platforms | iPhone/iPad app targets and Apple silicon Mac development package; configured minimums are not verified device compatibility |
-| Release | Public preview preparation; no published IPA yet |
+| Release | Experimental private preview; iPhone performance and full-game acceptance remain open |
 
 See [current status](docs/STATUS.md), [performance evidence](docs/PERFORMANCE-2026-09-12.md),
 [release readiness](docs/RELEASE-READINESS.md), and the [development journal](docs/JOURNAL.md)
@@ -72,10 +79,18 @@ included unchanged; individual HUD readings are not sustained-performance claims
 <details>
 <summary><strong>Is this native recompilation or emulation?</strong></summary>
 
-The game code runs as ahead-of-time compiled native ARM64 code. A Dolphin-derived
-runtime supplies Wii hardware emulation, Metal rendering, and interpreter
-fallbacks. GalaxyPad is game-specific, not a general Wii loader, and is not
-emulator-free. iOS uses no runtime PowerPC JIT.
+Both techniques are involved. Super Mario Galaxy’s PowerPC game code is
+recompiled ahead of time into ARM64 machine code that executes directly on
+Apple silicon. The game still expects Wii hardware, so a Dolphin-derived runtime
+provides the graphics, audio/DSP, memory, timing, and input behavior it needs,
+using Metal for rendering. Interpreter fallbacks remain for code outside the
+recompiled coverage; iOS uses no runtime PowerPC JIT.
+
+The precise description is **ahead-of-time recompiled game code on a
+Dolphin-derived compatibility runtime**. GalaxyPad is a game-specific Apple app,
+not a general Wii loader or a from-scratch source port. Native ARM64 execution
+removes runtime translation for the recompiled code; it does not remove the
+cost of reproducing Wii hardware behavior.
 
 </details>
 
@@ -92,10 +107,10 @@ automatically compatible. See the import instructions below.
 <details>
 <summary><strong>Can I install it now?</strong></summary>
 
-The public IPA is coming, but has not been published. The existing
-[installation guide](docs/INSTALL_IPAD.md) is for a locally built development app
-and requires Apple signing. Configured targets are iOS/iPadOS 16 and macOS 14;
-these are not verified minimum-device recommendations.
+The [preview release](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1)
+provides an IPA for iPhone/iPad and an Apple silicon Mac app archive. The IPA needs
+your own Apple signing. Configured targets are iOS/iPadOS 16 and macOS 14; these
+are not verified minimum-device recommendations.
 
 </details>
 

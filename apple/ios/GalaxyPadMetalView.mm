@@ -3,6 +3,8 @@
 #import "GalaxyPadMetalView.h"
 #import <Metal/Metal.h>
 @implementation GalaxyPadMetalView
+// GCEventViewController routes profile input through its responder subtree.
+- (BOOL)canBecomeFirstResponder { return YES; }
 + (Class)layerClass { return CAMetalLayer.class; }
 - (CAMetalLayer *)metalLayer { return (CAMetalLayer *)self.layer; }
 - (instancetype)initWithFrame:(CGRect)frame {

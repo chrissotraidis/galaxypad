@@ -44,6 +44,8 @@ python3 ./tests/test-thp-dead-pc-entries.py
 python3 ./tests/test-psq-scale.py
 python3 ./tests/test-psq-scale-patch.py
 python3 ./tests/test-audio-phase-events.py
+python3 ./tests/test-audio-interruption-recovery.py
+bash ./tests/test-wiimote-idle-policy.sh
 python3 ./tests/test-efb-read-context.py
 python3 ./tests/test-efb-dispatch-timing.py
 python3 ./tests/test-efb-peek-flush.py

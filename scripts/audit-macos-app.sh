@@ -4,11 +4,15 @@ set -euo pipefail
 
 root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 app="${GALAXYPAD_MACOS_APP:-$root/generated/macos/GalaxyPad.app}"
-module_marker="$root/generated/modules/RMGE01/active-module.txt"
+module_marker="${GALAXYPAD_MODULE_MARKER:-$root/generated/modules/RMGE01/active-module.txt}"
 
 "$root/scripts/audit-module.sh"
-[[ -f "$module_marker" ]] || { echo "missing active module marker" >&2; exit 1; }
-source_module="$(<"$module_marker")"
+if [[ -n "${GALAXYPAD_MACOS_MODULE:-}" ]]; then
+  source_module="$GALAXYPAD_MACOS_MODULE"
+else
+  [[ -f "$module_marker" ]] || { echo "missing active module marker" >&2; exit 1; }
+  source_module="$(<"$module_marker")"
+fi
 
 [[ -d "$app" ]] || { echo "missing private app: $app" >&2; exit 1; }
 cmp "$root/apple/macos/GalaxyPad" "$app/Contents/MacOS/GalaxyPad"

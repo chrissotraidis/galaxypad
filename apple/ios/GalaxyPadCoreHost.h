@@ -40,6 +40,8 @@ struct GalaxyPadAudioCounters {
 @interface GalaxyPadCoreHost : NSObject
 @property(nonatomic, readonly) BOOL busy;
 @property(nonatomic, readonly) BOOL paused;
+@property(nonatomic, readonly) BOOL audioInterrupted;
+- (BOOL)resumeInterruptedAudio;
 @property(nonatomic, readonly) uint64_t renderedFrames;
 - (GalaxyPadCadenceEstimate)cadenceEstimate;
 - (GalaxyPadRuntimeCounters)runtimeCounters;

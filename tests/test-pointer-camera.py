@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Execute actual checkout camera projection and Matrix implementation.
 
-Narrow neutral-motion projection test, not a KPAD inverse or touch calibration.
+Neutral projection and bounded menu inverse; gameplay motion remains unmodeled.
 """
 from pathlib import Path
 import re
@@ -93,6 +93,30 @@ int main() {
       [](const Matrix44& transform){return CameraLogic::GetCameraPoints(transform,
         {CameraLogic::CAMERA_FOV_X,CameraLogic::CAMERA_FOV_Y});});
   };
+  // Production currently forwards normalized touch directly as remote rotation.
+  // Quantify that mismatch using the existing independently observed neutral
+  // calibration; a correct UIKit viewport does not make this transform identity.
+  // These are settled menu-model errors, NOT measurements from current gameplay.
+  for(PointerPoint touch: {PointerPoint{.5f,.5f},{.25f,.5f},{.75f,.5f},
+                           {.5f,.25f},{.5f,.75f},{.02f,.5f},{.98f,.5f}}) {
+    auto projected=forward(touch);
+    assert(projected);
+    printf("Uncorrected neutral touch(%.2f,%.2f) projected(%.6f,%.6f) error=(%.6f,%.6f)\n",
+      touch.x,touch.y,projected->x,projected->y,projected->x-touch.x,projected->y-touch.y);
+  }
+  auto middle=forward(PointerPoint{.5f,.5f});
+  auto leftQuarter=forward(PointerPoint{.25f,.5f});
+  auto rightQuarter=forward(PointerPoint{.75f,.5f});
+  assert(middle && leftQuarter && rightQuarter);
+  assert(std::abs(middle->x-.5f)<.002f && middle->y<.45f);
+  assert(leftQuarter->x<.2f && rightQuarter->x>.8f);
+  // Normalizing by either 4:3 or 16:9 viewport only scales the same error.
+  // It cannot undo sensor offset and nonlinear angular camera projection.
+  for(PointerPoint dimensions: {PointerPoint{608,456},PointerPoint{832,468}}) {
+    printf("Uncorrected center in %.0fx%.0f viewport: error=(%.2f,%.2f) logical pixels\n",
+      dimensions.x,dimensions.y,(middle->x-.5f)*dimensions.x,(middle->y-.5f)*dimensions.y);
+    assert(std::abs((middle->y-.5f)*dimensions.y)>20);
+  }
   for(float pitch: {20.f,22.f,24.f}) {
   totalPitch=pitch;
   unsigned solved=0;

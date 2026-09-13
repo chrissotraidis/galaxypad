@@ -381,6 +381,11 @@ static NSUInteger CountViews(UIView *root, Class type) {
   Check(!overlay.blocksGameplay,"Back to Game releases the pause input gate");
   CheckControllerPauseToggle(overlay);
   UIControl *pauseActivation=(UIControl *)Find(overlay,@"Plus",YES);
+  [pauseActivation sendActionsForControlEvents:UIControlEventTouchDown];
+  [pauseActivation sendActionsForControlEvents:UIControlEventTouchUpInside];
+  Check(state.buttons & galaxypad::Plus,"quick Pause + tap survives finger release like top Pause");
+  [NSRunLoop.mainRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.8]];
+  Check(state.buttons==0,"quick Pause + tap releases its guest pulse");
   Check([pauseActivation accessibilityActivate],"visible pause supports accessibility activation");
   Check(state.buttons & galaxypad::Plus,"accessibility activation presses Plus");
   [pauseActivation sendActionsForControlEvents:UIControlEventTouchDown];
@@ -428,8 +433,8 @@ static NSUInteger CountViews(UIView *root, Class type) {
     }
     Check(Find(overlay,@"Plus",YES).bounds.size.width>=100,
           "iPad Start has a readable labeled target");
-    Check([[(UIButton *)Find(overlay,@"Plus",YES) titleForState:UIControlStateNormal] isEqual:@"Start +"],
-          "Start identifies the guest plus button");
+    Check([[(UIButton *)Find(overlay,@"Plus",YES) titleForState:UIControlStateNormal] isEqual:@"Pause +"],
+          "Pause identifies the guest plus button consistently");
 
   }
   [a sendActionsForControlEvents:UIControlEventTouchDown];

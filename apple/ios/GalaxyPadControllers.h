@@ -9,6 +9,8 @@
 @property(nonatomic, copy) void (^ownershipChanged)(void);
 @property(nonatomic, copy) BOOL (^inputAllowed)(void);
 @property(nonatomic, copy) BOOL (^pauseToggleAllowed)(void);
+// Read-only diagnostics; does not consume events or reset controller state.
+- (NSString *)diagnosticSnapshot;
 - (void)start;
 - (void)reset;
 - (void)reconcile;

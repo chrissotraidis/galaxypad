@@ -28,6 +28,11 @@ int main() {
   InputState touch; touch.buttons=A|Spin; touch.connected=true;
   mixer.set(InputSource::Touch,touch);
   touch.buttons=0; mixer.set(InputSource::Touch,touch);
+  for (unsigned i=0;i<5;++i) {
+    auto snapshot=mixer.diagnosticSnapshot();
+    assert(snapshot.first.buttons==0 && snapshot.first.connected);
+    assert(!snapshot.second.connected);
+  }
   assert(mixer.consume().buttons==(A|Spin)); // fast tap survives once
   assert(mixer.consume().buttons==0);
   touch.buttons=A; mixer.set(InputSource::Touch,touch);

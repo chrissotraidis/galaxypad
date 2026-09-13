@@ -17,6 +17,11 @@ FOUNDATION_EXPORT void GalaxyPadDiagnosticsStart(void);
  * not per-frame tracing. */
 FOUNDATION_EXPORT void GalaxyPadLog(NSString *format, ...) NS_FORMAT_FUNCTION(1, 2);
 
+/* Persists at most four summary lines off the caller thread. At most one
+ * window may be queued/writing; overload drops the new window and reports
+ * the count with the next accepted window. Uses the same privacy/size bounds. */
+FOUNDATION_EXPORT void GalaxyPadLogPerformanceWindow(NSArray<NSString *> *lines);
+
 /* Records a warning/error emitted by the embedded runtime. Repeated identical
  * known event codes are counted and rate-limited so a failure cannot flood the
  * log. Only allowlisted constant phrases are classified; raw message arguments

@@ -125,6 +125,18 @@ int main(int argc, char **argv) {
       assert(![runtimeLog containsString:@"count=12 message=audio_granule_queue_full_samples_dropped"]);
       for (NSString *forbidden in @[@"RAW-GUEST-SENTINEL", @"REPORT-SECRET", @"EVENT-SECRET", @"DEADBEEF", @"shader.metal", @"private.wbfs", @"main.dol", @"github.com", @"raw_buttons", @"pointer=("])
         assert(![report containsString:forbidden]);
+      // A blocked writer cannot create an unbounded queue or block the caller.
+      dispatch_suspend(GalaxyPadPerformanceLogQueue());
+      GalaxyPadLogPerformanceWindow(@[@"async frames=60 /Users/test/ASYNC-SECRET.bin"]);
+      GalaxyPadLogPerformanceWindow(@[@"DROPPED-WINDOW-SENTINEL"]);
+      dispatch_resume(GalaxyPadPerformanceLogQueue());
+      dispatch_sync(GalaxyPadPerformanceLogQueue(), ^{});
+      runtimeLog = [NSString stringWithContentsOfFile:GalaxyPadDiagnosticsLogPath()
+        encoding:NSUTF8StringEncoding error:nil];
+      assert([runtimeLog containsString:@"async frames=60"]);
+      assert([runtimeLog containsString:@"performance windows dropped=1 reason=writer_busy"]);
+      assert(![runtimeLog containsString:@"ASYNC-SECRET"]);
+      assert(![runtimeLog containsString:@"DROPPED-WINDOW-SENTINEL"]);
       // Force a size-boundary crossing without emitting megabytes to NSLog.
       NSData *padding = [NSMutableData dataWithLength:1024 * 1024];
       assert([padding writeToFile:GalaxyPadDiagnosticsLogPath() atomically:YES]);

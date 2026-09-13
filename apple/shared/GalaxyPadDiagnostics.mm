@@ -6,6 +6,7 @@
 #import <TargetConditionals.h>
 
 #import <sys/sysctl.h>
+#include <atomic>
 
 static NSUInteger const GalaxyPadMaximumUniqueRuntimeEvents = 64;
 
@@ -238,6 +239,40 @@ void GalaxyPadLog(NSString *format, ...) {
             [handle closeAndReturnError:nil];
         }
     }
+}
+
+static dispatch_queue_t GalaxyPadPerformanceLogQueue(void) {
+    static dispatch_queue_t queue;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        queue = dispatch_queue_create("org.galaxypad.performance-log",
+            dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_UTILITY, 0));
+    });
+    return queue;
+}
+
+void GalaxyPadLogPerformanceWindow(NSArray<NSString *> *lines) {
+    static dispatch_semaphore_t available = dispatch_semaphore_create(1);
+    static std::atomic<unsigned long long> dropped{0};
+    if (!lines.count) return;
+    if (dispatch_semaphore_wait(available, DISPATCH_TIME_NOW) != 0) {
+        dropped.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
+    NSMutableArray<NSString *> *bounded = [NSMutableArray arrayWithCapacity:4];
+    for (NSString *line in lines) {
+        if (bounded.count == 4) break;
+        [bounded addObject:[line substringToIndex:MIN(line.length, (NSUInteger)2048)]];
+    }
+    NSArray<NSString *> *snapshot = [bounded copy];
+    dispatch_async(GalaxyPadPerformanceLogQueue(), ^{
+        @autoreleasepool {
+            const auto skipped = dropped.exchange(0, std::memory_order_relaxed);
+            if (skipped) GalaxyPadLog(@"performance windows dropped=%llu reason=writer_busy", skipped);
+            for (NSString *line in snapshot) GalaxyPadLog(@"%@", line);
+        }
+        dispatch_semaphore_signal(available);
+    });
 }
 
 static NSString *GalaxyPadKnownRuntimeEvent(NSString *category, NSString *message) {

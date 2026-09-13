@@ -97,9 +97,9 @@ fully nonzero. These separate logging-enabled measurements support a reduction
 in long frame-event gaps and audio-counter nonregression, not listening quality
 or display-presentation timing. See `pgo5-diagnostic-comparison.json`.
 
-The user is now away from home: physical devices must remain untouched,
-including experimental installs, launches and input tests. Continue on
-Simulators only until that restriction is explicitly lifted.
+During the first pass the user temporarily restricted work to Simulators.
+That restriction was subsequently lifted by the explicit hardware-install
+request; deployment receipts below record the authorized device updates.
 
 ## Settings repair
 
@@ -162,9 +162,9 @@ collection. No experimental physical install, launch or input test was performed
 by this task. The earlier read-only build 3 log pulls preceded the away-from-home
 restriction; the other task's build 4 deployment is separately documented.
 
-The 60 FPS goal is still open. When the user permits hardware work again, use
-the audited device PGO module with the final device host, preserve signatures,
-saves and settings, and compare fixed scenes at the same active resolution.
+The 60 FPS goal is still open. Build 6 is now installed on both physical devices
+with the audited device PGO module, following explicit user authorization.
+Compare fixed scenes at the same active resolution.
 Measure actual iPhone/iPad frame pacing, audio and thermal behavior before
 claiming device gains. Further GPU scheduling work needs physical attribution;
 the rejected wait/prefetch experiments should not be retried unchanged.
@@ -176,3 +176,19 @@ the rejected wait/prefetch experiments should not be retried unchanged.
 - [Metal completion semantics](https://developer.apple.com/documentation/metal/mtlcommandbuffer/waituntilcompleted())
 - [Metal Simulator limitations](https://developer.apple.com/documentation/metal/developing-metal-apps-that-run-in-simulator)
 - [Dolphin hybrid ubershaders](https://dolphin-emu.org/blog/2017/07/30/ubershaders/)
+
+## Physical build 6 deployment
+
+At the user’s request, build 6 (0.1.0) was signed with the existing compatible
+development identity and installed in place on the physical iPad Pro and
+iPhone 14. The device host’s source hashes match the tested Simulator build 6;
+it retains the accepted audio core and embeds the audited device PGO module.
+Installed build numbers and running app processes were verified on both devices.
+Before/after snapshots taken before launch were byte-identical: 33 protected
+save/settings files on iPad and 54 on iPhone, including GameData.bin.
+No uninstall or save replacement was performed.
+
+Private build, signing, installation and preservation receipts are under
+`generated/runtime/hardware-build6-20260913/`; the device build recipe is under
+`generated/build/ios-device-settings-perf6-20260913/`. This verifies installation
+and launch, not physical gameplay, audio quality or a sustained 60 FPS.

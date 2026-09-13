@@ -13,12 +13,41 @@
   GalaxyPadControllerSlots _slots;
   galaxypad::ControllerInput _input;
   GCController *_owner;
+  __weak GCController *_disconnectedOwner;
+  GCExtendedGamepad *_ownerPad;
   uint64_t _ownerGeneration;
+  uint64_t _tickCount, _callbackCount;
   NSTimer *_timer;
   CFTimeInterval _lastTick, _lastReconcile;
   uint32_t _lastRawButtons;
   BOOL _menuPressed, _optionsPressed, _guestPlusHeld;
+  BOOL _reportedReadiness, _lastReady;
   CFTimeInterval _guestPlusUntil;
+}
+- (NSString *)diagnosticSnapshot {
+  NSAssert(NSThread.isMainThread, @"Controller API requires main thread");
+  GCExtendedGamepad *pad=_owner.extendedGamepad;
+  const BOOL listed=_owner &&
+      [GCController.controllers indexOfObjectIdenticalTo:_owner]!=NSNotFound;
+  id<GCDevicePhysicalInputState> live=nil;
+  if (@available(iOS 17.0, macOS 14.0, tvOS 17.0, *)) live=_owner.input;
+  id<GCButtonElement> liveA=live.buttons[GCInputButtonA];
+  id<GCButtonElement> liveB=live.buttons[GCInputButtonB];
+  id<GCDirectionPadElement> move=live.dpads[GCInputLeftThumbstick];
+  id<GCDirectionPadElement> aim=live.dpads[GCInputRightThumbstick];
+  return [NSString stringWithFormat:
+    @"controller_snapshot owner=%d listed=%d is_snapshot=%d timer_valid=%d ticks=%llu callbacks=%llu gameplay_allowed=%d pause_allowed=%d profile_matches=%d handlers=%d%d%d legacy_a=%d legacy_b=%d legacy_move=(%.3f,%.3f) legacy_aim=(%.3f,%.3f) legacy_event=%.6f live_available=%d live_elements=%d%d%d%d live_a=%d live_b=%d live_move=(%.3f,%.3f) live_aim=(%.3f,%.3f) live_event=%.6f",
+    _owner!=nil, listed, _owner.isSnapshot, _timer.isValid,
+    (unsigned long long)_tickCount, (unsigned long long)_callbackCount,
+    self.inputAllowed && self.inputAllowed(), self.pauseToggleAllowed && self.pauseToggleAllowed(),
+    pad==_ownerPad, pad.valueChangedHandler!=nil,
+    pad.buttonMenu.pressedChangedHandler!=nil, pad.buttonOptions.pressedChangedHandler!=nil,
+    pad.buttonA.isPressed, pad.buttonB.isPressed,
+    pad.leftThumbstick.xAxis.value, pad.leftThumbstick.yAxis.value,
+    pad.rightThumbstick.xAxis.value, pad.rightThumbstick.yAxis.value, pad.lastEventTimestamp,
+    live!=nil, liveA!=nil, liveB!=nil, move!=nil, aim!=nil,
+    liveA.pressedInput.isPressed, liveB.pressedInput.isPressed,
+    move.xAxis.value, move.yAxis.value, aim.xAxis.value, aim.yAxis.value, live.lastEventTimestamp];
 }
 - (void)start {
   NSAssert(NSThread.isMainThread, @"Controller API requires main thread");
@@ -34,6 +63,7 @@
   _timer = [NSTimer timerWithTimeInterval:1.0/60.0 repeats:YES block:^(NSTimer *timer) {
     GalaxyPadControllers *host = weakSelf;
     if (!host) { [timer invalidate]; return; }
+    ++host->_tickCount;
     CFTimeInterval now = CACurrentMediaTime();
     float seconds = (float)(now-host->_lastTick);
     host->_lastTick=now;
@@ -44,9 +74,9 @@
 }
 - (void)dealloc {
   [_timer invalidate];
-  _owner.extendedGamepad.valueChangedHandler=nil;
-  _owner.extendedGamepad.buttonMenu.pressedChangedHandler=nil;
-  _owner.extendedGamepad.buttonOptions.pressedChangedHandler=nil;
+  _ownerPad.valueChangedHandler=nil;
+  _ownerPad.buttonMenu.pressedChangedHandler=nil;
+  _ownerPad.buttonOptions.pressedChangedHandler=nil;
   _owner.playerIndex=GCControllerPlayerIndexUnset;
   [NSNotificationCenter.defaultCenter removeObserver:self];
 }
@@ -55,32 +85,55 @@
   _guestPlusHeld = NO;
   _guestPlusUntil = 0;
   _lastRawButtons = 0;
+  _reportedReadiness = NO;
   // Keep event-time pause-button state across UI resets. Re-reading the live
   // snapshot here can erase a queued press and turn one hold into two toggles.
 }
 - (void)reloadMapping { _input.setMapping(GalaxyPadControllerMappingStore.mapping); }
 - (void)connectionChanged:(NSNotification *)notification {
-  (void)notification;
-  if (NSThread.isMainThread) [self reconcile];
-  else dispatch_async(dispatch_get_main_queue(), ^{ [self reconcile]; });
+  if (!NSThread.isMainThread) {
+    dispatch_async(dispatch_get_main_queue(), ^{ [self connectionChanged:notification]; });
+    return;
+  }
+  GCController *controller=notification.object;
+  const BOOL disconnected=[notification.name isEqualToString:GCControllerDidDisconnectNotification];
+  if (disconnected && controller==_owner) _disconnectedOwner=controller;
+  if (!disconnected && controller==_disconnectedOwner) _disconnectedOwner=nil;
+  // Enumeration may briefly retain a disconnected object, or reuse the same
+  // profile on reconnect. The explicit event must still clear held input and
+  // invalidate callbacks from the previous connection.
+  [self reconcileForcingOwner:(!disconnected && controller==_owner)];
 }
-- (void)reconcile {
+- (void)reconcile { [self reconcileForcingOwner:NO]; }
+- (void)reconcileForcingOwner:(BOOL)force {
   NSAssert(NSThread.isMainThread, @"Controller API requires main thread");
   _lastReconcile=CACurrentMediaTime();
   NSArray<GCController *> *controllers=GCController.controllers;
   std::vector<uintptr_t> instances;
   for (GCController *controller in controllers)
-    if (controller.extendedGamepad) instances.push_back((uintptr_t)(__bridge void *)controller);
+    if (controller != _disconnectedOwner && controller.extendedGamepad) instances.push_back((uintptr_t)(__bridge void *)controller);
   _slots.Reconcile(instances);
   GCController *next=nil;
   for (GCController *controller in controllers)
     if ((uintptr_t)(__bridge void *)controller==_slots.InstanceAt(0)) { next=controller; break; }
-  if (next==_owner) return;
-  _owner.extendedGamepad.valueChangedHandler=nil;
-  _owner.extendedGamepad.buttonMenu.pressedChangedHandler=nil;
-  _owner.extendedGamepad.buttonOptions.pressedChangedHandler=nil;
+  GCExtendedGamepad *nextPad=next.extendedGamepad;
+  const BOOL sameOwner = next == _owner;
+  // A sleeping/reconnected controller can retain its identity while its
+  // profile or handlers change. Repair that boundary without resetting intact
+  // handlers on the periodic poll: their queued Menu/View edges remain valid.
+  const BOOL handlersIntact = nextPad && nextPad.valueChangedHandler &&
+      nextPad.buttonMenu.pressedChangedHandler &&
+      (!nextPad.buttonOptions || nextPad.buttonOptions.pressedChangedHandler);
+  if (!force && sameOwner && nextPad == _ownerPad && (!next || handlersIntact)) return;
+  if (sameOwner)
+    GalaxyPadLog(@"controller recovery: profile_changed=%d handlers_intact=%d",
+      nextPad != _ownerPad, handlersIntact);
+  _ownerPad.valueChangedHandler=nil;
+  _ownerPad.buttonMenu.pressedChangedHandler=nil;
+  _ownerPad.buttonOptions.pressedChangedHandler=nil;
   _owner.playerIndex=GCControllerPlayerIndexUnset;
   _owner=next;
+  _ownerPad=nextPad;
   ++_ownerGeneration;
   // A newly owned controller may already be held: require its release first.
   // A neutral initial snapshot arms the very first press without a prior event.
@@ -103,12 +156,13 @@
     GCController *controller=weakOwner;
     if (!host || !controller || host->_owner!=controller ||
         host->_ownerGeneration!=ownerGeneration) return;
+    ++host->_callbackCount;
     if ([GCController.controllers indexOfObjectIdenticalTo:controller]==NSNotFound) {
       [host reconcile]; return;
     }
     // Use the event's pressed argument. The live isPressed snapshot may already
     // be released when a quick tap's queued main-thread callback executes.
-    GCExtendedGamepad *pad=controller.extendedGamepad;
+    GCExtendedGamepad *pad=host->_ownerPad;
     if (button==pad.buttonMenu) {
       const BOOL wasPressed=host->_menuPressed;
       host->_menuPressed=pressed;
@@ -139,6 +193,7 @@
     GCController *controller=weakOwner;
     if (!host || !controller || host->_owner!=controller ||
         host->_ownerGeneration!=ownerGeneration) return;
+    ++host->_callbackCount;
     // Never let a queued event from an unlisted/disconnected controller revive input.
     if ([GCController.controllers indexOfObjectIdenticalTo:controller]==NSNotFound) {
       [host reconcile]; return;
@@ -177,15 +232,19 @@
   const BOOL neutral = rawButtons == 0 &&
       pad.leftThumbstick.xAxis.value == 0 && pad.leftThumbstick.yAxis.value == 0 &&
       pad.rightThumbstick.xAxis.value == 0 && pad.rightThumbstick.yAxis.value == 0;
-  if (rawButtons != _lastRawButtons) {
-    GalaxyPadLog(@"controller raw_buttons=%u menu=%d options=%d neutral=%d ready=%d",
-      rawButtons, (rawButtons & 256u) != 0, (rawButtons & 512u) != 0,
-      neutral, !(_menuPressed || _optionsPressed));
-  }
+  auto logRaw = [&](BOOL connected) {
+    if (rawButtons != _lastRawButtons) {
+      GalaxyPadLog(@"controller raw_buttons=%u menu=%d options=%d snapshot_neutral=%d pause_buttons_released=%d gameplay_allowed=%d pause_allowed=%d input_connected=%d move=(%.3f,%.3f) aim=(%.3f,%.3f)",
+        rawButtons, (rawButtons & 256u) != 0, (rawButtons & 512u) != 0,
+        neutral, !(_menuPressed || _optionsPressed), gameplayAllowed, pauseAllowed, connected,
+        pad.leftThumbstick.xAxis.value, pad.leftThumbstick.yAxis.value,
+        pad.rightThumbstick.xAxis.value, pad.rightThumbstick.yAxis.value);
+    }
+    _lastRawButtons = rawButtons;
+  };
   // Menu/Options pause edges belong exclusively to pressedChangedHandler.
   // Snapshot polling must not re-arm a held event or deliver the same edge twice.
-  _lastRawButtons = rawButtons;
-  if (!gameplayAllowed) { _input.reset(); return; }
+  if (!gameplayAllowed) { _input.reset(); logRaw(NO); return; }
   galaxypad::ControllerSnapshot snapshot;
   snapshot.a=pad.buttonA.isPressed; snapshot.b=pad.buttonB.isPressed;
   snapshot.x=pad.buttonX.isPressed; snapshot.y=pad.buttonY.isPressed;
@@ -200,10 +259,18 @@
   snapshot.moveX=pad.leftThumbstick.xAxis.value; snapshot.moveY=pad.leftThumbstick.yAxis.value;
   snapshot.rightX=pad.rightThumbstick.xAxis.value; snapshot.rightY=pad.rightThumbstick.yAxis.value;
   auto state=_input.update(snapshot,seconds);
+  if (!_reportedReadiness || _lastReady != state.connected) {
+    GalaxyPadLog(@"controller input ready=%d raw_buttons=%u move=(%.3f,%.3f) aim=(%.3f,%.3f) profile=%@",
+      state.connected, rawButtons, snapshot.moveX, snapshot.moveY,
+      snapshot.rightX, snapshot.rightY, NSStringFromClass(pad.class));
+    _reportedReadiness=YES;
+    _lastReady=state.connected;
+  }
   if (_guestPlusHeld || CACurrentMediaTime() < _guestPlusUntil) {
     state.connected=true;
     state.buttons |= galaxypad::Plus;
   }
+  logRaw(state.connected);
   if (self.inputChanged) self.inputChanged(state);
 }
 @end

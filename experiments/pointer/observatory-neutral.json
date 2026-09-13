@@ -1,0 +1,13 @@
+{
+  "description": "Simulator interim host7 Observatory mode25, September 13 2026. Touch released but visible; stationary targets over consecutive records. Remaining temporal drift means these are 2px comparisons, not exact settled fixtures. No physical accuracy acceptance.",
+  "pitch": 20,
+  "dimensions": [832, 456],
+  "calibration": {"center": [0, -0.2], "scale": 2.272727, "radius": 0.03, "sensitivity": 0.5, "filter": 0},
+  "samples": [
+    {"sample": 35, "finger": [0.25, 0.49817], "current": [141.170, 192.679], "tolerancePixels": 2},
+    {"sample": 61, "finger": [0.75, 0.49817], "current": [690.957, 192.679], "tolerancePixels": 2},
+    {"sample": 77, "finger": [0.02326, 0.49817], "current": [0, 189.589], "tolerancePixels": 0.05},
+    {"sample": 93, "finger": [0.5, 0.74011], "current": [414.789, 310.054], "tolerancePixels": 2},
+    {"sample": 96, "finger": [0.31347, 0.57129], "current": [212.925, 228.120], "tolerancePixels": 2}
+  ]
+}

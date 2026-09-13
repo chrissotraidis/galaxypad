@@ -5,12 +5,20 @@ set -euo pipefail
 root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 build="${GALAXYPAD_DESKTOP_BUILD:-$root/generated/build/moderngekko-desktop}"
 output="${GALAXYPAD_MACOS_OUTPUT:-$root/generated/macos/GalaxyPad.app}"
-module_marker="$root/generated/modules/RMGE01/active-module.txt"
+module_marker="${GALAXYPAD_MODULE_MARKER:-$root/generated/modules/RMGE01/active-module.txt}"
+source="${GALAXYPAD_DESKTOP_SOURCE:-$root/ref/ModernGekko}"
+selected_module() {
+  if [[ -n "${GALAXYPAD_MACOS_MODULE:-}" ]]; then
+    printf '%s\n' "$GALAXYPAD_MACOS_MODULE"
+  else
+    cat "$module_marker"
+  fi
+}
 
 # Promote an audited module without silently rebuilding the tested runtime.
 if [[ "${1:-}" == --module-only && $# == 1 ]]; then
   "$root/scripts/audit-module.sh"
-  module="$(<"$module_marker")"
+  module="$(selected_module)"
   [[ -d "$output" ]] || { echo "module-only promotion requires an existing app" >&2; exit 1; }
   staging="$(mktemp -d "$(dirname -- "$output")/module-promotion.XXXXXX")"
   candidate="$staging/GalaxyPad.app"
@@ -31,11 +39,23 @@ if [[ "${1:-}" == --module-only && $# == 1 ]]; then
 fi
 [[ $# == 0 ]] || { echo "usage: $0 [--module-only]" >&2; exit 2; }
 
-"$root/scripts/bootstrap-dependencies.sh"
+# An explicit frozen source tree is already prepared by the caller. Never
+# bootstrap the canonical checkout while building that independent snapshot.
+if [[ -z "${GALAXYPAD_DESKTOP_SOURCE:-}" ]]; then
+  "$root/scripts/bootstrap-dependencies.sh"
+else
+  [[ "$source" == /* && -f "$source/CMakeLists.txt" ]] || {
+    echo "desktop source must be an absolute prepared source directory" >&2; exit 1;
+  }
+fi
 "$root/scripts/audit-module.sh"
-[[ -f "$module_marker" ]] || { echo "missing active module marker" >&2; exit 1; }
-module="$(<"$module_marker")"
-cmake -S "$root/ref/ModernGekko" -B "$build" \
+[[ -n "${GALAXYPAD_MACOS_MODULE:-}" || -f "$module_marker" ]] || { echo "missing active module marker" >&2; exit 1; }
+module="$(selected_module)"
+cmake -S "$source" -B "$build" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
+  -DCMAKE_OSX_ARCHITECTURES=arm64 \
+  -DUSE_SYSTEM_LIBS=OFF -DENABLE_VULKAN=OFF \
   -DMODERNGEKKO_FRONTEND_NAME=GalaxyPad \
   -DMODERNGEKKO_USER_DIRECTORY_NAME=GalaxyPad \
   -DMODERNGEKKO_REQUIRED_DISC_ID=RMGE01 \

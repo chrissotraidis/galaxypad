@@ -20,18 +20,19 @@
 #include "VideoCommon/PerformanceMetrics.h"
 #include "VideoCommon/VideoEvents.h"
 #import <TargetConditionals.h>
+#import <CommonCrypto/CommonDigest.h>
+#include "GalaxyPadDiscIdentity.h"
+#include "../shared/GalaxyPadPointerContext.h"
+#include "../shared/GalaxyPadWiimoteIdlePolicy.h"
+#include "Core/HW/Memmap.h"
+#include "Core/PowerPC/PowerPC.h"
 #if TARGET_OS_SIMULATOR
 #include "Core/State.h"
 #include "GalaxyPadDevelopmentCheckpoint.h"
 #include <pthread.h>
-#import <CommonCrypto/CommonDigest.h>
-#include "GalaxyPadDiscIdentity.h"
-#include "../shared/GalaxyPadPointerContext.h"
 #include "../shared/GalaxyPadMenuPointerReadiness.h"
 #include "Core/HW/WiimoteEmu/Camera.h"
 #include <chrono>
-#include "Core/HW/Memmap.h"
-#include "Core/PowerPC/PowerPC.h"
 #include "GalaxyPadPointerHooks.h"
 #if GALAXYPAD_ENABLE_NATIVE_THP
 #include "../shared/GalaxyPadTHPMod.h"
@@ -121,6 +122,7 @@ void RuntimeLog(moderngekko::RuntimeLogLevel level, const char *category,
 }
 - (BOOL)busy { return _busy; }
 - (BOOL)paused { return _paused; }
+- (BOOL)audioInterrupted { return _interrupted; }
 - (CGRect)normalizedViewport {
   if (!_session) return CGRectZero;
   std::lock_guard lock(_session->viewportMutex);
@@ -548,6 +550,81 @@ void RuntimeLog(moderngekko::RuntimeLogLevel level, const char *category,
             session->viewport = CGRectMake(rect.left/width, rect.top/height,
               rect.GetWidth()/width, rect.GetHeight()/height);
           });
+          // Read-only, revision-gated touch evidence for the next calibration
+          // pass. No guest writes, mapper, synthesized buttons, or module hooks.
+          // Sample at most once per 120 VI fields, 96 records per session.
+          Common::EventHook touchDiagnosticHook;
+          Common::EventHook wiimoteIdlePolicyHook;
+          @autoreleasepool {
+          NSData *pointerDOL = [NSData dataWithContentsOfFile:
+            [root stringByAppendingPathComponent:@"sys/main.dol"]];
+          unsigned char pointerDigest[CC_SHA256_DIGEST_LENGTH];
+          NSMutableString *pointerHash = [NSMutableString string];
+          if (pointerDOL.length == 6283264) {
+            CC_SHA256(pointerDOL.bytes, (CC_LONG)pointerDOL.length, pointerDigest);
+            for (unsigned char byte : pointerDigest) [pointerHash appendFormat:@"%02x", byte];
+          }
+          if ([pointerHash isEqualToString:@(GalaxyPadDOLSHA256)]) {
+            if ([pointerHash isEqualToString:@(galaxypad::wiimote::kDOLSHA256)]) {
+              wiimoteIdlePolicyHook = GetVideoEvents().vi_end_field_event.Register(
+                [records=0u]() mutable {
+                  if (!Core::IsCPUThread()) return;
+                  auto& system = Core::System::GetInstance();
+                  auto& memory = system.GetMemory();
+                  const auto previous = galaxypad::wiimote::DisableGuestAutoSleep(
+                    memory.GetRAM(), memory.GetRamSizeReal(),
+                    system.GetPowerPC().GetPPCState().gpr[13]);
+                  if (previous && records++ < 8)
+                    GalaxyPadLog(@"wiimote idle policy: guest_auto_sleep_minutes=%u->0 verified=1",
+                      unsigned(*previous));
+                });
+            }
+            touchDiagnosticHook = GetVideoEvents().vi_end_field_event.Register(
+              [session, aspectRatioMode, fields=0u, records=0u]() mutable {
+                if (records >= 96 || ++fields % 120 || !Core::IsCPUThread()) return;
+                const auto [touch, controller] = session->mixer->diagnosticSnapshot();
+                if (!touch.pointerVisible) return;
+                auto& system = Core::System::GetInstance();
+                auto& memory = system.GetMemory();
+                auto read = [&](uint32_t address)->std::optional<uint32_t> {
+                  const bool mem2 = address >= 0x90000000u;
+                  const uint32_t base = mem2 ? 0x90000000u : 0x80000000u;
+                  const uint32_t size = mem2 ? memory.GetExRamSizeReal() : memory.GetRamSizeReal();
+                  const auto* bytes = mem2 ? memory.GetEXRAM() : memory.GetRAM();
+                  if (!bytes || address < base || uint64_t(address-base)+4 > size)
+                    return std::nullopt;
+                  bytes += address-base;
+                  return (uint32_t(bytes[0])<<24)|(uint32_t(bytes[1])<<16)|
+                         (uint32_t(bytes[2])<<8)|uint32_t(bytes[3]);
+                };
+                const auto r13 = system.GetPowerPC().GetPPCState().gpr[13];
+                auto context = galaxypad::ReadPointerContext(r13, read);
+                auto position = galaxypad::ReadProcessedPointer(r13, read);
+                auto calibration = galaxypad::ReadPointerCalibration(read);
+                auto conversion = galaxypad::ReadPointerConversionInputs(read);
+                if (!context || !position || !calibration || !conversion) return;
+                const auto& p = *position;
+                const auto& c = *calibration;
+                const auto& v = *conversion;
+                ++records;
+                // Async bounded writer: no file IO on the guest CPU thread.
+                // Raw guest addresses and device/user identifiers are omitted.
+                GalaxyPadLogPerformanceWindow(@[[NSString stringWithFormat:
+                  @"touch_mapping sample=%u field=%u aspect=%d mode=%u finger=(%.5f,%.5f) contact=%d controllerAim=%d "
+                   "buttons=%u tilt=(%.3f,%.3f;%.3f,%.3f) past=(%.3f,%.3f,%d) current=(%.3f,%.3f,%d) "
+                   "center=(%.6f,%.6f) scale=%.6f radius=%.6f sensitivity=%.6f filter=%u "
+                   "reference=(%.6f,%.6f) acceleration=(%.6f,%.6f) direction=(%.6f,%.6f)",
+                  records, fields, aspectRatioMode, context->mode, touch.pointerX, touch.pointerY,
+                  touch.pointerContact, controller.pointerVisible, touch.buttons|controller.buttons,
+                  touch.tiltX, touch.tiltY, controller.tiltX, controller.tiltY,
+                  p.pastX, p.pastY, p.pastValid, p.currentX, p.currentY, p.currentValid,
+                  c.centerX, c.centerY, c.scale, c.playRadius, c.sensitivity, c.filterMode,
+                  v.referenceHorizon[0], v.referenceHorizon[1],
+                  v.accelerationHorizon[0], v.accelerationHorizon[1],
+                  v.direction[0], v.direction[1]]]);
+              });
+          }
+          } // Release temporary DOL hash data before gameplay.
           auto result = created.runtime->Run();
           if (result.error) failure = RuntimeFailureMessage(*result.error);
         }
@@ -582,17 +659,36 @@ void RuntimeLog(moderngekko::RuntimeLogLevel level, const char *category,
   GalaxyPadLog(@"host lifecycle active=%d interrupted=%d ui_blocked=%d pause_requested=%d",
     active, _interrupted, _nativeUIBlocked, _pauseRequested);
   if (!active) [self clearInput];
-  if (active) _interrupted = NO; // setActive remains the recovery authority
+  if (active) [self resumeInterruptedAudio];
   [self reconcileLifecycle];
 }
 - (void)setNativeUIBlocked:(BOOL)blocked pauseRuntime:(BOOL)pauseRuntime {
   NSAssert(NSThread.isMainThread, @"Host API requires main thread");
+  const BOOL wasPauseRequested = _pauseRequested;
   _nativeUIBlocked = blocked;
   _pauseRequested = pauseRuntime;
   GalaxyPadLog(@"host lifecycle ui_blocked=%d pause_requested=%d active=%d interrupted=%d",
     blocked, pauseRuntime, _active, _interrupted);
+  if (wasPauseRequested && !pauseRuntime) [self resumeInterruptedAudio];
   [self clearInput];
   [self reconcileLifecycle];
+}
+- (BOOL)resumeInterruptedAudio {
+  NSAssert(NSThread.isMainThread, @"Host API requires main thread");
+  if (!_interrupted) return YES;
+  if (!_busy || !_active || _pauseRequested) return NO;
+  // Interruption-ended notifications are not guaranteed. A foreground or
+  // explicit resume request may reacquire audio, but never clear the latch
+  // merely because the user pressed a button while another session owns it.
+  NSError *error = nil;
+  BOOL acquired = [AVAudioSession.sharedInstance setActive:YES error:&error];
+  GalaxyPadLog(@"audio interruption recovery acquired=%d error=%@", acquired, error);
+  if (!acquired) return NO;
+  _audioActive = YES;
+  _interrupted = NO;
+  [self clearInput];
+  [self reconcileLifecycle];
+  return YES;
 }
 - (void)deactivateAudio {
   if (!_audioActive) return;
@@ -666,9 +762,13 @@ void RuntimeLog(moderngekko::RuntimeLogLevel level, const char *category,
       == AVAudioSessionInterruptionTypeBegan;
   dispatch_async(dispatch_get_main_queue(), ^{
     GalaxyPadLog(@"audio interruption began=%d", began);
-    self->_interrupted = began;
-    if (began) [self clearInput];
-    if (began) self->_audioActive = NO;
+    if (began) {
+      self->_interrupted = YES;
+      self->_audioActive = NO;
+      [self clearInput];
+    } else {
+      [self resumeInterruptedAudio];
+    }
     [self reconcileLifecycle];
   });
 }

@@ -56,6 +56,12 @@ public:
     std::lock_guard lock(mutex_);
     states_[0]={}; states_[1]={}; latched_[0]=latched_[1]=0;
   }
+  // Diagnostics only: observe published input without consuming button edges,
+  // running the mapper, or changing controller/touch ownership.
+  std::pair<InputState,InputState> diagnosticSnapshot() {
+    std::lock_guard lock(mutex_);
+    return {states_[0],states_[1]};
+  }
   InputState consume() {
     std::lock_guard lock(mutex_);
     auto t=states_[0]; const auto& c=states_[1];

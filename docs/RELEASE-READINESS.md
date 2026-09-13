@@ -1,6 +1,11 @@
 # GalaxyPad release readiness
 
-Updated 2026-09-13. **NO-GO for publication or shipping.**
+Updated 2026-09-13. **Experimental private preview authorized; stable release not accepted.**
+
+The owner explicitly requested the current source on main and an experimental
+IPA/macOS release. See [preview notes](PREVIEW-2026-09-13.md) for the current
+artifact scope and validation. The historical full-product gates below remain
+open and must not be read as a claim that this preview is stable or complete.
 
 The latest [performance and hardware handoff](PERFORMANCE-2026-09-12.md) supersedes
 the historical candidate identities below. CPU/render overlap and experimental
@@ -10,7 +15,7 @@ real depth access; actual level entry passes. Physical acceptance remains pendin
 The correct-depth heavy-scene baseline is 45–49 frame events/s. Earlier faster
 results used disabled depth and do not establish playable-config acceptance. Remaining physical
 slowdowns, Xbox Start retest, audio listening,
-long-session behavior and iPhone performance prevent release acceptance.
+long-session behavior and iPhone performance prevent stable-release acceptance.
 
 The remaining detailed audit below was recorded on September 9 (R851).
 This is a preliminary evidence index, not a completed release audit. The full
@@ -73,7 +78,7 @@ reconciled against the exact proposed release, not inherited automatically.
 | D9 Simulator first play | iPhone plaza/movement is verified, not the complete first-Grand-Star loop; both platform scopes still require full acceptance. |
 | D10 Apple shell/branding | Menu/editor/icon improvements exist; remaining phone overlaps, import/privacy/lifecycle scope and branding matrix are open. |
 | D11 stability/reproducibility | Brief lifecycle checks do not prove60-minute soak, repeated transitions, memory pressure or clean-clone reproduction. |
-| D12 public candidate | No exact physical-device hands-on acceptance, final audit, rights decisions or publication authorization. |
+| D12 public candidate | Full platform acceptance remains incomplete; private experimental publication was explicitly authorized on September 13. |
 
 Technical matrix rows1–36 are **not accepted for this release candidate** here.
 This does not erase historical partial passes. Each row must receive a linked,
