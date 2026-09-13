@@ -27,8 +27,16 @@ and the device module template. It does not require or replace the historical
 accepted module or PGO profile. It produces a new candidate whose performance
 and hardware behavior must be checked separately.
 
-Build the core, provision it, and build the host using the existing scripts with
-`GALAXYPAD_IOS_SDK=iphoneos`. Stage that host with the fresh module explicitly:
+Build the core and host from the same pinned graph. The host build provisions
+that core automatically; iPhoneOS selects the maintained audio variant and its
+matching Mixer layout. Do not combine an older core archive with fresh headers.
+
+```sh
+GALAXYPAD_IOS_SDK=iphoneos bash scripts/build-ios-simulator-core.sh
+GALAXYPAD_IOS_SDK=iphoneos bash scripts/build-ios-simulator-app.sh
+```
+
+Stage that host with the fresh module explicitly:
 
 ```sh
 bash scripts/stage-private-ios-device.sh \

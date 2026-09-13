@@ -31,3 +31,26 @@ jobs:
         run: bash scripts/check-repository.sh
       - name: Verify tests left dependency sources unchanged
         run: python3 scripts/dependency-lock.py
+  ios-build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install build dependencies
+        run: brew install cmake ninja ripgrep
+      - name: Record toolchain
+        run: |
+          xcodebuild -version
+          clang --version
+      - name: Check out pinned Apple build sources
+        run: bash scripts/bootstrap-dependencies.sh
+      - name: Build the iOS runtime and app without private game inputs
+        env:
+          GALAXYPAD_IOS_SDK: iphoneos
+        run: |
+          bash scripts/build-ios-simulator-core.sh
+          bash scripts/build-ios-simulator-app.sh
+      - name: Verify build left dependency sources unchanged
+        run: python3 scripts/dependency-lock.py
