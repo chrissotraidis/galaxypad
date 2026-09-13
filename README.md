@@ -10,26 +10,28 @@
   <a href="https://discord.gg/xwHfUD2bxW"><img alt="Join the GalaxyPad Discord" src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&amp;logoColor=white"></a>
 </p>
 
+**Super Mario Galaxy on iPhone, iPad, and Apple silicon Mac through ahead-of-time recompilation.**
+GalaxyPad is an experimental Apple app with Metal rendering, touch controls, and
+controller support. It started as a personal experiment and has continued to grow.
+
+The game's PowerPC code is recompiled ahead of time into native ARM64 code; the
+Dolphin-derived runtime supplies graphics, audio, and other Wii hardware behavior.
+You supply your own supported game image; GalaxyPad does not download or include it.
+
 Built with [ModernGekko](https://github.com/ExpansionPak/ModernGekko), by Hyperway,
 ExpansionPak and contributors, and [DolRecomp](https://github.com/ExpansionPak/DolRecomp),
 on the [RecompCore](https://github.com/ExpansionPak/RecompCore) /
-[Dolphin](https://github.com/dolphin-emu/dolphin) runtime. These projects and their
-contributors provide the recompilation tools and Wii hardware implementation
-behind GalaxyPad.
-[Full credits](CREDITS.md).
+[Dolphin](https://github.com/dolphin-emu/dolphin) runtime. See [full credits](CREDITS.md),
+including the SunPad Apple integration this project builds on.
+
+**Maintained dependency forks:** [ModernGekko](https://github.com/chrissotraidis/ModernGekko),
+[RecompCore](https://github.com/chrissotraidis/RecompCore), and
+[DolRecomp](https://github.com/chrissotraidis/DolRecomp).
+GalaxyPad is the Apple app repository; its runtime and compiler changes live in
+these forks, selected through pinned submodules. See the
+[source graph and upstream links](docs/DEPENDENCIES.md#maintained-source-graph).
 
 ![Mario exploring a grassy planet in GalaxyPad](docs/images/galaxypad-mario-planet.png)
-
-<p align="center">
-  <strong>Super Mario Galaxy on iOS, iPadOS, and macOS through ahead-of-time recompilation.</strong><br>
-  An experimental Apple app with Metal rendering, touch controls, and controller support.
-</p>
-
-GalaxyPad adapts this stack for Apple devices with Galaxy-specific touch and
-controller integration and platform fixes. Recompiled game code executes as ARM64;
-the Dolphin-derived runtime supplies graphics, audio, and other Wii hardware
-behavior. Supply your
-own supported game image; GalaxyPad does not download or include the game image.
 
 ## Experimental preview
 
@@ -45,9 +47,11 @@ assets, or saves. Supply the supported image yourself. Read the
 
 ## Current status
 
-Build 13 is installed on the physical iPad Pro; the iPhone 14 remains on build 7.
-The preview IPA uses the build 13 host tested on iPad. Its latest changes have not
-yet had equivalent physical iPhone acceptance. In owner
+Development build 15 is installed on the physical iPad Pro. Its in-place update
+preserved saves and settings, and startup/title rendering was verified; hands-on
+gameplay and audio checks for this exact build remain pending. The public preview
+IPA still uses the build 13 host, and the iPhone 14 remains on build 7. The preview
+has not had equivalent physical iPhone acceptance. In earlier owner
 playtesting, the iPad generally holds 60 FPS with occasional dips, while the
 iPhone 14 runs around 32 FPS in the reported scenes and needs substantial
 optimization. These are gameplay reports, not matched benchmark results.
