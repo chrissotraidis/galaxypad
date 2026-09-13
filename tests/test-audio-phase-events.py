@@ -20,7 +20,7 @@ for line in event_lines:
     original = original.replace(line, b'')
 assert hashlib.sha256(original).hexdigest() == '6f9c2dda1739eec70b137060ea8f12e00694639a9b4475fa0f8e6e9c795256d0'
 bootstrap = (root/'scripts/bootstrap-dependencies.sh').read_text()
-assert '"$wakeup_core_patch" "$psq_scale_patch" "$audio_events_patch"' in bootstrap
+assert bootstrap.index('apply_patch_once "$ref/ModernGekko/vendor/dolphin" "$audio_events_patch"') < bootstrap.index('verify_patch_scope "$ref/ModernGekko/vendor/dolphin" "DolRecomp"')
 assert bootstrap.index('apply --reverse "$audio_events_patch"') < bootstrap.index('apply --reverse "$psq_scale_patch"')
 assert bootstrap.index('apply_patch_once "$ref/ModernGekko/vendor/dolphin" "$audio_events_patch"') > bootstrap.index('apply_patch_once "$ref/ModernGekko/vendor/dolphin" "$wakeup_core_patch"')
 program = r'''

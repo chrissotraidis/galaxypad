@@ -17,9 +17,8 @@ digest=hashlib.sha256(patch.read_bytes()).hexdigest()
 assert digest=='1a8378b059fc3ef9ff00285c23d491200ed404a2245ac789e90d8413c4d169bc'
 bootstrap=(root/'scripts/bootstrap-dependencies.sh').read_text()
 assert bootstrap.count(digest)==2
-scope=bootstrap.split('verify_patch_scope "$ref/ModernGekko" vendor/dolphin',1)[1].split('lc_pair_runtime_patch=',1)[0]
-assert '"$two_range_policy_patch"' in scope
 assert bootstrap.index('apply --reverse "$two_range_policy_patch"')<bootstrap.index('apply --reverse "$dcbz_policy_patch"')
 assert bootstrap.index('apply "$dcbz_policy_patch" || true')<bootstrap.index('apply "$two_range_policy_patch" || true')
 assert bootstrap.index('apply_patch_once "$ref/ModernGekko" "$dcbz_policy_patch"')<bootstrap.index('apply_patch_once "$ref/ModernGekko" "$two_range_policy_patch"')
+assert bootstrap.index('apply_patch_once "$ref/ModernGekko" "$two_range_policy_patch"') < bootstrap.index('verify_patch_scope "$ref/ModernGekko" vendor/dolphin')
 print('Two-range policy eligibility/cache/manifest/header-copy and bootstrap pin/order checks pass')

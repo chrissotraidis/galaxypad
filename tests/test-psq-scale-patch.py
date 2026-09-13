@@ -24,7 +24,7 @@ assert peel < bootstrap.index('if git -C "$ref/ModernGekko" apply --reverse --ch
 apply = bootstrap.index('apply_patch_once "$ref/ModernGekko/vendor/dolphin" "$psq_scale_patch"')
 assert apply > bootstrap.index('1350d1196b38b147477890ef0dc59d5d9e389a55a169d51913fc033be34edb69 ]]')
 assert apply < bootstrap.index('verify_patch_scope "$ref/ModernGekko/vendor/dolphin" "DolRecomp"')
-assert '"$wakeup_core_patch" "$psq_scale_patch"' in bootstrap
+assert bootstrap.index('apply_patch_once "$ref/ModernGekko/vendor/dolphin" "$wakeup_core_patch"') < apply
 assert 'if [[ "$psq_scale_peeled" == true ]]; then' in bootstrap
 with tempfile.TemporaryDirectory(prefix='galaxypad-scale-patch-') as directory:
     folder = Path(directory)

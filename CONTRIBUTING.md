@@ -1,25 +1,35 @@
 # Contributing
 
-Changes should be small enough for a reviewer to understand and reproduce. Explain
-the failing behavior, why the change fixes it, and the checks actually performed.
-Preserve upstream attribution and licenses. See [credits](CREDITS.md).
+For a bug report, include the app version, device/OS, supported game revision,
+scene and reproduction steps. Screenshots or reviewed diagnostic logs can help.
+An upstream issue or commit link is useful when reporting a dependency regression.
+Do not attach game images, extracted assets, generated game code, saves, NAND,
+or signing material.
 
-For runtime reports, include the app version, platform, supported game revision,
-scene and reproduction steps. A suspected upstream regression is especially
-useful with an issue or commit link. Do not attach game images, extracted assets,
-generated game code, saves, NAND, or signing material.
+For a code change, explain the failing behavior, the repair and the validation.
+Keep changes focused and preserve [upstream attribution](CREDITS.md). Include
+before/after measurements for performance changes. Source checks and builds do
+not establish physical gameplay or audio acceptance.
 
-For dependency changes, record the upstream base, effective change, and relevant
-upstream issue or fix. Check whether upstream already contains the repair before
-adding another patch. Separate diagnostic experiments from release changes.
-Include measured before/after evidence for performance claims. A passing source
-check or successful build does not establish gameplay correctness.
+Run the focused test for the changed component, then the repository checks:
 
-AI-assisted contributions follow the same review standard: the contributor must
-be able to explain the code and its evidence. Do not submit generated changes you
-cannot explain, invented test results, or claims of upstream endorsement. Follow
-the receiving project's contribution policy when proposing work upstream.
+```sh
+bash scripts/check-repository.sh
+```
 
-Keep technical criticism specific and respectful. Requests for game-download
-links, including requests to exchange them in DMs, do not belong in project
-issues or the community server.
+The default suite checks source and prepared dependencies without game data.
+Prepare the pinned dependencies with `scripts/bootstrap-dependencies.sh` first.
+Historical game-derived experiment checks are explicit:
+
+```sh
+bash scripts/check-repository.sh --with-private-evidence
+```
+
+That mode requires the recorded local fixtures and fails if they are missing;
+it does not download them or silently count unavailable checks as passing.
+UIKit tests use a separate isolated app; see `tests/run-mobile-ui.sh`. Do not use
+a real save or game install as a test fixture. State unavailable checks in your PR.
+
+AI assistance has been used in this project. Contributors remain responsible for
+understanding and reviewing their changes. Follow the receiving project's own
+contribution policy when proposing fixes upstream.

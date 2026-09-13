@@ -9,7 +9,7 @@ mkdir -p "$ref"
 
 ensure_checkout() {
   local url=$1 path=$2 revision=$3
-  if [[ ! -d "$path/.git" ]]; then
+  if [[ ! -e "$path/.git" ]]; then
     git clone --filter=blob:none "$url" "$path"
     git -C "$path" checkout --detach "$revision"
   fi
@@ -33,6 +33,9 @@ require_clean() {
   fi
 }
 
+applied_checkouts=()
+applied_patches=()
+
 apply_patch_once() {
   local checkout=$1 patch_file=$2 expected_sha=$3
   local actual_sha
@@ -42,6 +45,8 @@ apply_patch_once() {
     exit 1
   }
   if git -C "$checkout" apply --reverse --check "$patch_file" >/dev/null 2>&1; then
+    applied_checkouts+=("$checkout")
+    applied_patches+=("$patch_file")
     return
   fi
   if ! git -C "$checkout" apply --check "$patch_file"; then
@@ -50,23 +55,22 @@ apply_patch_once() {
     exit 1
   fi
   git -C "$checkout" apply "$patch_file"
+  applied_checkouts+=("$checkout")
+  applied_patches+=("$patch_file")
 }
 
 verify_patch_scope() {
-  local checkout=$1 extra_allowed=$2
-  shift 2
-  local changed allowed patch_file
-  allowed=""
-  for patch_file in "$@"; do
-    allowed+="$(awk '/^diff --git / {sub(/^b\//, "", $4); print $4} /^\+\+\+ b\// {sub(/^b\//, "", $2); print $2}' "$patch_file")"$'\n'
+  local checkout=$1 extra_allowed=$2 i
+  local ordered_patches=()
+  # Reconstruct the exact tree in an isolated index. A path whitelist alone
+  # accepts arbitrary edits elsewhere in a file touched by a reviewed patch.
+  for ((i = 0; i < ${#applied_patches[@]}; i++)); do
+    if [[ "${applied_checkouts[$i]}" == "$checkout" ]]; then
+      ordered_patches+=("${applied_patches[$i]}")
+    fi
   done
-  while IFS= read -r changed; do
-    [[ -z "$changed" || "$changed" == "$extra_allowed" ]] && continue
-    grep -Fqx "$changed" <<<"$allowed" || {
-      echo "unexpected local dependency change: $checkout/$changed" >&2
-      exit 1
-    }
-  done < <(git -C "$checkout" status --porcelain --untracked-files=all | sed -E 's/^.. //')
+  python3 "$root/scripts/verify-dependency-tree.py" \
+    "$checkout" "$extra_allowed" "${ordered_patches[@]}"
 }
 
 ensure_checkout \
@@ -781,15 +785,7 @@ apply_patch_once "$ref/ModernGekko" "$root/patches/ModernGekko/0029-mod-address-
   53a3823a06ac00a090065f54a030915110ffbdf997398d36242b52d69845e6c1
 apply_patch_once "$ref/ModernGekko" "$root/patches/ModernGekko/0030-mod-dispatch-fast-reject.patch" \
   bba8bb0eaab1664fd78230e979d7baa1d559d37606f99802b6da07b467de349e
-verify_patch_scope "$ref/ModernGekko" vendor/dolphin \
-  "$root/patches/ModernGekko/0030-mod-dispatch-fast-reject.patch" \
-  "$root/patches/ModernGekko/0029-mod-address-fast-reject.patch" \
-  "$builtin_mods_patch" \
-  "$frontend_progress_patch" \
-  "$apple_patch" "$runtime_directories_patch" "$two_range_policy_patch" "$headless_patch" "$diagnostics_patch" "$io_diagnostics_patch" \
-  "$headless_audio_patch" "$cadence_diagnostics_patch" "$rmge01_idle_patch" \
-  "$module_cache_options_patch" "$efb_frame_correlation_patch" "$phase_trace_hooks_patch" \
-  "$pgo_module_build_patch" "$native_resolution_default_patch" "$frontend_controls_patch" "$module_source_patch" "$fprf_policy_patch" "$thp_policy_patch" "$vi_timing_patch" "$idle_recorder_patch" "$completion_recorder_patch" "$flight_runtime_patch" "$dcbz_policy_patch" "$dvd_runtime_patch" "$gather_runtime_patch" "$wakeup_runtime_patch"
+verify_patch_scope "$ref/ModernGekko" vendor/dolphin
 lc_pair_runtime_patch="$root/patches/ModernGekko-dolphin/0013-lc-pair-runtime.patch"
 apply_patch_once "$ref/ModernGekko/vendor/dolphin" "$lc_pair_runtime_patch" \
   d05dda85e73b20f41f7042b1a6df2476fc30c971664c922ccfd7bd6f66483975
@@ -869,16 +865,7 @@ if [[ "$simulator_fetch_peeled" == true ]]; then
     e64cd61170da314bd222f290647e67090195e384dcc54661a743f21179573447
   simulator_fetch_peeled=false
 fi
-verify_patch_scope "$ref/ModernGekko/vendor/dolphin" "DolRecomp" \
-  "$simulator_fetch_patch" "$audio_output_patch" "$run_cost_patch" "$xf_origin_patch" "$fallback_pc_patch" "$direct_boundary_patch" "$checkpoint_undo_patch" "$xf_context_patch" \
-  "$wakeup_core_patch" "$psq_scale_patch" "$audio_events_patch" "$pointer_reacquisition_patch" \
-  "$efb_context_patch" \
-  "$efb_dispatch_patch" \
-  "$dolphin_patch" "$dolphin_diagnostics_patch" "$dolphin_diagnostics_header_patch" \
-  "$dolphin_audio_reserve_patch" "$dolphin_indexed_tables_patch" \
-  "$dolphin_efb_frame_trace_patch" "$dolphin_phase_trace_patch" "$dolphin_window_close_patch" \
-  "$dolphin_pause_indicator_patch" "$dolphin_sys_platform_patch" "$pixel_store_trace_patch" \
-  "$lc_byte_fast_patch" "$lc_pair_host_patch" "$lc_pair_runtime_patch" "$fprf_helpers_patch" "$cpu_throttle_counter_patch" "$idle_wait_patch" "$completion_timing_patch" "$flight_core_patch" "$empty_rel_patch" "$dvd_core_patch" "$gather_core_patch"
+verify_patch_scope "$ref/ModernGekko/vendor/dolphin" "DolRecomp"
 cntlzw_patch="$root/patches/DolRecomp/0001-cntlzw-intrinsic.patch"
 # R86 did not justify promoting this experiment. Migrate an existing experimental
 # checkout back to the pinned emitter; preserve and reject any unrelated edits.
@@ -892,7 +879,7 @@ midblock_cycles_patch="$root/patches/DolRecomp/0002-midblock-entry-cycles.patch"
 # experiment. The running package stays unchanged until candidate validation.
 apply_patch_once "$ref/ModernGekko/vendor/dolphin/DolRecomp" "$midblock_cycles_patch" \
   99b2e3b16dd5df387f2fdcaa57250de717657eadd717598b0cf22bc9cbf7e11e
-verify_patch_scope "$ref/ModernGekko/vendor/dolphin/DolRecomp" "" "$midblock_cycles_patch"
+verify_patch_scope "$ref/ModernGekko/vendor/dolphin/DolRecomp" ""
 
 apply_patch_once "$ref/ModernGekko" "$runtime_directories_patch" \
   eae4e6f3b8476354b5b05e9e006646cbca8ce1e4fe17597d2b6628f498aeb6a2
@@ -900,5 +887,6 @@ runtime_directories_peeled=false
 apply_patch_once "$ref/ModernGekko" "$builtin_mods_patch" \
   d198a24f168fd5b589552bcc9474468c70225ec2ec83a93bfdabe58f5eab37c9
 builtin_mods_peeled=false
+verify_patch_scope "$ref/ModernGekko" vendor/dolphin
 trap - EXIT
 echo "GalaxyPad public references are pinned and the reviewed Apple patches are applied."

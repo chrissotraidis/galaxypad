@@ -160,8 +160,17 @@ static NSUInteger CountViews(UIView *root, Class type) {
   Check([aboutText isKindOfClass:UITextView.class] && !aboutText.editable,
         "About is readable, not editable");
   Check(aboutText.adjustsFontForContentSizeCategory,"About supports Dynamic Type");
-  Check([aboutText.text containsString:@"Private development build"] &&
-        [aboutText.text containsString:@"audit is not finished"],"About preserves private/incomplete notices boundary");
+  Check([aboutText.text containsString:@"Experimental preview"] &&
+        [aboutText.text containsString:@"validation are still in progress"],"About describes experimental validation status");
+  Check(![aboutText.text containsString:@"not approved"] &&
+        ![aboutText.text containsString:@"Private development build"],"About does not contradict public previews");
+  for (NSString *project in @[@"ModernGekko", @"DolRecomp", @"RecompCore", @"Dolphin —", @"SunPad",
+      @"Wiimms ISO Tools", @"Credits and artwork provenance", @"Third-party notices"]) {
+    NSRange range=[aboutText.text rangeOfString:project];
+    Check(range.location!=NSNotFound &&
+      [aboutText.attributedText attribute:NSLinkAttributeName atIndex:range.location effectiveRange:nil]!=nil,
+      "About links its upstream credits and notices");
+  }
   Check(about.navigationItem.rightBarButtonItem!=nil,"About has explicit dismissal");
   // This bundle's own preferences only, never the product's defaults.
   [NSUserDefaults.standardUserDefaults removePersistentDomainForName:NSBundle.mainBundle.bundleIdentifier];
@@ -714,6 +723,13 @@ static NSUInteger CountViews(UIView *root, Class type) {
   GalaxyPadSettings.sharedSettings.aspectRatioMode=GalaxyPadAspectRatioOriginal;
   puts("GALAXYPAD_UI_TEST_PASS");
   fflush(stdout);
+  if ([NSProcessInfo.processInfo.arguments containsObject:@"--preview-about"]) {
+    self.previewing=YES;
+    UINavigationController *navigation=[[UINavigationController alloc] initWithRootViewController:about];
+    navigation.modalPresentationStyle=UIModalPresentationFullScreen;
+    [self presentViewController:navigation animated:NO completion:nil];
+    return;
+  }
   if ([NSProcessInfo.processInfo.arguments containsObject:@"--preview"]) {
     self.previewing=YES;
     [overlay removeFromSuperview];

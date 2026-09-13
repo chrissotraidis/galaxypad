@@ -10,29 +10,25 @@
   <a href="https://discord.gg/xwHfUD2bxW"><img alt="Join the GalaxyPad Discord" src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&amp;logoColor=white"></a>
 </p>
 
+Built with [ModernGekko](https://github.com/ExpansionPak/ModernGekko) and
+[DolRecomp](https://github.com/ExpansionPak/DolRecomp), by ExpansionPak and their
+contributors, on the [RecompCore](https://github.com/ExpansionPak/RecompCore) /
+[Dolphin](https://github.com/dolphin-emu/dolphin) runtime. Their work provides the
+recompilation tools and Wii hardware implementation behind GalaxyPad.
+[Full credits](CREDITS.md).
+
 ![Mario exploring a grassy planet in GalaxyPad](docs/images/galaxypad-mario-planet.png)
 
 <p align="center">
-  <strong>An experimental Super Mario Galaxy Apple integration built on ModernGekko and DolRecomp.</strong><br>
-  An Apple app for iPhone, iPad, and Apple silicon Mac, with Metal rendering, touch controls, and controller support.
+  <strong>Super Mario Galaxy on iOS, iPadOS, and macOS through ahead-of-time recompilation.</strong><br>
+  An experimental Apple app with Metal rendering, touch controls, and controller support.
 </p>
 
-GalaxyPad uses [ExpansionPak's ModernGekko](https://github.com/ExpansionPak/ModernGekko)
-and [DolRecomp](https://github.com/ExpansionPak/DolRecomp) to run ahead-of-time
-recompiled game code on a [RecompCore](https://github.com/ExpansionPak/RecompCore)
-/ [Dolphin](https://github.com/dolphin-emu/dolphin) compatibility runtime. These
-upstream projects provide the recompilation and hardware implementation that make
-this integration possible.
-
-GalaxyPad's work focuses on Apple app integration, Galaxy-specific input and touch
-controls, packaging, and performance/correctness work for the supported revision.
-It is not a from-scratch game engine or recompiler. The immediate goal is reliable
-play of the original game; new levels or other content modifications are not a
-requirement of that goal. Supply your own supported game image.
-
-See [credits and tool provenance](CREDITS.md),
-[upstream review and known gaps](docs/UPSTREAM-REVIEW.md), and
-[contribution guidelines](CONTRIBUTING.md).
+GalaxyPad adapts this stack for Apple devices with Galaxy-specific touch and
+controller integration and platform fixes. Recompiled game code executes as ARM64;
+the Dolphin-derived runtime supplies graphics, audio, and other Wii hardware
+behavior. Supply your
+own supported game image; GalaxyPad does not download or include the game image.
 
 ## Experimental preview
 

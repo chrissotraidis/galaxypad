@@ -387,10 +387,20 @@ static NSString *GalaxyPadBoundedSessionLog(NSString *path) {
 static NSString *GalaxyPadReviewedSessionLog(NSString *log) {
     NSMutableArray<NSString *> *lines = [NSMutableArray array];
     for (NSString *line in [log componentsSeparatedByCharactersInSet:NSCharacterSet.newlineCharacterSet]) {
-        // Development-only input probes can exist in older/current logs. They
+        // Input probes can exist in older/current local logs. They
         // are useful locally, but raw controller/pointer samples are not reports.
         if ([line containsString:@"simulator input accepted"] ||
-            [line containsString:@"controller raw_buttons="]) continue;
+            [line containsString:@"touch_mapping "] ||
+            [line containsString:@"controller raw_buttons="] ||
+            [line containsString:@"controller input ready="]) continue;
+        NSRange snapshot=[line rangeOfString:@"controller_snapshot "];
+        if (snapshot.location!=NSNotFound) {
+            // The controller snapshot is appended to a performance summary in
+            // current logs. Keep its CPU/memory/thermal prefix, omit input data.
+            if (![line containsString:@"[GalaxyPad performance]"]) continue;
+            [lines addObject:[line substringToIndex:snapshot.location]];
+            continue;
+        }
         [lines addObject:line];
     }
     return GalaxyPadRedactedString([lines componentsJoinedByString:@"\n"]);

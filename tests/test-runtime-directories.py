@@ -19,6 +19,5 @@ bootstrap = (root/'scripts/bootstrap-dependencies.sh').read_text()
 assert bootstrap.count(digest) == 2
 assert bootstrap.index('apply --reverse "$runtime_directories_patch"') < bootstrap.index('apply --reverse "$wakeup_runtime_patch"')
 assert bootstrap.index('apply "$wakeup_runtime_patch" || true') < bootstrap.index('apply "$runtime_directories_patch" || true')
-scope = bootstrap.split('verify_patch_scope "$ref/ModernGekko" vendor/dolphin', 1)[1].split('lc_pair_runtime_patch=', 1)[0]
-assert '"$runtime_directories_patch"' in scope
+assert bootstrap.index('apply_patch_once "$ref/ModernGekko" "$runtime_directories_patch"') < bootstrap.rindex('verify_patch_scope "$ref/ModernGekko" vendor/dolphin')
 print('Runtime-owned directory creation precedes Init; external ownership and canonical patch ordering guarded')
