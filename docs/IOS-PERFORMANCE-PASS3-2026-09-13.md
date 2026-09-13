@@ -161,3 +161,34 @@ file still includes a48.15FPS window and178 gaps over a much longer interval.
 These logs do not prove heavy-scene stability or identify what scene was played.
 Private current/previous logs and novelty comparison are retained in
 `generated/runtime/performance-pass3-20260913/hardware-refresh-1315/`.
+
+## Drawable acquisition result
+
+A separate default-off measurement rebuilt only MTLGfx and CoreHost against the
+accepted core, with no batching changes. After visual verification of the same
+1x scene, 2,400 acquisitions over51.262seconds took38.990ms total:16.246us per
+acquisition and0.761ms per wall second. All were below50us in this interval;
+none returned nil and pending-work state never changed during acquisition.
+Only25 acquisitions began with pending commands and no previously busy command
+buffer. This scene supplies no evidence that drawable acquisition is a material
+bottleneck and does not justify earlier submission. The probe does not cover
+intentional presentation sleep or physical-iPhone scheduling.
+
+## Audio interpretation and next physical capture
+
+The56 DMA events are failed128-frame tempo-analysis requests, not56 RemoteIO
+callbacks or measured audible glitches. They correspond to224ms nominal hop
+output, but fade/recovery behavior means that is not224ms proven silence. The bad
+phone interval accepted28,136 audio input frames/s (87.93% of nominal32k), versus
+31,968 before and31,246 after. The unchanged>=50ms producer-gap counter does not
+exclude repeated shorter gaps or transient supply exhaustion. No blind reserve
+increase is justified: this tempo path bypasses the legacy DMA reserve policy.
+
+The unavailable output counters are intentionally disabled, not missing from the
+linked core. Startup sets detailed_frame_logging=0; main maps that to the audio
+output diagnostics environment flag before the audio unit initializes. Frozen
+build7 artifacts and Simulator13 contain the enable branch and exactly one shared
+counter instance. Future synchronized phone capture must enable that existing
+option before audio initialization to measure output callbacks. No new backend
+or ABI correction is warranted from available=0. Current source/settings and
+physical app state were preserved during this audit.
