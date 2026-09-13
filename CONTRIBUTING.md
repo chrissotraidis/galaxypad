@@ -21,6 +21,10 @@ upstream proposal; a GalaxyPad change does not imply upstream endorsement.
 
 ## What a code review needs
 
+`main` requires a pull request and an up-to-date passing `source-checks` status,
+including for administrators. Automated checks support the review requirements
+below; they do not establish gameplay or performance acceptance.
+
 Explain the failing behavior, the repair and its validation. Keep changes focused
 and consistent with the app. For behavioral fixes, include a regression that
 reproduces the failure where feasible. Explain any case requiring manual testing.

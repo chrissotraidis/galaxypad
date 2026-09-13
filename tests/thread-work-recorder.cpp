@@ -7,6 +7,7 @@
 using R = galaxypad::ThreadWorkRecorder<3>;
 static int calls;
 static bool fail;
+static bool zero_counters;
 static std::uint64_t value = 100;
 static int read_counts(unsigned kind, void* out, std::size_t bytes) {
   ++calls;
@@ -14,6 +15,10 @@ static int read_counts(unsigned kind, void* out, std::size_t bytes) {
   auto* counts = static_cast<R::Counts*>(out);
   counts[0] = {value,value+1,value+2,value+3};
   counts[1] = {value+4,value+5,value+6,value+7};
+  if (zero_counters) {
+    counts[0].instructions=counts[0].cycles=0;
+    counts[1].instructions=counts[1].cycles=0;
+  }
   if (fail) { errno = ENOTSUP; return -1; }
   return 0;
 }
@@ -48,4 +53,8 @@ int main(int argc,char** argv) {
   r.Configure((path+".invalid").c_str(),read_counts,9,125,0); r.Record(70,clock);
   assert(r.At(0).error==EINVAL && calls==3 && clocks==6);
   assert(r.FlushAfterJoin()==R::Result::Saved);
+  fail=false;zero_counters=true;
+  r.Configure((path+".unsupported").c_str(),read_counts,2,125,3);r.Record(80,clock);
+  assert(r.At(0).error==ENOTSUP && r.At(0).levels[0].instructions==0);
+  assert(r.At(0).levels[0].user_mach==value+2); // Keep raw non-PMU evidence.
 }

@@ -16,6 +16,19 @@ static uint64_t now_ns(void) {
   return (uint64_t)t.tv_sec * 1000000000 + t.tv_nsec;
 }
 
+// Some virtualized macOS hosts return successful rusage queries with no PMU
+// counters. Keep that capability result distinct from counter progress/failure.
+static int counter_progress(const struct rusage_info_v4 *first,
+                            const struct rusage_info_v4 *last) {
+  if (!first->ri_proc_start_abstime ||
+      last->ri_proc_start_abstime != first->ri_proc_start_abstime ||
+      last->ri_instructions < first->ri_instructions || last->ri_cycles < first->ri_cycles)
+    return 1;
+  if ((!first->ri_instructions && !last->ri_instructions) ||
+      (!first->ri_cycles && !last->ri_cycles)) return 77;
+  return last->ri_instructions > first->ri_instructions && last->ri_cycles > first->ri_cycles ? 0 : 1;
+}
+
 int main(int argc, char **argv) {
   if (argc != 2) { fprintf(stderr, "usage: %s PID|--self-test\n", argv[0]); return 2; }
   const int self_test = strcmp(argv[1], "--self-test") == 0;
@@ -33,17 +46,28 @@ int main(int argc, char **argv) {
   if (self_test) {
     volatile uint64_t work = 1;
     for (unsigned i = 0; i < 1000000; ++i) work = work * 1664525 + 1013904223;
-    if (proc_pid_rusage((int)parsed, RUSAGE_INFO_V4, (rusage_info_t *)&last)) return 1;
-    if (last.ri_proc_start_abstime != first.ri_proc_start_abstime ||
-        last.ri_instructions <= first.ri_instructions || last.ri_cycles <= first.ri_cycles)
-      return 1;
+    if (proc_pid_rusage((int)parsed, RUSAGE_INFO_V4, (rusage_info_t *)&last)) {
+      perror("proc_pid_rusage self-test second query"); return 1;
+    }
+    const int status = counter_progress(&first, &last);
+    if (status) {
+      fprintf(stderr, "Process work counters %s: start=%" PRIu64 "->%" PRIu64
+              " instructions=%" PRIu64 "->%" PRIu64 " cycles=%" PRIu64 "->%" PRIu64
+              " user_time=%" PRIu64 "->%" PRIu64 " system_time=%" PRIu64 "->%" PRIu64 "\n",
+              status == 77 ? "unavailable on this host" : "failed to advance or changed identity",
+              first.ri_proc_start_abstime, last.ri_proc_start_abstime,
+              first.ri_instructions, last.ri_instructions, first.ri_cycles, last.ri_cycles,
+              first.ri_user_time, last.ri_user_time, first.ri_system_time, last.ri_system_time);
+      return status;
+    }
     puts("Process instruction/cycle counters advance under bounded self-work");
     return 0;
   }
   printf("{\"pid\":%ld,\"start_abstime\":%" PRIu64 ",\"before_ns\":%" PRIu64
          ",\"after_ns\":%" PRIu64 ",\"instructions\":%" PRIu64 ",\"cycles\":%" PRIu64
-         ",\"user_time\":%" PRIu64 ",\"system_time\":%" PRIu64 "}\n",
+         ",\"user_time\":%" PRIu64 ",\"system_time\":%" PRIu64 ",\"work_counters_available\":%s}\n",
          parsed, first.ri_proc_start_abstime, before, after, first.ri_instructions,
-         first.ri_cycles, first.ri_user_time, first.ri_system_time);
+         first.ri_cycles, first.ri_user_time, first.ri_system_time,
+         first.ri_instructions && first.ri_cycles ? "true" : "false");
   return 0;
 }
