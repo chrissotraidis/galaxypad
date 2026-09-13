@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package an explicit app as a private preview; never mutate build/install inputs."""
+"""Package an explicit app as an experimental preview; never mutate build/install inputs."""
 import argparse
 import hashlib
 import json

@@ -1,6 +1,9 @@
 # GalaxyPad release readiness
 
-Updated 2026-09-13. **Experimental private preview authorized; stable release not accepted.**
+Updated 2026-09-13. **Public experimental preview available; stable release not accepted.**
+
+See the [public-preview sanity check](PUBLIC-RELEASE-SANITY-2026-09-13.md) for
+current repository, history and published-archive audit results.
 
 The owner explicitly requested the current source on main and an experimental
 IPA/macOS release. See [preview notes](PREVIEW-2026-09-13.md) for the current

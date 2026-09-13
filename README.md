@@ -7,6 +7,7 @@
   <img alt="Metal renderer" src="https://img.shields.io/badge/renderer-Metal-5E5CE6">
   <img alt="Experimental preview" src="https://img.shields.io/badge/preview-experimental-FFD60A">
   <img alt="Game data not included" src="https://img.shields.io/badge/game%20data-not%20included-FF453A">
+  <a href="https://discord.gg/xwHfUD2bxW"><img alt="Join the GalaxyPad Discord" src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&amp;logoColor=white"></a>
 </p>
 
 ![Mario exploring a grassy planet in GalaxyPad](docs/images/galaxypad-mario-planet.png)
@@ -25,7 +26,7 @@ GalaxyPad does not download or include the game.
 
 [Download the preview](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1):
 one IPA for iPhone and iPad, plus a separate Apple silicon macOS app archive.
-The repository and release retain their existing private visibility.
+The repository and preview downloads are public.
 
 The IPA requires signing with your own Apple account before installation; it is
 not a TestFlight or App Store build. The Mac app is ad-hoc signed and not notarized.
@@ -51,7 +52,7 @@ displayed frames.
 | Rendering | Metal gameplay; corrected depth access restores tested Pull Star activation and level entry |
 | Controls | Touch movement and pointer aim, Wii actions, controller input, and editable touch layouts |
 | Platforms | iPhone/iPad app targets and Apple silicon Mac development package; configured minimums are not verified device compatibility |
-| Release | Experimental private preview; iPhone performance and full-game acceptance remain open |
+| Release | Experimental public preview; iPhone performance and full-game acceptance remain open |
 
 See [current status](docs/STATUS.md), [performance evidence](docs/PERFORMANCE-2026-09-12.md),
 [release readiness](docs/RELEASE-READINESS.md), and the [development journal](docs/JOURNAL.md)
@@ -160,8 +161,9 @@ Diagnostic logs are optional and off by default. Enable them in the preview,
 review the sanitized report, and use **Share Log** to save a copy for manual
 attachment to the issue. Nothing is uploaded or submitted automatically. Never
 attach game images, extracted data, saves, or signing material. The tracker is
-currently private; access requires a GitHub account with repository access until
-the project becomes public.
+public; a GitHub account is required to submit an issue.
+You can also join the [GalaxyPad Discord](https://discord.gg/xwHfUD2bxW) for
+community discussion.
 
 </details>
 

@@ -8,7 +8,13 @@ for path in \
   generated/aot/game.c \
   docs/artifacts/private.log \
   nand/title/save.bin \
-  saves/progress.sav; do
+  saves/progress.sav \
+  disc.gcm \
+  disc.RvZ \
+  GameData.bin \
+  identity.p12 \
+  embedded.mobileprovision \
+  .env.local; do
   git -C "$root" check-ignore -q "$path" || {
     echo "expected ignored path: $path" >&2
     exit 1
