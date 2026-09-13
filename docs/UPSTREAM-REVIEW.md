@@ -130,8 +130,16 @@ it rejects ordinary files at that path and other tracked reference material.
 pull-request template and the source-check CI workflow require explainable changes,
 focused regression evidence, exact dependency pins, preserved attribution and
 explicit release/device evidence. CI runs the default suite and checks afterward
-that dependency sources remain unchanged. These checks do not prove a complete
-new runtime build or close the historical iOS release provenance gap.
+that dependency sources remain unchanged. The first hosted run exposed a missing
+`rg` prerequisite: the old gate could report success without scanning. A regression
+reproduced that failure; the gate now rejects the missing tool and CI installs it.
+
+A fresh default bootstrap also initialized the required Apple build dependencies.
+`bash scripts/build-desktop-tools.sh` then successfully built `moderngekko-port`,
+`moderngekko-run` and `moderngekko-module-info` using Xcode 26.6 (17F113), Apple
+Clang 21.0.0, with dependency sources verified clean afterward. This is a desktop
+runtime/tool build, not generated-game-module or physical gameplay acceptance,
+and it does not close the historical iOS release provenance gap.
 
 ## Remaining engineering work, in order
 
