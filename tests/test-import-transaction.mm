@@ -6,6 +6,16 @@
 #include <fcntl.h>
 #include "fixtures/import/GalaxyPadDiscIdentity.h"
 
+// Route production background dispatches to one serial queue. A barrier lets
+// the test hold main-thread delivery until the copy worker has been released.
+static dispatch_queue_t importWorkers;
+static void TestImportDispatchAsync(dispatch_queue_t queue, dispatch_block_t block) {
+  dispatch_async(queue==dispatch_get_main_queue()?queue:importWorkers,block);
+}
+#define dispatch_async TestImportDispatchAsync
+#import "../apple/ios/GalaxyPadImportTransaction.mm"
+#undef dispatch_async
+
 static int extractorMode=0, extractorCalls=0;
 
 @interface TestSpaceImport : GalaxyPadImportTransaction
@@ -42,6 +52,7 @@ static int extractorMode=0, extractorCalls=0;
 
 int main() {
   @autoreleasepool {
+    importWorkers=dispatch_queue_create("galaxypad.import-test-workers",DISPATCH_QUEUE_SERIAL);
     char pattern[]="/tmp/galaxypad-transaction-test.XXXXXX";
     assert(mkdtemp(pattern));
     NSURL *root=[NSURL fileURLWithFileSystemRepresentation:pattern isDirectory:YES relativeToURL:nil];
@@ -76,6 +87,27 @@ int main() {
     NSURL *image=[root URLByAppendingPathComponent:@"copy-fixture.wbfs"];
     int fd=open(image.fileSystemRepresentation,O_CREAT|O_EXCL|O_RDWR,0600);
     assert(fd>=0 && ftruncate(fd,GalaxyPadImageBytes)==0 && close(fd)==0);
+    // A busy UI may deliver progress only after the worker's enclosing block
+    // has died. The queued callback must own its values, not lambda references.
+    extractorMode=1;
+    __block BOOL delayedDone=NO, workerRetired=NO;
+    __block unsigned delayedProgress=0;
+    TestSpaceImport *delayed=[[TestSpaceImport alloc] initWithRoot:root];
+    [delayed prepareImage:image progress:^(NSString *message,double fraction) {
+      assert(workerRetired && NSThread.isMainThread);
+      assert([message isEqualToString:@"Copying selected image"] && fraction>0 && fraction<=0.25);
+      ++delayedProgress;
+    } completion:^(BOOL ok,NSString *message) {
+      assert(!ok && [message isEqualToString:@"Synthetic extraction failure."]);
+      delayedDone=YES;
+    }];
+    dispatch_sync(importWorkers, ^{});
+    workerRetired=YES;
+    NSDate *delayedDeadline=[NSDate dateWithTimeIntervalSinceNow:5];
+    while (!delayedDone && delayedDeadline.timeIntervalSinceNow>0)
+      [NSRunLoop.currentRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.01]];
+    assert(delayedDone && delayedProgress==GalaxyPadImageBytes/(16*1024*1024));
+    extractorCalls=0;
     // Deterministic capacity rejection, no real disk filling or staging writes.
     NSUInteger beforeCount=[NSFileManager.defaultManager contentsOfDirectoryAtURL:root
       includingPropertiesForKeys:nil options:0 error:nil].count;

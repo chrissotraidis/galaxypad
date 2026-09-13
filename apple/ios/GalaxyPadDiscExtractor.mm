@@ -76,7 +76,11 @@ static bool ExportChecked(const DiscIO::Volume& volume, const DiscIO::Partition&
           std::error_code error;
           if (!fs::is_regular_file(image,error) || error || fs::file_size(image,error)!=GalaxyPadImageBytes || error)
             return @"This is not the supported exact Galaxy image.";
-          if (progress) dispatch_async(dispatch_get_main_queue(), ^{ progress(@"Verifying image identity",0); });
+          if (progress) {
+            // Own the callback independently of this lambda's worker captures.
+            void (^notify)(NSString *,double)=[progress copy];
+            dispatch_async(dispatch_get_main_queue(), ^{ notify(@"Verifying image identity",0); });
+          }
           if (SHA256(image,cancelled)!=GalaxyPadImageSHA256) return @"Image SHA-256 does not match supported RMGE01 data.";
           if (cancelled && cancelled()) return @"Import cancelled.";
           auto volume=DiscIO::CreateVolume(image.string());

@@ -85,7 +85,10 @@
             if (!out) return @"Image copy failed; check available storage.";
             if (progress && copied%(16*1024*1024)==0) {
               double fraction=0.25*(double)copied/GalaxyPadImageBytes;
-              dispatch_async(dispatch_get_main_queue(), ^{ progress(@"Copying selected image",fraction); });
+              // Snapshot the lambda's reference before it escapes into a block.
+              // Otherwise the callback reads the released worker's capture slot.
+              void (^notify)(NSString *,double)=[progress copy];
+              dispatch_async(dispatch_get_main_queue(), ^{ notify(@"Copying selected image",fraction); });
             }
           }
           out.close();
