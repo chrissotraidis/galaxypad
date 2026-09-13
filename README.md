@@ -1,45 +1,154 @@
 # GalaxyPad
 
-<img src="apple/ios/Assets.xcassets/AppIcon.appiconset/AppIcon.png" width="128" alt="GalaxyPad orbital spiral app icon">
+<p align="center">
+  <img alt="Configured iOS and iPadOS target 16+" src="https://img.shields.io/badge/iOS%20%2F%20iPadOS%20target-16%2B-0A84FF?logo=apple">
+  <img alt="Configured macOS target 14+" src="https://img.shields.io/badge/macOS%20target-14%2B-0A84FF?logo=apple">
+  <img alt="Native ARM64 game code" src="https://img.shields.io/badge/game%20code-native%20ARM64-FF9F0A">
+  <img alt="Metal renderer" src="https://img.shields.io/badge/renderer-Metal-5E5CE6">
+  <img alt="Preview in preparation" src="https://img.shields.io/badge/preview-in%20preparation-FFD60A">
+  <img alt="Game data not included" src="https://img.shields.io/badge/game%20data-not%20included-FF453A">
+</p>
 
-A native Apple app experience for Super Mario Galaxy, built around an exact-game
-ahead-of-time recompilation pipeline, Metal rendering, and SunPad-derived touch
-controls and native menus. Game code is compiled to native ARM64 ahead of time;
-a Dolphin-derived runtime still supplies Wii hardware emulation and interpreter
-fallbacks. iOS does not use a runtime PowerPC JIT.
+![Mario exploring a grassy planet in GalaxyPad](docs/images/galaxypad-mario-planet.png)
 
-**Private development build · not release-ready · no game data included**
+<p align="center">
+  <strong>Super Mario Galaxy running natively on iPad through ahead-of-time recompilation.</strong><br>
+  An Apple app for iPhone, iPad, and Apple silicon Mac, with Metal rendering, touch controls, and controller support.
+</p>
+
+GalaxyPad compiles Super Mario Galaxy's game code to native ARM64 ahead of time
+and presents it in an Apple app with Metal rendering, customizable touch controls,
+and Apple GameController support. Supply your own supported game image;
+GalaxyPad does not download or include the game.
+
+## Preview coming soon
+
+The first public iPhone/iPad IPA is **in preparation and has not been published**.
+There is no public download or TestFlight yet. Installation instructions and a
+verified package will accompany the preview. Developers can use the
+[local iPad installation guide](docs/INSTALL_IPAD.md) and the build steps below.
 
 ## Current status
 
-GalaxyPad boots and has visible gameplay evidence on macOS, iPad Simulator, and
-iPhone Simulator.
-That is not full-game or shipping acceptance. Performance, audio, pointer accuracy,
-touch ergonomics, lifecycle reliability, and physical-device testing remain open.
+Gameplay is running on iPad, with development builds also exercised on Mac and
+in iPhone/iPad Simulator. Lighter scenes reach 60 FPS; **consistent 60 FPS is not
+achieved**. The current heavy-scene Simulator baseline is about 45–49 frame
+events per second with the depth access needed for Pull Stars enabled. The HUD
+counts frame events rather than guaranteeing displayed frames. Audio underruns
+are still reported, and full-game, sustained-performance, and broader device
+validation remain work in progress.
 
-| Platform | Current boundary |
+| Area | Current result |
 | --- | --- |
-| Apple silicon Mac | Packaged app and gameplay; one measured stationary plaza window reached 59.95 VI/s. Sustained performance across the game is not accepted. |
-| iPad Simulator | Corrected depth access restores Pull Star activation and level entry. Heavy-scene logging-off samples are 45–49 frame events/s. Earlier 56–60 and audio results used disabled depth and do not establish playable-config acceptance. |
-| iPhone Simulator | A persisted new file loads into the opening plaza and diagnostic movement works. Recent gameplay windows were about 31–46 frame events/s under concurrent host load; touch and sustained performance are not accepted. |
-| Physical iPad | Updated in place with the depth-access, Menu-event and pointer-handoff fixes; saves preserved and launch verified. User gameplay/input confirmation and performance acceptance remain open. |
-| Physical iPhone | Current candidate has no physical performance acceptance. |
+| Game setup | Exact USA `RMGE01`, revision 0 input validation and local import |
+| Rendering | Metal gameplay; corrected depth access restores tested Pull Star activation and level entry |
+| Controls | Touch movement and pointer aim, Wii actions, controller input, and editable touch layouts |
+| Platforms | iPhone/iPad app targets and Apple silicon Mac development package; configured minimums are not verified device compatibility |
+| Release | Public preview preparation; no published IPA yet |
 
-HUD readings measure frame events, **not guaranteed displayed FPS**. Logging-off
-performance and separate audio/tail diagnostics are reported in the
-[September 12 performance handoff](docs/PERFORMANCE-2026-09-12.md). Simulator results
-cannot establish how the app performs on physical hardware.
+See [current status](docs/STATUS.md), [performance evidence](docs/PERFORMANCE-2026-09-12.md),
+[release readiness](docs/RELEASE-READINESS.md), and the [development journal](docs/JOURNAL.md)
+for exact tested builds and remaining issues. Simulator results do not establish
+physical-device performance.
 
-See [current status](docs/STATUS.md), [development journal](docs/JOURNAL.md),
-[original PRD](docs/GALAXYPAD-PRD.md), and [active goal loop](docs/GALAXYPAD-GOAL-LOOP.md).
-The [release-readiness checklist](docs/RELEASE-READINESS.md) records the current
-no-go decision and outstanding exact-candidate gates.
+## Screenshots
 
-## Downloads
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/galaxypad-title.png" alt="Super Mario Galaxy title screen in GalaxyPad"></td>
+    <td width="50%"><img src="docs/images/galaxypad-observatory.png" alt="Luigi beside Rosalina and the galaxy map in the Comet Observatory"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>The original adventure</strong><br>Galaxy's title screen in the native Apple app.</td>
+    <td align="center"><strong>Explore the Observatory</strong><br>Luigi at the galaxy map with 121 stars.</td>
+  </tr>
+</table>
 
-There is no approved public app, IPA, TestFlight, or release download. Do not treat
-local experimental packages as supported releases. Publication and distribution
-remain subject to the [rights and packaging gates](docs/RIGHTS-STATUS.md).
+Screenshots supplied by the project owner show development gameplay. They are
+included unchanged; individual HUD readings are not sustained-performance claims.
+
+## Frequently asked questions
+
+<details>
+<summary><strong>Is this native recompilation or emulation?</strong></summary>
+
+The game code runs as ahead-of-time compiled native ARM64 code. A Dolphin-derived
+runtime supplies Wii hardware emulation, Metal rendering, and interpreter
+fallbacks. GalaxyPad is game-specific, not a general Wii loader, and is not
+emulator-free. iOS uses no runtime PowerPC JIT.
+
+</details>
+
+<details>
+<summary><strong>Is the game included, and which version do I need?</strong></summary>
+
+No game image, extracted assets, or save is included. Supply your own legally
+obtained supported USA `RMGE01`, revision 0 image. The exact identity is pinned in
+[disc identity](config/galaxypad-disc.json); other revisions and regions are not
+automatically compatible. See the import instructions below.
+
+</details>
+
+<details>
+<summary><strong>Can I install it now?</strong></summary>
+
+The public IPA is coming, but has not been published. The existing
+[installation guide](docs/INSTALL_IPAD.md) is for a locally built development app
+and requires Apple signing. Configured targets are iOS/iPadOS 16 and macOS 14;
+these are not verified minimum-device recommendations.
+
+</details>
+
+<details>
+<summary><strong>Does it run at 60 FPS?</strong></summary>
+
+Lighter scenes reach 60 FPS. Heavy scenes still slow down, and users still report
+audio underruns. The current depth-enabled heavy-scene Simulator result is about
+45–49 frame events/s. See [performance evidence](docs/PERFORMANCE-2026-09-12.md)
+for the measurement limits. A screenshot at 60 does not establish a consistent
+60 FPS experience.
+
+</details>
+
+<details>
+<summary><strong>How do controls and Pull Stars work?</strong></summary>
+
+Movement and pointer aim are separate. Aim at a Pull Star until the hand cursor
+appears, then press and hold A. On the default controller mapping, right shoulder
+also provides A so your thumb can stay on the aiming stick; right trigger provides
+B. Touch controls can be moved and resized.
+
+Pause, touch Start +, and Xbox Menu open Galaxy's original pause menu. Its options
+depend on the scene; supported levels offer a return to the Observatory. Xbox
+View/Select separately freezes and resumes the app. See
+[Input and pointer](docs/INPUT-AND-POINTER.md) for mappings and tested behavior.
+
+</details>
+
+<details>
+<summary><strong>Will updates preserve my save?</strong></summary>
+
+In-place installation is the development update path. Uninstalling the app can
+remove its local data. Back up saves before changing installation or signing
+boundaries; see [save and NAND handling](docs/SAVE-AND-NAND.md).
+
+</details>
+
+<details>
+<summary><strong>How can I report a problem?</strong></summary>
+
+Open the three-dot menu → **Report a Problem**, describe the issue, and review
+the GitHub draft with its device/build and runtime context. **Open GitHub Draft**
+opens GalaxyPad's issue form for you to review and submit.
+
+Diagnostic logs are optional and off by default. Enable them in the preview,
+review the sanitized report, and use **Share Log** to save a copy for manual
+attachment to the issue. Nothing is uploaded or submitted automatically. Never
+attach game images, extracted data, saves, or signing material. The tracker is
+currently private; access requires a GitHub account with repository access until
+the project becomes public.
+
+</details>
 
 ## Supported game data
 
@@ -52,6 +161,9 @@ Keep images in ignored `ref/` and extractions, generated modules, saves and runt
 evidence in ignored local storage. Never commit those files.
 
 ## Build from source
+
+<details>
+<summary><strong>Developer prerequisites and build commands</strong></summary>
 
 Development currently targets Apple silicon with full Xcode and its iOS SDKs,
 CMake, Ninja, and the pinned dependencies listed in
@@ -96,7 +208,10 @@ bash scripts/build-ios-simulator-app.sh
 The app is produced under `generated/build/ios-simulator-app/`. A Simulator app is
 not a device app. The scripts select a separate device lane with
 `GALAXYPAD_IOS_SDK=iphoneos`; signing and private staging are separate steps in
-`scripts/stage-private-ios-device.sh`. See [mobile implementation](docs/MOBILE-IMPLEMENTATION.md).
+`scripts/stage-private-ios-device.sh`. See [mobile implementation](docs/MOBILE-IMPLEMENTATION.md), the
+[original PRD](docs/GALAXYPAD-PRD.md), and [active goal loop](docs/GALAXYPAD-GOAL-LOOP.md).
+
+</details>
 
 ## Install on your physical iPad
 
@@ -129,7 +244,7 @@ removal, and saves are separate responsibilities—read
 The desktop development package uses its prepared local module/data workflow;
 it does not imply mobile import or packaging acceptance.
 
-Run **only one game or Simulator at a time** during validation. Do not erase a
+Avoid concurrent game or Simulator workloads during performance measurements. Do not erase a
 Simulator or replace a save merely to resolve a launch problem.
 
 ## Controls and the three-dot menu
@@ -228,6 +343,6 @@ to their respective owners; this project is not affiliated with Nintendo.
 
 Contributions should be small, testable and consistent with the original PRD.
 Record visible results and known failures, not just counters or successful builds.
-Do not include retail content, generated game code, modules, saves or protected
-screenshots. This README is not a distribution license; consult
+Do not include retail content, generated game code, modules, or saves.
+Only submit screenshots you are authorized to share. This README is not a distribution license; consult
 [RIGHTS-STATUS](docs/RIGHTS-STATUS.md) before any publication.

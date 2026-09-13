@@ -1,5 +1,12 @@
 # GalaxyPad journal
 
+## September 13 build 4
+
+See [build 4 handoff](RELEASE-PREP-2026-09-13.md) for current signed hashes,
+verified iPad/iPhone installation, transfer correction, tests and remaining gates.
+This checkpoint fixes reporting/pause behavior; it does not accept performance.
+
+
 ## September 13: Pull Star fixed in Simulator; performance baseline corrected
 
 Disabled EFB depth access caused the dome target failure. The source now enables

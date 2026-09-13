@@ -1,5 +1,23 @@
 # Input and pointer
 
+## September 13: original game pause and separate app pause
+
+The visible Pause button, touch Start +, and Xbox Menu/Start send Wii Plus to
+Galaxy. This opens the original game pause menu; its available options depend on
+the current scene, including returning to the Observatory from supported levels.
+Xbox View/Select separately freezes/resumes the app runtime. The three-dot menu
+blocks gameplay input while leaving runtime/audio running.
+
+Menu events retain their event-time pressed value. A quick tap holds Plus for at
+least 0.75 seconds so guest polling can observe it; longer physical holds retain
+ordinary release behavior. Ownership changes and modal boundaries clear active
+input. Automated controller and isolated UIKit regressions pass. Actual Simulator
+Pause opened the original Observatory menu, and a second press resumed gameplay.
+In-level exit and repeated physical Xbox input still require gameplay confirmation.
+
+Right stick aims the pointer; hold Right Shoulder (Wii A) over a Pull Star. Right
+Trigger is Wii B and shoots Star Bits. Real depth access must remain enabled.
+
 ## R867 touch tilt response options
 
 Controls → Touch Tilt Stick provides0.5×/1×/1.5× sensitivity, vertical inversion
