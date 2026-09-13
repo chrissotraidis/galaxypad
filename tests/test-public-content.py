@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise the public-content gate in a repository without build inputs."""
 from pathlib import Path
+import os
 import shutil
 import subprocess
 import tempfile
@@ -19,6 +20,20 @@ with tempfile.TemporaryDirectory() as temporary:
     (root / ".env.example").write_text("EXAMPLE=value\n")
     subprocess.run(["git", "add", "."], cwd=root, check=True)
     assert check() == 0, "clean source and example environment must pass"
+    # Keep the script's other external tools available while withholding rg.
+    # A prohibited tracked file must never receive a success report in this case.
+    with tempfile.TemporaryDirectory() as tool_directory:
+        for tool in ('dirname', 'git', 'awk'):
+            (Path(tool_directory) / tool).symlink_to(shutil.which(tool))
+        (root / 'missing-tool.wbfs').write_text('synthetic fixture')
+        subprocess.run(['git', 'add', 'missing-tool.wbfs'], cwd=root, check=True)
+        missing = subprocess.run([shutil.which('bash'), 'scripts/check-public-content.sh'],
+                                 cwd=root, env={**os.environ, 'PATH': tool_directory},
+                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        assert missing.returncode != 0, 'Missing rg must fail closed, not accept prohibited content'
+        assert 'ripgrep (rg) is required' in missing.stdout, missing.stdout
+        assert 'Public content checks passed' not in missing.stdout
+        subprocess.run(['git', 'rm', '-q', '-f', 'missing-tool.wbfs'], cwd=root, check=True)
     for name in ("disc.RvZ", "disc.gcm", "GameData.bin", "identity.cer", ".env.local",
                  "generated/module.c", "save/progress.bin", "credential.txt"):
         path = root / name

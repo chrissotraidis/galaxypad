@@ -18,6 +18,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Install source-check dependency
+        run: brew install ripgrep
       - name: Record toolchain
         run: |
           xcodebuild -version

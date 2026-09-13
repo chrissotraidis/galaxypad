@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Run independently of local game data, generated modules, or dependency checkouts.
 set -euo pipefail
+if ! command -v rg >/dev/null 2>&1; then
+  echo "ripgrep (rg) is required for public content checks; install it and rerun." >&2
+  exit 1
+fi
 root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 cd "$root"
 
