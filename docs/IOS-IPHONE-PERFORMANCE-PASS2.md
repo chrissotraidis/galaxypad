@@ -502,9 +502,9 @@ Private captures are under
 
 This establishes a system routing diversion during the failed session; it does
 not yet establish the onset or cause of every earlier controller freeze. Direct
-touch and Universal Control disconnection recovery tests are pending. The
-unbuilt GCEventInteraction experiment was removed; no new app build or hardware
-recovery is claimed from this finding.
+touch and Universal Control disconnection tests were the next check; their
+confirmed recovery result is recorded below. The unbuilt GCEventInteraction
+experiment was removed, and no new app build was installed for that check.
 
 ### Same-session recovery confirmed; Universal Control isolated
 

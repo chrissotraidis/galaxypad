@@ -89,7 +89,9 @@ ln -s GalaxyPadRunner "$output/Contents/MacOS/moderngekko-run"
 cp "$build/ModernGekko" "$output/Contents/MacOS/GalaxyPadFrontend"
 cp "$module" "$output/Contents/MacOS/gRMGE01_recomp.dylib"
 # Dolphin's macOS File::GetSysDirectory resolves the bundle Resources directory.
-cp -R "$build/Sys" "$output/Contents/Resources/Sys"
+# Copy current source resources even when a no-op binary build skips the
+# upstream POST_BUILD resource copy.
+cp -R "$source/vendor/dolphin/Data/Sys" "$output/Contents/Resources/Sys"
 cp "$root/apple/macos/default-config.ini" "$output/Contents/Resources/default-config.ini"
 cp "$root/apple/macos/default-Dolphin.ini" "$output/Contents/Resources/default-Dolphin.ini"
 cp "$root/apple/macos/default-WiimoteNew.ini" "$output/Contents/Resources/default-WiimoteNew.ini"
