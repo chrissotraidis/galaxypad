@@ -81,23 +81,23 @@ static void CheckControllerPauseToggle(GalaxyPadGameOverlay *overlay) {
   adapter.inputChanged=^(galaxypad::InputState input) { published=input; };
   [adapter reconcile];
   auto menu=[&](float value) {
-    auto button=controller.extendedGamepad.buttonMenu;
-    Check(button.pressedChangedHandler!=nil,"Menu uses event-time pressed callbacks");
+    auto button=controller.extendedGamepad.buttonOptions;
+    Check(button.pressedChangedHandler!=nil,"View uses event-time pressed callbacks");
     // Deliberately leave the live snapshot released: queued short taps must use
     // the event payload, including when a timer samples zero between callbacks.
     button.pressedChangedHandler(button,value,value!=0);
     [adapter publishWithSeconds:0];
   };
   menu(0); menu(1);
-  Check(toggles==1 && overlay.nativePauseVisible,"controller Menu opens native pause");
+  Check(toggles==1 && overlay.nativePauseVisible,"controller View opens native pause");
   menu(1);
-  Check(toggles==1,"held Menu does not toggle repeatedly");
+  Check(toggles==1,"held View does not toggle repeatedly");
   [controller.extendedGamepad.leftThumbstick.xAxis setValue:0.5f];
   menu(0); menu(1);
-  Check(toggles==2 && !overlay.blocksGameplay,"second Menu press resumes while gameplay is blocked and a stick is held");
-  Check(published.buttons==0,"resume Menu does not leak guest Plus");
+  Check(toggles==2 && !overlay.blocksGameplay,"second View press resumes while gameplay is blocked and a stick is held");
+  Check(published.buttons==0,"resume View does not leak guest Plus");
   menu(1);
-  Check(toggles==2,"held resume Menu does not pause again");
+  Check(toggles==2,"held resume View does not pause again");
   [controller.extendedGamepad.leftThumbstick.xAxis setValue:0];
   menu(0);
   [controller.extendedGamepad.buttonA setValue:1];
@@ -105,17 +105,17 @@ static void CheckControllerPauseToggle(GalaxyPadGameOverlay *overlay) {
   Check(published.buttons==galaxypad::A,"gameplay input returns after resume and release");
   [controller.extendedGamepad.buttonA setValue:0];
   modal=YES; menu(0); menu(1);
-  Check(toggles==2,"Menu cannot escape unrelated modal UI");
+  Check(toggles==2,"View cannot escape unrelated modal UI");
   modal=NO; menu(1);
-  Check(toggles==2,"held modal input cannot become a new Menu press");
+  Check(toggles==2,"held modal input cannot become a new View press");
   menu(0); menu(1);
-  Check(toggles==3 && overlay.nativePauseVisible,"fresh Menu works after modal closes");
+  Check(toggles==3 && overlay.nativePauseVisible,"fresh View works after modal closes");
   menu(0);
   auto options=controller.extendedGamepad.buttonOptions;
   Check(options.pressedChangedHandler!=nil,"Options uses event-time pressed callbacks");
   options.pressedChangedHandler(options,1,YES);
   [adapter publishWithSeconds:0];
-  Check(toggles==4 && !overlay.blocksGameplay,"Options also resumes native pause");
+  Check(toggles==4 && !overlay.blocksGameplay,"View resumes native pause");
   pauseTestControllers=@[]; [adapter reconcile];
   method_setImplementation(enumeration,original);
   pauseTestControllers=nil;
@@ -182,13 +182,13 @@ static NSUInteger CountViews(UIView *root, Class type) {
   overlay.gameplayAvailable = NO;
   [overlay layoutIfNeeded];
   Check(Find(overlay,@"A",YES).hidden,"idle hides gameplay buttons");
-  Check(Find(overlay,@"galaxypad.pause",YES).hidden,"idle hides native pause");
+  Check(Find(overlay,@"galaxypad.pause",YES).hidden,"idle hides game pause");
   Check(!Find(overlay,@"galaxypad.menu",YES).hidden,"idle retains native menu access");
   [overlay refreshControllerVisibility]; [overlay layoutIfNeeded];
   Check(Find(overlay,@"A",YES).hidden,"controller refresh cannot reveal idle gameplay buttons");
   overlay.gameplayAvailable = YES; [overlay layoutIfNeeded];
   Check(!Find(overlay,@"A",YES).hidden,"running restores gameplay buttons");
-  Check(!Find(overlay,@"galaxypad.pause",YES).hidden,"running exposes native pause");
+  Check(!Find(overlay,@"galaxypad.pause",YES).hidden,"running exposes game pause");
   UIView *menuControl=Find(overlay,@"galaxypad.menu",YES);
   UIView *pauseControl=Find(overlay,@"galaxypad.pause",YES);
   CGRect topSafe=UIEdgeInsetsInsetRect(overlay.bounds,overlay.safeAreaInsets);
@@ -336,8 +336,14 @@ static NSUInteger CountViews(UIView *root, Class type) {
   Check(a && b,"A and B controls exist");
   [a sendActionsForControlEvents:UIControlEventTouchDown];
   [(UIControl *)Find(overlay,@"galaxypad.pause",YES) sendActionsForControlEvents:UIControlEventTouchUpInside];
-  Check(state.buttons==0,"native pause releases held input");
-  Check(overlay.blocksGameplay,"native Pause blocks gameplay input");
+  Check((state.buttons & (galaxypad::A | galaxypad::Plus)) == (galaxypad::A | galaxypad::Plus),
+        "visible Pause sends original Plus while preserving held touch A");
+  Check(!overlay.blocksGameplay && !overlay.nativePauseVisible,"game Pause leaves runtime and input live");
+  [NSRunLoop.mainRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.8]];
+  Check(state.buttons==galaxypad::A,"game Pause pulse releases without clearing held touch");
+  [a sendActionsForControlEvents:UIControlEventTouchUpInside];
+  [overlay presentNativePause];
+  Check(state.buttons==0 && overlay.blocksGameplay,"separate app pause releases and blocks input");
   UIControl *nativeResume=(UIControl *)Find(overlay,@"galaxypad.pause.back",YES);
   Check(nativeResume && !nativeResume.hidden,"native Pause has a visible Back to Game escape hatch");
   [nativeResume sendActionsForControlEvents:UIControlEventTouchUpInside];

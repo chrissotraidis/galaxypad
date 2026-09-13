@@ -222,7 +222,7 @@ static double GalaxyPadResidentMiB(void) {
       uint64_t frames = view->_host.renderedFrames;
       const double observationSeconds = now - view->_fpsTime;
       double fps = frames >= view->_fpsFrames ? (frames - view->_fpsFrames) / (now - view->_fpsTime) : 0;
-      view->_fpsLabel.text = view->_host.paused ? @"Paused" : [NSString stringWithFormat:@"%.1f emu FPS", fps];
+      view->_fpsLabel.text = view->_host.paused ? @"Paused" : [NSString stringWithFormat:@"%.1f FPS", fps];
       view->_fpsLabel.accessibilityLabel = [NSString stringWithFormat:@"%.1f frame events per second", fps];
       view->_fpsTime = now; view->_fpsFrames = frames;
       if (view->_logFrameRateWindows) {
@@ -744,10 +744,9 @@ static double GalaxyPadResidentMiB(void) {
 }
 - (void)gameOverlayRequestsProblemReport:(GalaxyPadGameOverlay *)overlay {
   (void)overlay;
-  // SunPad's guided three-question flow; Galaxy keeps the result local for
-  // review instead of opening a public issue tracker.
+  // Review a GitHub draft before opening the issue tracker; logs are optional.
   UIAlertController *prompt = [UIAlertController alertControllerWithTitle:@"Report a Problem"
-    message:@"Describe the problem without private information. A local report will include limited app status, not game files, saves, screenshots, or raw inputs. Review it before choosing whether to share."
+    message:@"Describe the problem without private information. Review a GitHub issue draft with app status, then optionally prepare a diagnostic log to attach. Nothing is submitted automatically."
     preferredStyle:UIAlertControllerStyleAlert];
   for (NSString *placeholder in @[@"What went wrong?", @"Area and what you were doing (optional)",
                                   @"Every time, sometimes, once, or unsure?"]) {
@@ -759,7 +758,7 @@ static double GalaxyPadResidentMiB(void) {
   [prompt addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
   __weak GalaxyPadGameViewController *weakSelf = self;
   __weak UIAlertController *weakPrompt = prompt;
-  [prompt addAction:[UIAlertAction actionWithTitle:@"Create Local Report" style:UIAlertActionStyleDefault
+  [prompt addAction:[UIAlertAction actionWithTitle:@"Review GitHub Report" style:UIAlertActionStyleDefault
     handler:^(UIAlertAction *action) {
       (void)action;
       GalaxyPadGameViewController *view = weakSelf;
@@ -768,11 +767,12 @@ static double GalaxyPadResidentMiB(void) {
       NSDictionary *answers = @{@"problem": questions.textFields[0].text ?: @"",
         @"context": questions.textFields[1].text ?: @"", @"frequency": questions.textFields[2].text ?: @""};
       NSString *context = [view diagnosticContext];
-      NSError *error = nil;
-      NSURL *url = GalaxyPadDiagnosticsReportURL(NSUUID.UUID.UUIDString, answers, context, &error);
       // Explicit dismissal completion avoids presenting underneath the alert.
       [view dismissViewControllerAnimated:YES completion:^{
-        [view presentDiagnosticReportURL:url];
+        GalaxyPadReportViewController *report = [[GalaxyPadReportViewController alloc]
+          initWithReporterAnswers:answers technicalContext:context];
+        UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:report];
+        [view presentViewController:navigation animated:YES completion:nil];
       }];
     }]];
   [self presentViewController:prompt animated:YES completion:nil];
@@ -786,7 +786,7 @@ static double GalaxyPadResidentMiB(void) {
   NSArray *games=@[@"A", @"B", @"Spin", @"C", @"Z"];
   NSArray *physical=@[@"A", @"B", @"X", @"Y", @"Left Trigger"];
   UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"Controller Button Mapping"
-    message:@"Assignments swap to keep every action reachable. Left stick moves; right stick aims; click right stick to recenter. Hold Left Shoulder for right-stick tilt. Right Shoulder is also A; Right Trigger is also B, so you can aim while using either action. Menu or Options toggles app pause: press again to resume. Touch Start + opens Galaxy’s menu; point at Back and press A to return to gameplay. D-pad controls the camera. Connect a controller to test."
+    message:@"Assignments swap to keep every action reachable. Left stick moves; right stick aims; click right stick to recenter. Hold Left Shoulder for right-stick tilt. Right Shoulder is also A; Right Trigger is also B, so you can aim while using either action. Menu/Start or the on-screen Pause opens Galaxy’s original pause menu, including Return to Observatory when available. View/Select toggles app pause; press it again to resume. Touch Start + also opens Galaxy’s original menu. D-pad controls the camera. Connect a controller to test."
     preferredStyle:UIAlertControllerStyleAlert];
   __weak GalaxyPadGameViewController *weakSelf=self;
   for (unsigned i=0;i<5;++i) {

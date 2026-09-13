@@ -17,7 +17,8 @@
   NSTimer *_timer;
   CFTimeInterval _lastTick, _lastReconcile;
   uint32_t _lastRawButtons;
-  BOOL _menuPressed, _optionsPressed;
+  BOOL _menuPressed, _optionsPressed, _guestPlusHeld;
+  CFTimeInterval _guestPlusUntil;
 }
 - (void)start {
   NSAssert(NSThread.isMainThread, @"Controller API requires main thread");
@@ -51,6 +52,8 @@
 }
 - (void)reset {
   _input.reset();
+  _guestPlusHeld = NO;
+  _guestPlusUntil = 0;
   _lastRawButtons = 0;
   // Keep event-time pause-button state across UI resets. Re-reading the live
   // snapshot here can erase a queued press and turn one hold into two toggles.
@@ -83,7 +86,7 @@
   // A neutral initial snapshot arms the very first press without a prior event.
   _menuPressed=_owner.extendedGamepad.buttonMenu.isPressed;
   _optionsPressed=_owner.extendedGamepad.buttonOptions.isPressed;
-  GalaxyPadLog(@"controller ownership: connected=%d extended_controllers=%lu right_stick=pointer speed=1.2x right_stick_click=recenter RB=A RT=B LB=tilt Menu=toggle_pause",
+  GalaxyPadLog(@"controller ownership: connected=%d extended_controllers=%lu right_stick=pointer speed=1.2x right_stick_click=recenter RB=A RT=B LB=tilt Menu=game_Plus View=app_pause",
     _owner != nil, (unsigned long)instances.size());
   [self reset];
   if (self.ownershipChanged) self.ownershipChanged();
@@ -106,14 +109,25 @@
     // Use the event's pressed argument. The live isPressed snapshot may already
     // be released when a quick tap's queued main-thread callback executes.
     GCExtendedGamepad *pad=controller.extendedGamepad;
-    const BOOL wasHeld=host->_menuPressed || host->_optionsPressed;
-    if (button==pad.buttonMenu) host->_menuPressed=pressed;
-    else if (button==pad.buttonOptions) host->_optionsPressed=pressed;
-    else return;
-    if (!pressed || wasHeld || !host.pauseRequested ||
+    if (button==pad.buttonMenu) {
+      const BOOL wasPressed=host->_menuPressed;
+      host->_menuPressed=pressed;
+      if (!pressed) host->_guestPlusHeld=NO;
+      else if (!wasPressed && host.inputAllowed && host.inputAllowed()) {
+        host->_guestPlusHeld=YES;
+        // Preserve a quick queued tap long enough for the guest input poll.
+        // The physical hold may last longer; modal/lifecycle reset cancels it.
+        host->_guestPlusUntil=CACurrentMediaTime()+0.75;
+      }
+      [host publishWithSeconds:0];
+      return;
+    }
+    if (button!=pad.buttonOptions) return;
+    const BOOL wasPressed=host->_optionsPressed;
+    host->_optionsPressed=pressed;
+    if (!pressed || wasPressed || !host.pauseRequested ||
         !host.pauseToggleAllowed || !host.pauseToggleAllowed()) return;
-    GalaxyPadLog(@"controller native pause requested source=%@",
-      button==pad.buttonMenu ? @"Menu" : @"Options");
+    GalaxyPadLog(@"controller native pause requested source=View/Options");
     [host reset];
     host.pauseRequested();
   };
@@ -139,7 +153,7 @@
   }
   const BOOL gameplayAllowed = self.inputAllowed && self.inputAllowed();
   const BOOL pauseAllowed = self.pauseToggleAllowed && self.pauseToggleAllowed();
-  // Native pause blocks gameplay, but its Menu/Options release and next press
+  // Native pause blocks gameplay, but its View/Options release and next press
   // must still be observed so the same button can resume.
   if (!gameplayAllowed && !pauseAllowed) { [self reset]; return; }
   GCExtendedGamepad *pad=_owner.extendedGamepad;
@@ -177,8 +191,8 @@
   snapshot.x=pad.buttonX.isPressed; snapshot.y=pad.buttonY.isPressed;
   snapshot.leftShoulder=pad.leftShoulder.isPressed; snapshot.rightShoulder=pad.rightShoulder.isPressed;
   snapshot.leftTrigger=pad.leftTrigger.isPressed; snapshot.rightTrigger=pad.rightTrigger.isPressed;
-  // These two buttons are reserved for native pause on iOS. A general pad
-  // callback may run before the button callback; never leak guest Plus/Minus.
+  // Event handlers own Menu and View. General snapshots cannot revive a
+  // consumed modal press or lose a quick tap that is already released.
   snapshot.menu=false; snapshot.options=false;
   snapshot.recenter=pad.rightThumbstickButton.isPressed;
   snapshot.up=pad.dpad.up.isPressed; snapshot.down=pad.dpad.down.isPressed;
@@ -186,6 +200,10 @@
   snapshot.moveX=pad.leftThumbstick.xAxis.value; snapshot.moveY=pad.leftThumbstick.yAxis.value;
   snapshot.rightX=pad.rightThumbstick.xAxis.value; snapshot.rightY=pad.rightThumbstick.yAxis.value;
   auto state=_input.update(snapshot,seconds);
+  if (_guestPlusHeld || CACurrentMediaTime() < _guestPlusUntil) {
+    state.connected=true;
+    state.buttons |= galaxypad::Plus;
+  }
   if (self.inputChanged) self.inputChanged(state);
 }
 @end
