@@ -231,6 +231,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     UISlider *_opacitySlider;
     UISlider *_sizeSlider;
     UISlider *_selectedSizeSlider;
+    UIButton *_selectedVisibilityButton;
     UISwitch *_hideControlsSwitch;
     UISwitch *_editLayoutSwitch;
     UIButton *_resetLayoutButton;
@@ -591,7 +592,6 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
       }];
     shareLog.attributes=[self.delegate respondsToSelector:@selector(gameOverlayRequestsDiagnosticLog:)]
       ? 0 : UIMenuElementAttributesDisabled;
-    for (UIAction *action in aspectMenu.children) action.attributes = UIMenuElementAttributesDisabled;
     UIAction *about=[UIAction actionWithTitle:@"About GalaxyPad"
       image:[UIImage systemImageNamed:@"info.circle"] identifier:@"galaxypad.menu.about"
       handler:^(__kindof UIAction *action) {
@@ -1034,6 +1034,10 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
         GalaxyPadFrameAtNormalizedCenter(safe, 0.8275988287, 0.7213029990, small, small) :
         CGRectMake(CGRectGetMaxX(safe) - margin - shoulderWidth - small - 12.0 * scale,
                    shoulderY, small, small);
+    // The minimum 44pt Z target can slightly overlap A on compact phones.
+    // Separate defaults before applying saved origins; custom layouts win.
+    if (phone)
+        zDefault.origin.y = MIN(zDefault.origin.y, CGRectGetMinY(a.frame) - small - 6.0);
     [self placeControl:[self buttonWithMask:galaxypad::Z]
           defaultFrame:zDefault
             identifier:@"Z"];
@@ -1357,8 +1361,21 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     [done addTarget:self action:@selector(finishLayoutEditing)
       forControlEvents:UIControlEventTouchUpInside];
 
+    _selectedVisibilityButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    _selectedVisibilityButton.accessibilityIdentifier = @"galaxypad.touch.selected-visibility";
+    _selectedVisibilityButton.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    [_selectedVisibilityButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    _selectedVisibilityButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.14];
+    _selectedVisibilityButton.layer.cornerRadius = 10.0;
+    _selectedVisibilityButton.hidden = YES;
+    NSLayoutConstraint *visibilityWidth = [_selectedVisibilityButton.widthAnchor constraintEqualToConstant:106.0];
+    visibilityWidth.priority = UILayoutPriorityDefaultHigh;
+    visibilityWidth.active = YES;
+    [_selectedVisibilityButton addTarget:self action:@selector(toggleSelectedControlVisibility)
+                       forControlEvents:UIControlEventTouchUpInside];
+
     UIStackView *editorStack = [[UIStackView alloc]
-        initWithArrangedSubviews:@[_editorHintLabel, _selectedSizeSlider, done]];
+        initWithArrangedSubviews:@[_editorHintLabel, _selectedSizeSlider, _selectedVisibilityButton, done]];
     editorStack.translatesAutoresizingMaskIntoConstraints = NO;
     editorStack.axis = UILayoutConstraintAxisHorizontal;
     editorStack.alignment = UIStackViewAlignmentCenter;
@@ -1373,7 +1390,8 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
         [editorStack.trailingAnchor constraintEqualToAnchor:_editorBar.trailingAnchor constant:-10.0],
         [editorStack.topAnchor constraintEqualToAnchor:_editorBar.topAnchor constant:8.0],
         [editorStack.bottomAnchor constraintEqualToAnchor:_editorBar.bottomAnchor constant:-8.0],
-        [_selectedSizeSlider.widthAnchor constraintGreaterThanOrEqualToConstant:150.0],
+        [_selectedSizeSlider.widthAnchor constraintGreaterThanOrEqualToConstant:100.0],
+        [_selectedVisibilityButton.heightAnchor constraintEqualToConstant:44.0],
         [done.widthAnchor constraintEqualToConstant:68.0],
         [done.heightAnchor constraintEqualToConstant:44.0],
     ]];
@@ -1592,7 +1610,37 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     _menuButton.menu = [self buildMenu];
 }
 
+// Optional controls remain visible while arranging them. Their gameplay visibility
+// must be explicit here, otherwise selecting a hidden key only resizes it.
+- (NSString *)selectedControlVisibilityKey {
+    if (_selectedControl == _tiltStick) return @"GalaxyPadShowTiltStick";
+    if ([_selectedControl isKindOfClass:GalaxyPadGameButton.class]) {
+        uint32_t mask = ((GalaxyPadGameButton *)_selectedControl).inputMask;
+        if (mask == galaxypad::One || mask == galaxypad::Two || mask == galaxypad::Minus)
+            return @"GalaxyPadShowAuxiliaryButtons";
+    }
+    return nil;
+}
+
+- (void)toggleSelectedControlVisibility {
+    if (!_editingLayout || ![self selectedControlVisibilityKey]) return;
+    if (_selectedControl == _tiltStick) [self toggleTiltStick];
+    else [self toggleAuxiliaryButtons];
+}
+
 - (void)updateControlAppearance {
+    NSString *visibilityKey = [self selectedControlVisibilityKey];
+    _selectedVisibilityButton.hidden = !_editingLayout || visibilityKey == nil;
+    if (visibilityKey != nil) {
+        BOOL shown = [NSUserDefaults.standardUserDefaults boolForKey:visibilityKey];
+        NSString *group = _selectedControl == _tiltStick ? @"Tilt" : @"1, 2, −";
+        [_selectedVisibilityButton setTitle:shown ? @"Hide in game" : @"Show in game"
+                                  forState:UIControlStateNormal];
+        _selectedVisibilityButton.accessibilityLabel = [NSString stringWithFormat:@"%@ %@ in game",
+            shown ? @"Hide" : @"Show", group];
+        _editorHintLabel.text = [NSString stringWithFormat:@"%@ · %@", group,
+            shown ? @"shown" : @"hidden"];
+    }
     BOOL hidden = (_touchControlsHidden || !_gameplayAvailable) && !_editingLayout;
     CGFloat alpha = _editingLayout ? 1.0 : [GalaxyPadSettings sharedSettings].controlOpacity;
     BOOL groupedDPad = YES;

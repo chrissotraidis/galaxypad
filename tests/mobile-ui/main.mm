@@ -45,6 +45,12 @@ static NSArray<GCController *> *PauseTestControllerList(id, SEL) {
 - (void)toggleMainAudioMuted;
 - (UIMenu *)audioMenu;
 @end
+// Exercise phone geometry even when the isolated host runs on an iPad Simulator.
+@interface PhoneLayoutTestOverlay : GalaxyPadGameOverlay
+@end
+@implementation PhoneLayoutTestOverlay
+- (UIEdgeInsets)safeAreaInsets { return UIEdgeInsetsMake(0,47,21,47); }
+@end
 @interface LayoutTestPan : UIPanGestureRecognizer
 @property(nonatomic) UIGestureRecognizerState testState;
 @property(nonatomic) CGPoint testTranslation;
@@ -134,14 +140,20 @@ static NSUInteger CountViews(UIView *root, Class type) {
 @end
 @interface OverlayTestViewController : UIViewController
 @property(nonatomic,strong) UIViewController *capturedPresentation;
+@property(nonatomic) BOOL previewing;
 @end
 @implementation OverlayTestViewController
 - (void)presentViewController:(UIViewController *)controller animated:(BOOL)animated completion:(void (^)(void))completion {
+  if (self.previewing) {
+    [super presentViewController:controller animated:animated completion:completion];
+    return;
+  }
   self.capturedPresentation=controller;
   if (completion) completion();
 }
 - (void)viewDidAppear:(BOOL)animated {
   [super viewDidAppear:animated];
+  if (self.previewing) return;
   GalaxyPadAboutViewController *about=[[GalaxyPadAboutViewController alloc] init];
   [about loadViewIfNeeded];
   UITextView *aboutText=(UITextView *)Find(about.view,@"galaxypad.about.text",YES);
@@ -177,6 +189,21 @@ static NSUInteger CountViews(UIView *root, Class type) {
     Check(CGRectContainsRect(settingsPanel.bounds,resetInPanel),"Reset fully visible without scrolling at full panel height");
   CGRect panelSafe=UIEdgeInsetsInsetRect(overlay.bounds,overlay.safeAreaInsets);
   Check(CGRectContainsRect(panelSafe,settingsPanel.frame),"settings panel stays inside safe area");
+  UIScrollView *settingsScroll=nil;
+  for (UIView *view in settingsPanel.subviews)
+    if ([view isKindOfClass:UIScrollView.class]) settingsScroll=(UIScrollView *)view;
+  Check(settingsScroll!=nil,"touch settings retain scroll access on compact screens");
+  [settingsScroll scrollRectToVisible:[resetControl convertRect:resetControl.bounds toView:settingsScroll]
+                            animated:NO];
+  [settingsPanel layoutIfNeeded];
+  CGRect resetInScroll=[resetControl convertRect:resetControl.bounds toView:settingsScroll];
+  Check(CGRectContainsRect(settingsScroll.bounds,resetInScroll),"scrolling exposes the complete Reset action");
+  CGPoint resetHitPoint=[resetControl convertPoint:CGPointMake(CGRectGetMidX(resetControl.bounds),
+      CGRectGetMidY(resetControl.bounds)) toView:overlay];
+  UIView *resetHit=[overlay hitTest:resetHitPoint withEvent:nil];
+  Check(resetHit==resetControl || [resetHit isDescendantOfView:resetControl],
+        "compact touch settings Reset remains tappable after scrolling");
+  [settingsScroll setContentOffset:CGPointZero animated:NO];
   [overlay toggleSettingsPanel];
   UIMenu *rootMenu=[overlay buildMenu];
   overlay.gameplayAvailable = NO;
@@ -219,6 +246,10 @@ static NSUInteger CountViews(UIView *root, Class type) {
   Check([display.title isEqual:@"Display"],"SunPad Display group remains first");
   Check(((UIMenu *)display.children.firstObject).children.count==4,
         "all four render scales remain available under Display");
+  UIMenu *aspectMenu=(UIMenu *)display.children[1];
+  Check(aspectMenu.children.count==3,"all display aspect choices remain available");
+  for (UIAction *action in aspectMenu.children)
+    Check(!(action.attributes & UIMenuElementAttributesDisabled),"restart-required aspect remains selectable");
   Check(CountViews(overlay,UISegmentedControl.class)==0,
         "touch settings do not duplicate the render-resolution selector");
   Check([display.children[2].title isEqual:@"Show FPS Counter"],
@@ -543,6 +574,34 @@ static NSUInteger CountViews(UIView *root, Class type) {
   [overlay layoutIfNeeded];
   Check(std::abs([GalaxyPadSettings.sharedSettings sizeScaleForControl:@"2"]-1.25)<0.001,"size stored");
   Check(std::abs(two.bounds.size.width/width-1.25)<0.01,"button geometry resizes");
+  UIButton *visibility=(UIButton *)Find(overlay,@"galaxypad.touch.selected-visibility",YES);
+  Check(visibility && !visibility.hidden && [visibility.currentTitle isEqual:@"Show in game"],
+        "selecting a hidden Wii key offers restoration in the editor");
+  Check(visibility.bounds.size.width>=44 && visibility.bounds.size.height>=44,
+        "editor visibility meets minimum target size");
+  [visibility sendActionsForControlEvents:UIControlEventTouchUpInside];
+  Check([NSUserDefaults.standardUserDefaults boolForKey:@"GalaxyPadShowAuxiliaryButtons"],
+        "editor restores auxiliary keys persistently");
+  [overlay endLayoutEditing];
+  for (NSString *key in @[@"1",@"2",@"−"])
+    Check(!Find(overlay,key,YES).hidden,"restored keys remain visible after Done");
+  [overlay beginLayoutEditing];
+  [overlay selectControlForEditing:two];
+  [visibility sendActionsForControlEvents:UIControlEventTouchUpInside];
+  [overlay endLayoutEditing];
+  Check(two.hidden,"editor can hide auxiliary keys again");
+  [overlay beginLayoutEditing];
+  [overlay selectControlForEditing:tilt];
+  Check(!visibility.hidden && [visibility.accessibilityLabel isEqual:@"Show Tilt in game"],
+        "hidden tilt stick offers the same restoration action");
+  [visibility sendActionsForControlEvents:UIControlEventTouchUpInside];
+  [overlay endLayoutEditing];
+  Check(!tilt.hidden,"restored tilt remains usable after Done");
+  [overlay toggleTiltStick];
+  [overlay beginLayoutEditing];
+  [overlay selectControlForEditing:a];
+  Check(visibility.hidden,"required gameplay controls cannot be hidden accidentally");
+  [overlay selectControlForEditing:two];
   GalaxyPadSettings *settings=GalaxyPadSettings.sharedSettings;
   settings.controlOpacity=0.37;
   settings.hideTouchControlsWhenControllerConnected=NO;
@@ -597,9 +656,61 @@ static NSUInteger CountViews(UIView *root, Class type) {
   [pause removeGestureRecognizer:pan];
   [overlay resetLayout];
   puts("UIKit overlay: A+B callbacks/release, Wii2 selection, slider hit test, ValueChanged, persistence getter and resize pass");
+  PhoneLayoutTestOverlay *phone=[[PhoneLayoutTestOverlay alloc] initWithFrame:CGRectMake(0,0,844,390)];
+  UIViewController *phoneHost=[UIViewController new];
+  [self addChildViewController:phoneHost];
+  [self setOverrideTraitCollection:[UITraitCollection traitCollectionWithUserInterfaceIdiom:UIUserInterfaceIdiomPhone]
+          forChildViewController:phoneHost];
+  phoneHost.view.frame=phone.bounds;
+  [self.view addSubview:phoneHost.view];
+  [phoneHost.view addSubview:phone];
+  [phoneHost didMoveToParentViewController:self];
+  [phone applySettings];
+  [phone beginLayoutEditing];
+  [phone selectControlForEditing:Find(phone,@"2",YES)];
+  [phone setNeedsLayout]; [phone layoutIfNeeded];
+  UIView *phoneEditor=Find(phone,@"galaxypad.touch.editor",YES);
+  UIView *phoneVisibility=Find(phone,@"galaxypad.touch.selected-visibility",YES);
+  UIView *phoneSlider=Find(phone,@"2 size",NO);
+  Check(phoneVisibility.bounds.size.width>=44 && phoneVisibility.bounds.size.height>=44,
+        "iPhone 14 editor keeps visibility target usable");
+  for (UIView *item in @[phoneVisibility,phoneSlider,Find(phone,@"galaxypad.touch.done",YES)]) {
+    CGRect frame=[item convertRect:item.bounds toView:phoneEditor];
+    Check(CGRectContainsRect(phoneEditor.bounds,frame),"iPhone 14 editor actions fit inside bar");
+    CGPoint point=[item convertPoint:CGPointMake(CGRectGetMidX(item.bounds),CGRectGetMidY(item.bounds)) toView:phone];
+    UIView *target=[phone hitTest:point withEvent:nil];
+    Check(target==item || [target isDescendantOfView:item],"iPhone 14 editor actions receive touches");
+  }
+  CGRect phoneSafe=UIEdgeInsetsInsetRect(phone.bounds,phone.safeAreaInsets);
+  for (NSString *key in @[@"move",@"tilt"])
+    Check(CGRectContainsRect(phoneSafe,Find(phone,key,YES).frame),"iPhone sticks fit safe area");
+  if ([NSProcessInfo.processInfo.arguments containsObject:@"--preview-phone-editor"]) {
+    [overlay removeFromSuperview];
+    self.view.backgroundColor=UIColor.blackColor;
+    puts("GALAXYPAD_UI_TEST_PASS"); fflush(stdout);
+    return;
+  }
+  [phoneHost willMoveToParentViewController:nil];
+  [phoneHost.view removeFromSuperview];
+  [phoneHost removeFromParentViewController];
+  // Invoke the exact menu action through public UIControl dispatch. This proves
+  // its persistence/alert handler, separately from native menu navigation.
+  UIMenu *handlerDisplay=(UIMenu *)[overlay buildMenu].children.firstObject;
+  UIAction *nativeAspect=(UIAction *)((UIMenu *)handlerDisplay.children[1]).children[1];
+  UIControl *aspectDispatch=[UIControl new];
+  [aspectDispatch addAction:nativeAspect forControlEvents:UIControlEventTouchUpInside];
+  [aspectDispatch sendActionsForControlEvents:UIControlEventTouchUpInside];
+  Check(GalaxyPadSettings.sharedSettings.aspectRatioMode==GalaxyPadAspectRatioWidescreen,
+        "native 16:9 action persists the next-launch setting");
+  Check([self.capturedPresentation isKindOfClass:UIAlertController.class] &&
+        [self.capturedPresentation.title isEqual:@"Restart Required"],
+        "aspect handler explains that a game restart is required");
+  self.capturedPresentation=nil;
+  GalaxyPadSettings.sharedSettings.aspectRatioMode=GalaxyPadAspectRatioOriginal;
   puts("GALAXYPAD_UI_TEST_PASS");
   fflush(stdout);
   if ([NSProcessInfo.processInfo.arguments containsObject:@"--preview"]) {
+    self.previewing=YES;
     [overlay removeFromSuperview];
     [NSUserDefaults.standardUserDefaults removePersistentDomainForName:NSBundle.mainBundle.bundleIdentifier];
     [GalaxyPadSettings.sharedSettings resetControlSizeScales];
@@ -613,6 +724,12 @@ static NSUInteger CountViews(UIView *root, Class type) {
     [self.view addSubview:field];
     [self.view addSubview:preview];
     [preview applySettings];
+    if ([NSProcessInfo.processInfo.arguments containsObject:@"--settings"])
+      [preview toggleSettingsPanel];
+    if ([NSProcessInfo.processInfo.arguments containsObject:@"--editor"]) {
+      [preview beginLayoutEditing];
+      [preview selectControlForEditing:Find(preview,@"2",YES)];
+    }
     return;
   }
   exit(0);
