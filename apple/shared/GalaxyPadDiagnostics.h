@@ -18,11 +18,20 @@ FOUNDATION_EXPORT void GalaxyPadDiagnosticsStart(void);
 FOUNDATION_EXPORT void GalaxyPadLog(NSString *format, ...) NS_FORMAT_FUNCTION(1, 2);
 
 /* Records a warning/error emitted by the embedded runtime. Repeated identical
- * events are counted and rate-limited so a failure cannot flood the log. */
+ * known event codes are counted and rate-limited so a failure cannot flood the
+ * log. Only allowlisted constant phrases are classified; raw message arguments
+ * are discarded. Unrecognized events retain only severity/category/count. */
 FOUNDATION_EXPORT void GalaxyPadLogRuntimeEvent(
     NSString *severity, NSString *category, NSString *message);
 
 FOUNDATION_EXPORT NSString *GalaxyPadDiagnosticsLogPath(void);
+
+/* Sanitized, size-bounded title/body for a user-reviewed GitHub draft. These
+ * helpers never read session logs, write files, or send network requests. */
+FOUNDATION_EXPORT NSDictionary<NSString *, NSString *> *GalaxyPadDiagnosticsIssueDraft(
+    NSDictionary<NSString *, NSString *> *reporterAnswers, NSString *technicalContext);
+FOUNDATION_EXPORT NSURL *_Nullable GalaxyPadDiagnosticsIssueURL(
+    NSDictionary<NSString *, NSString *> *draft);
 
 /* Builds the single privacy-reviewed file used by the guided problem-report
  * flow. Reporter answers and current technical context lead the file, followed

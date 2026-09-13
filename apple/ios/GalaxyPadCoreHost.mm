@@ -41,6 +41,14 @@
 #endif
 
 namespace {
+static NSString *RuntimeFailureMessage(const moderngekko::RuntimeError& error) {
+  if (error.code == moderngekko::RuntimeErrorCode::BootFailed) {
+    GalaxyPadLogRuntimeEvent(@"error", @"core", @"boot_failed");
+    return @"Game data may be missing or incomplete. Finish importing or transferring it, then tap Restart Game. If it still fails, use Import or Reimport Game Data in the menu. Saves are unchanged.";
+  }
+  return @(error.message.c_str());
+}
+
 struct Session {
   std::mutex mutex;
   std::mutex viewportMutex;
@@ -413,7 +421,7 @@ void RuntimeLog(moderngekko::RuntimeLogLevel level, const char *category,
 #endif
       auto created = moderngekko::Runtime::Create(std::move(config));
       if (!created) {
-        failure = created.error ? @(created.error->message.c_str()) : @"Runtime creation failed";
+        failure = created.error ? RuntimeFailureMessage(*created.error) : @"Runtime creation failed";
       } else {
         bool run;
         {
@@ -541,7 +549,7 @@ void RuntimeLog(moderngekko::RuntimeLogLevel level, const char *category,
               rect.GetWidth()/width, rect.GetHeight()/height);
           });
           auto result = created.runtime->Run();
-          if (result.error) failure = @(result.error->message.c_str());
+          if (result.error) failure = RuntimeFailureMessage(*result.error);
         }
         {
           std::lock_guard lock(session->mutex);

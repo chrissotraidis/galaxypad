@@ -4,6 +4,7 @@
 // Main-thread owner of the SunPad-derived controller reconciliation adapter.
 @interface GalaxyPadControllers : NSObject
 @property(nonatomic, copy) void (^inputChanged)(galaxypad::InputState state);
+// View/Options toggles app pause; Menu sends original Wii Plus through inputChanged.
 @property(nonatomic, copy) void (^pauseRequested)(void);
 @property(nonatomic, copy) void (^ownershipChanged)(void);
 @property(nonatomic, copy) BOOL (^inputAllowed)(void);

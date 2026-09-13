@@ -326,7 +326,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     _pauseButton.configuration = pause;
     _pauseButton.accessibilityIdentifier = @"galaxypad.pause";
     _pauseButton.accessibilityLabel = @"Pause game";
-    [_pauseButton addTarget:self action:@selector(presentPause) forControlEvents:UIControlEventTouchUpInside];
+    [_pauseButton addTarget:self action:@selector(pressGamePause) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:_pauseButton];
 }
 
@@ -345,14 +345,14 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     [_pauseOverlay addSubview:_pauseCard];
 
     _pauseTitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    _pauseTitleLabel.text = @"Pause Menu";
+    _pauseTitleLabel.text = @"App Paused";
     _pauseTitleLabel.textColor = UIColor.whiteColor;
     _pauseTitleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleTitle2];
     _pauseTitleLabel.textAlignment = NSTextAlignmentCenter;
     [_pauseCard addSubview:_pauseTitleLabel];
 
     _pauseDetailLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    _pauseDetailLabel.text = @"Press controller Menu / Options again, or Back to Game, to resume.\nHold Start + for Galaxy’s original Wii pause screen, including Return to Observatory.";
+    _pauseDetailLabel.text = @"Press controller View / Select again, or Back to Game, to resume.\nUse Pause or controller Menu / Start for Galaxy’s original pause screen. Choose Return to Observatory there to leave a level.";
     _pauseDetailLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.78];
     _pauseDetailLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     _pauseDetailLabel.numberOfLines = 0;
@@ -372,6 +372,10 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     [_pauseBackButton addTarget:self action:@selector(dismissPauseMenu) forControlEvents:UIControlEventTouchUpInside];
     [_pauseCard addSubview:_pauseBackButton];
     [self addSubview:_pauseOverlay];
+}
+
+- (void)pressGamePause {
+    [self activateGameButton:[self buttonWithMask:galaxypad::Plus]];
 }
 
 - (void)presentPause {
@@ -873,7 +877,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     [self publishInput];
     __weak GalaxyPadGameOverlay *weakSelf = self;
     __weak GalaxyPadGameButton *weakButton = button;
-    // Galaxy requires a held pause button; leave margin for emulation slowdown.
+    // Keep a quick activation visible to guest input polling during slowdown.
     const double duration = (mask & (galaxypad::Plus | galaxypad::Minus)) ? 0.75 : 0.15;
     [NSTimer scheduledTimerWithTimeInterval:duration repeats:NO block:^(NSTimer *timer) {
         (void)timer;
@@ -1857,7 +1861,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     UIAlertController *guide = [UIAlertController alertControllerWithTitle:@"Touch Controls"
       message:@"Left stick: move. A: jump / use / swim / grab Pull Stars. B: shoot Star Bits. X: spin. Y: reset camera. Z: crouch / dive. D-pad: camera view.\n\n"
                "Drag on the game to aim; press A or B separately. Hold A + B at the title screen. Touch aim currently drives a virtual Wii Remote and may not align with your finger.\n\n"
-               "Hold Start + for Galaxy’s pause menu (longer during slowdowns). The top Pause button pauses immediately.\n\n"
+               "Pause or controller Menu / Start opens Galaxy’s original pause screen. Point at Return to Observatory and press A to leave a level. View / Select pauses the app; press it again to resume.\n\n"
                "Ball / ray: enable Show Tilt Stick in Controls (not device motion)."
       preferredStyle:UIAlertControllerStyleAlert];
     [guide addAction:[UIAlertAction actionWithTitle:@"Done" style:UIAlertActionStyleCancel handler:nil]];
