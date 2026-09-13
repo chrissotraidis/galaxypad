@@ -1,34 +1,40 @@
 {
   "schemaVersion": 1,
-  "selectedTrack": "sunpad-known-apple",
+  "selectedTrack": "galaxypad-maintained-forks",
   "repositories": {
     "sunpad": {
       "url": "https://github.com/chrissotraidis/sunpad.git",
       "revision": "efd42ca45457af5950e0558c66703cb766959e11"
     },
     "modernGekko": {
-      "url": "https://github.com/ExpansionPak/ModernGekko.git",
-      "revision": "0514d9f03f8602809f66fc92fdca87d30e752997"
+      "url": "https://github.com/chrissotraidis/ModernGekko.git",
+      "revision": "ab9044b7ce4b8f859423029b05e1ecc398723efc",
+      "upstreamUrl": "https://github.com/ExpansionPak/ModernGekko.git",
+      "upstreamRevision": "0514d9f03f8602809f66fc92fdca87d30e752997"
     },
     "modernGekkoTemplate": {
       "url": "https://github.com/ExpansionPak/ModernGekko-Template.git",
       "revision": "1ee85bb5e09c38f493a09f5fa6e9dc8228b23e42"
     },
     "dolRecomp": {
-      "url": "https://github.com/ExpansionPak/DolRecomp.git",
-      "revision": "fa0cf619e8d7eb8cba7eaf55267a12caaebb46aa"
+      "url": "https://github.com/chrissotraidis/DolRecomp.git",
+      "revision": "448e98f2caa4cec7938dedd3fd43448d5a348004",
+      "upstreamUrl": "https://github.com/ExpansionPak/DolRecomp.git",
+      "upstreamRevision": "fa0cf619e8d7eb8cba7eaf55267a12caaebb46aa"
     },
     "petari": {
       "url": "https://github.com/SMGCommunity/Petari.git",
       "revision": "845164b4faec4703002eb99b4b75ee1788204230"
+    },
+    "recompCore": {
+      "url": "https://github.com/chrissotraidis/RecompCore.git",
+      "revision": "5d535c77501148c58511a82a13fd678e89615502",
+      "upstreamUrl": "https://github.com/ExpansionPak/RecompCore.git",
+      "upstreamRevision": "13e492094902644b0d113c586300d358640f9e19"
     }
   },
   "vendorRevisions": {
-    "modernGekkoRecompCoreDolphin": "13e492094902644b0d113c586300d358640f9e19"
-  },
-  "patches": {
-    "modernGekkoAppleRuntime": "aa06ac920002fc94f8f96f684309f291e6b8cb882c694f894a9226d100abadbe",
-    "recompCoreDolphinAppleRuntime": "b872dfe002d3d106af92f5dbc3dfcd3d20c43358e7681084ad41ee367cad214a"
+    "modernGekkoRecompCoreDolphin": "5d535c77501148c58511a82a13fd678e89615502"
   },
   "tools": {
     "wit": {

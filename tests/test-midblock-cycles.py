@@ -2,6 +2,7 @@
 """Compile the candidate in isolation; execute its actual generated C."""
 import pathlib
 import shutil
+import json
 import subprocess
 import tempfile
 
@@ -141,16 +142,9 @@ int main(void) {
 with tempfile.TemporaryDirectory(prefix='galaxypad-midblock-') as temporary:
     base = pathlib.Path(temporary)
     shutil.copytree(VENDOR / 'src', base / 'src')
-    # Always start from the pinned original even after normal integration.
-    for name in ['c_cfg.c', 'emitter.c']:
-        source = subprocess.check_output(['git', '-C', str(VENDOR), 'show',
-            'fa0cf619e8d7eb8cba7eaf55267a12caaebb46aa:src/backend/' + name], text=True)
-        (base / 'src/backend' / name).write_text(source)
     original = subprocess.check_output(['git', '-C', str(VENDOR), 'show',
-        'fa0cf619e8d7eb8cba7eaf55267a12caaebb46aa:src/backend/c_cfg.c'], text=True)
+        json.loads((ROOT / 'config/dependencies.lock.json').read_text())['repositories']['dolRecomp']['upstreamRevision'] + ':src/backend/c_cfg.c'], text=True)
     (base / 'original_cfg.c').write_text(original)
-    subprocess.run(['git', 'init', '-q', str(base)], check=True)
-    subprocess.run(['git', '-C', str(base), 'apply', str(ROOT / 'patches/DolRecomp/0002-midblock-entry-cycles.patch')], check=True)
     (base / 'driver.c').write_text(DRIVER)
     flags = ['clang', '-O1', '-g', '-fsanitize=address,undefined', '-I', str(base / 'src')]
     subprocess.run(flags + [str(base / 'driver.c'), str(base / 'src/backend/emitter.c'),

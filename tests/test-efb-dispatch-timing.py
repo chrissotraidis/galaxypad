@@ -8,11 +8,6 @@ import tempfile
 from efb_source import without_dispatch_overlay
 
 root = Path(__file__).resolve().parents[1]
-bootstrap = (root/'scripts/bootstrap-dependencies.sh').read_text()
-assert bootstrap.index('apply --reverse "$efb_dispatch_patch"') < bootstrap.index('apply --reverse "$efb_context_patch"')
-assert bootstrap.index('apply_patch_once "$ref/ModernGekko/vendor/dolphin" "$efb_dispatch_patch"') > bootstrap.index('apply_patch_once "$ref/ModernGekko/vendor/dolphin" "$efb_context_patch"')
-scope = bootstrap.split('verify_patch_scope "$ref/ModernGekko/vendor/dolphin" "DolRecomp"', 1)[1]
-assert '"$efb_dispatch_patch"' in scope.split('cntlzw_patch=', 1)[0]
 program = r'''
 #include "timing.h"
 #include <cassert>

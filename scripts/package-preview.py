@@ -42,6 +42,26 @@ def audit_archive(path):
             raise ValueError(f'Corrupt archive entry: {bad}')
 
 
+def publish_archive(candidate, output, manifest):
+    """Create both outputs exclusively, preserving artifacts from another run."""
+    manifest_path = output.with_suffix(output.suffix + '.manifest.json')
+    manifest['archive_sha256'] = hashlib.sha256(candidate.read_bytes()).hexdigest()
+    created = []
+    try:
+        with output.open('xb') as archive_file:
+            created.append(output)
+            with manifest_path.open('x') as manifest_file:
+                created.append(manifest_path)
+                with candidate.open('rb') as source:
+                    shutil.copyfileobj(source, archive_file)
+                manifest_file.write(json.dumps(manifest, indent=2) + '\n')
+    except Exception:
+        # Remove only outputs this invocation created, never a competing file.
+        for path in reversed(created):
+            path.unlink()
+        raise
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--app', required=True, type=Path)
@@ -52,8 +72,12 @@ def main():
     args = parser.parse_args()
     if len(args.source_revision) != 40 or any(c not in '0123456789abcdef' for c in args.source_revision):
         parser.error('source revision must be the full commit SHA')
-    if args.output.exists() or not args.app.is_dir() or args.app.is_symlink() or not args.notices.is_dir():
-        parser.error('app/notices must exist; output must be new')
+    manifest_path = args.output.with_suffix(args.output.suffix + '.manifest.json')
+    if (not args.app.is_dir() or args.app.is_symlink() or not args.notices.is_dir()
+            or any(p.exists() or p.is_symlink() for p in (args.output, manifest_path))):
+        parser.error('app/notices must exist; archive and manifest outputs must be new')
+    if any(args.output.resolve().is_relative_to(p.resolve()) for p in (args.app, args.notices)):
+        parser.error('output must be outside the input app and notices directory')
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='galaxypad-preview-') as temp:
         stage = Path(temp)
@@ -78,6 +102,12 @@ def main():
         module = app / ('Frameworks/gRMGE01_recomp.dylib' if args.platform == 'ios' else 'Contents/MacOS/gRMGE01_recomp.dylib')
         if not module.is_file():
             raise ValueError('Missing AOT module')
+        # Architecture alone does not make a library a StaticRecomp module.
+        # Check the loader entry point before signing or publishing the copy;
+        # never dlopen an input merely to inspect its interface.
+        module_exports = set(run('xcrun', 'nm', '-gjU', module).splitlines())
+        if '_staticrecomp_get_module' not in module_exports:
+            raise ValueError('AOT module is missing staticrecomp_get_module')
         binaries = []
         for path in app.rglob('*'):
             if not path.is_file() or path.is_symlink():
@@ -120,9 +150,7 @@ def main():
         candidate = stage / ('preview.ipa' if args.platform == 'ios' else 'preview.zip')
         run('ditto', '-c', '-k', '--norsrc', '--noextattr', '--keepParent', target, candidate)
         audit_archive(candidate)
-        shutil.copyfile(candidate, args.output)
-        manifest['archive_sha256'] = hashlib.sha256(args.output.read_bytes()).hexdigest()
-        args.output.with_suffix(args.output.suffix + '.manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+        publish_archive(candidate, args.output, manifest)
         print(f"{manifest['archive_sha256']}  {args.output.name}")
 
 

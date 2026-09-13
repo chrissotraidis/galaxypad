@@ -1,6 +1,72 @@
 # Dependencies
 
-## September 7 opt-in decoder line policy (R279)
+## Maintained source graph
+
+GalaxyPad remains the Apple app. A fork is a maintained copy of an upstream
+dependency: runtime and compiler changes are committed there so reviewers can
+inspect their history directly. Upstream names, author history and notices stay
+intact; [credits](../CREDITS.md) identify the original projects and contributors.
+
+| Checkout | Maintained fork | Original upstream |
+| --- | --- | --- |
+| `ref/ModernGekko` | [chrissotraidis/ModernGekko](https://github.com/chrissotraidis/ModernGekko) | [ExpansionPak/ModernGekko](https://github.com/ExpansionPak/ModernGekko) |
+| `ref/ModernGekko/vendor/dolphin` | [chrissotraidis/RecompCore](https://github.com/chrissotraidis/RecompCore) | [ExpansionPak/RecompCore](https://github.com/ExpansionPak/RecompCore) |
+| `ref/ModernGekko/vendor/dolphin/DolRecomp` | [chrissotraidis/DolRecomp](https://github.com/chrissotraidis/DolRecomp) | [ExpansionPak/DolRecomp](https://github.com/ExpansionPak/DolRecomp) |
+
+The app pins ModernGekko, ModernGekko pins RecompCore, and RecompCore pins DolRecomp
+and its other third-party dependencies. Git submodule references select exact
+commits. The [dependency lock](../config/dependencies.lock.json) records the chosen
+revisions and upstream bases; it is the current inventory, rather than the dated
+patch notes below. SunPad, ModernGekko-Template and Petari remain pinned reference
+sources and do not need forks without changes of their own.
+
+The [migration record](../config/dependency-migration.json) maps the former patch
+files to fork commits, records their source revisions and hashes, and identifies
+the deliberate submodule and Simulator configuration changes. The original
+upstream commits remain in each fork's ancestry; their README, license texts and
+contributor files are preserved. This record describes source migration, not a new
+binary release or gameplay result.
+
+Bootstrap modes:
+
+```sh
+# Required Apple dependencies for runtime/app builds.
+bash scripts/bootstrap-dependencies.sh
+
+# Only ModernGekko, RecompCore and DolRecomp for the source test suite.
+bash scripts/bootstrap-dependencies.sh --sources-only
+
+# Also prepare pinned, unmodified SunPad, Petari and template research references.
+bash scripts/bootstrap-dependencies.sh --references
+```
+
+`--sources-only` prepares the three fork repositories with their full histories,
+but not the third-party libraries required to compile the runtime. The default
+mode adds the selected Apple build dependencies, including cubeb's nested
+dependencies; it does not download unrelated platform packages such as Qt or
+prebuilt FFmpeg. These commands download dependencies, never game data.
+Dependency updates must keep the submodule references and lock in agreement.
+Local edits must be reviewed and committed to the appropriate fork; bootstrap must
+not discard them or apply a second hidden production patch stack. Supported build
+configuration belongs in the fork too. Optional experiments remain explicit and
+must not silently alter normal builds or release defaults.
+
+For a dependency change, first commit and validate the change in its owning fork,
+then update each parent submodule reference up to GalaxyPad and its lock. Run the
+complete source suite from the resulting checkout. Follow
+[CONTRIBUTING](../CONTRIBUTING.md) for behavioral regressions, performance evidence,
+private checks and release provenance. A commit migration is not a fresh device
+test or proof that a historical binary can be reproduced.
+
+## Historical patch-stack notes
+
+The entries below describe earlier checkouts and releases. Their patch paths,
+hashes and commands are historical evidence, not instructions for the maintained
+fork graph. Historical Preview 1 packages retain their original source supplements
+and known reproduction limits. For the code review and ARM64 fallback evidence,
+see [Upstream integration review](UPSTREAM-REVIEW.md).
+
+### September 7 opt-in decoder line policy (R279)
 
 Dependency revisions unchanged. ModernGekko0021-dcbz-loop-policy.patch SHA256
 ef5ce417866cd67f6fd314f8585a6ea7716e50bcf824a044c4b8d4020c3c0e3b is pinned
@@ -11,13 +77,13 @@ identity preserves the existing cache key. Manifest records dcbz_policy. Source
 hash/count guards precede replacing eight decoder zero loops. No runtime/app
 promotion follows from this integration; see current STATUS for build state.
 
-## September 6 decoder policy integration (R173–R174)
+### September 6 decoder policy integration (R173–R174)
 
 Pins are unchanged. Bootstrap now applies ModernGekko `0015-rmge01-fprf-policy.patch` (SHA-256 `881996463a31728375b651b5cdf96f165f5a087ccc5c85d94851fc4a21421488`) and Dolphin `0014-deferred-fprf-helpers.patch` (`661f2a2452e2240018140fedae6baaeea3b5c3e723d9266e3644f42581d1d019`). The former includes `<regex>`; the earlier draft hash is superseded. Repeated bootstrap passes, including overlay peel/restore and scope checks.
 
 Policy `rmge01-fprf-119-v1` is limited to the accepted RMGE01 DOL, C backend and 1024-instruction chunks, with exact generated decoder SHA/count guards. The policy is part of cache identity and manifest; runtime source fingerprint includes the appended four helper bodies. Applied source is not packaged acceptance: canonical tool/module rebuild and artifact smoke remain required. The current normal app is still the pre-policy accepted package.
 
-Last updated: 2026-09-04
+### September 4 dependency baseline
 
 | Component | Source | Selected revision/version | License | Purpose/state |
 |---|---|---|---|---|

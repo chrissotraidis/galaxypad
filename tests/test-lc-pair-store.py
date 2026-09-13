@@ -1,5 +1,6 @@
 """Compare the integrated caller against the pinned upstream sequential oracle."""
 from pathlib import Path
+import json
 import subprocess
 import sys
 import tempfile
@@ -7,7 +8,7 @@ import hashlib
 
 root = Path(__file__).resolve().parents[1]
 source = subprocess.check_output(['git', '-C', str(root/'ref/ModernGekko/vendor/dolphin'),
-    'show', 'HEAD:GXRuntime/src/core/cpu.c']).decode()
+    'show', json.loads((root/'config/dependencies.lock.json').read_text())['repositories']['recompCore']['upstreamRevision'] + ':GXRuntime/src/core/cpu.c']).decode()
 assert hashlib.sha256(source.encode()).hexdigest() == 'ec16e3a5bc42809220465528086dc88b00cd491053056649020e94e15e3b69c7'
 body = 'bool ppc_psq_store(' + source.split('bool ppc_psq_store(', 1)[1].split('\nvoid ppc_rfi(', 1)[0]
 quant = 'static s64 psq_quantize_int(' + source.split('static s64 psq_quantize_int(', 1)[1].split('\nstatic void psq_store_value', 1)[0]

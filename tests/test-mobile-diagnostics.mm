@@ -105,6 +105,12 @@ int main(int argc, char **argv) {
       assert([GalaxyPadKnownRuntimeEvent(@"audio", @"") isEqualToString:@"runtime details omitted for privacy"]);
       GalaxyPadLog(@"controller raw_buttons=1234 menu=1 options=0");
       GalaxyPadLog(@"simulator input accepted buttons=1234 pointer=(0.1,0.2)");
+      GalaxyPadLog(@"controller input ready=1 raw_buttons=4 move=(0.2,0.3) aim=(0.4,0.5) profile=example");
+      GalaxyPadLog(@"[GalaxyPad controller snapshot] controller_snapshot owner=1 legacy_a=1 legacy_move=(0.2,0.3) live_aim=(0.4,0.5)");
+      GalaxyPadLog(@"[GalaxyPad performance] process_cpu_percent=250.00 resident_mib=500.0 controller_snapshot owner=1 legacy_a=1 live_aim=(0.4,0.5)");
+      GalaxyPadLog(@"controller ownership: connected=1 extended_controllers=1");
+      GalaxyPadLogPerformanceWindow(@[@"touch_mapping sample=1 field=60 aspect=0 mode=1 finger=(0.12345,0.67890) contact=1 controllerAim=0 buttons=4 tilt=(0.000,0.000;0.000,0.000) past=(0.1,0.2,1) current=(0.3,0.4,1)"]);
+      dispatch_sync(GalaxyPadPerformanceLogQueue(), ^{});
       NSError *error = nil;
       NSURL *reportURL = GalaxyPadDiagnosticsReportURL(@"test",
         @{@"problem": @"token=REPORT-SECRET /Users/example/private.wbfs"}, @"state=paused", &error);
@@ -112,6 +118,8 @@ int main(int argc, char **argv) {
       assert([reportURL.path hasPrefix:[testRoot stringByAppendingString:@"/"]]);
       NSString *report = [NSString stringWithContentsOfURL:reportURL encoding:NSUTF8StringEncoding error:&error];
       assert(!error && [report containsString:@"state=paused"]);
+      assert([report containsString:@"controller ownership: connected=1"]);
+      assert([report containsString:@"process_cpu_percent=250.00 resident_mib=500.0"]);
       assert([report containsString:@"runtime details omitted"]);
       assert([report containsString:@"category=core count=1 message=boot_failed"]);
       assert([report containsString:@"category=audio count=12 message=audio_granule_queue_full_samples_dropped"]);
@@ -123,7 +131,7 @@ int main(int argc, char **argv) {
         encoding:NSUTF8StringEncoding error:nil];
       assert([runtimeLog containsString:@"count=10 message=audio_granule_queue_full_samples_dropped"]);
       assert(![runtimeLog containsString:@"count=12 message=audio_granule_queue_full_samples_dropped"]);
-      for (NSString *forbidden in @[@"RAW-GUEST-SENTINEL", @"REPORT-SECRET", @"EVENT-SECRET", @"DEADBEEF", @"shader.metal", @"private.wbfs", @"main.dol", @"github.com", @"raw_buttons", @"pointer=("])
+      for (NSString *forbidden in @[@"RAW-GUEST-SENTINEL", @"REPORT-SECRET", @"EVENT-SECRET", @"DEADBEEF", @"shader.metal", @"private.wbfs", @"main.dol", @"github.com", @"raw_buttons", @"pointer=(", @"legacy_a=", @"legacy_move=", @"live_aim=", @"touch_mapping", @"finger=(", @"past=(", @"current=("])
         assert(![report containsString:forbidden]);
       // A blocked writer cannot create an unbounded queue or block the caller.
       dispatch_suspend(GalaxyPadPerformanceLogQueue());

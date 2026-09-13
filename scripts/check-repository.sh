@@ -4,6 +4,18 @@ set -euo pipefail
 root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 cd "$root"
 
+with_private_evidence=false
+case "${1:-}" in
+  "") ;;
+  --with-private-evidence) with_private_evidence=true; shift ;;
+  *) echo "usage: $0 [--with-private-evidence]" >&2; exit 2 ;;
+esac
+[[ $# == 0 ]] || { echo "usage: $0 [--with-private-evidence]" >&2; exit 2; }
+echo "Running source and prepared-dependency checks (no game data required)."
+if [[ "$with_private_evidence" == false ]]; then
+  echo "Private game-derived evidence checks are separate: use --with-private-evidence to include them."
+fi
+
 git diff --check
 bash scripts/check-public-content.sh
 bash tests/test-repository-safety.sh
@@ -11,6 +23,9 @@ python3 tests/test-public-content.py
 python3 tests/test-preview-archive-audit.py
 python3 tests/test-ios-icons.py
 python3 tests/test-ipad-install-assistant.py
+python3 tests/test-preview-module-interface.py
+python3 tests/test-dependency-lock.py
+python3 scripts/dependency-lock.py
 
 for script in scripts/*.sh tests/*.sh; do
   [[ -e "$script" ]] || continue
@@ -23,6 +38,7 @@ python3 -m py_compile scripts/wii-pipe.py
 ./tests/test-macos-app-config.sh
 python3 ./tests/test-runtime-directories.py
 bash ./tests/test-mobile-input.sh
+bash ./tests/test-thp-patch.sh
 bash ./tests/test-movement-trace.sh
 bash ./tests/test-simulator-input.sh
 python3 ./tests/test-pointer-reacquisition.py
@@ -43,8 +59,6 @@ bash ./tests/test-controller-pause-events.sh
 bash ./tests/test-import-activation.sh
 bash ./tests/test-import-transaction.sh
 python3 ./tests/test-runner-background-input.py
-python3 ./tests/test-thp-dead-pc.py
-python3 ./tests/test-thp-dead-pc-entries.py
 python3 ./tests/test-psq-scale.py
 python3 ./tests/test-psq-scale-patch.py
 python3 ./tests/test-audio-phase-events.py
@@ -99,8 +113,6 @@ python3 ./tests/test-direct-call-differential.py
 python3 ./tests/test-fprf-gaps.py
 python3 ./tests/test-fallback-pc-wiring.py
 python3 ./tests/test-fallback-start.py
-python3 ./tests/test-vector-snapshot.py
-python3 ./tests/test-vector-plan.py
 python3 ./tests/test-vector-dispatch.py
 python3 ./tests/test-fallback-sample.py
 python3 ./tests/test-run-cost.py
@@ -113,7 +125,6 @@ python3 ./tests/test-xf-partial-command.py
 python3 ./tests/test-fifo-compaction.py
 python3 ./tests/test-gather-write-widths.py
 python3 ./tests/test-xf-origin.py
-python3 ./tests/test-xf-patch-order.py
 python3 ./tests/test-thread-state-alignment.py
 python3 ./tests/test-host-pressure-probe.py
 python3 ./tests/test-host-pressure-alignment.py
@@ -123,22 +134,8 @@ python3 ./tests/test-development-checkpoint.py
 python3 ./tests/test-madd-tie-outline.py
 python3 ./tests/test-add-nan-outline.py
 python3 ./tests/test-thermal-state-probe.py
-python3 ./tests/test-thp-first-pass.py
-python3 ./tests/test-s16-psq-load.py
-python3 ./tests/test-s16-pair-psq-load.py
-python3 ./tests/test-two-range-lookup.py
-python3 ./tests/test-two-range-dispatch.py
-python3 ./tests/test-two-range-policy.py
 python3 ./tests/test-two-range-policy-wiring.py
-python3 ./tests/test-two-range-module-audit.py
-python3 ./tests/test-kernel-read-cache.py
-python3 ./tests/test-dc-store-run.py
-python3 ./tests/test-zero-column.py
-python3 ./tests/test-zero-column.py --nonzero-dc
-python3 ./tests/test-zero-column.py --nonzero-dc --second-kernel
 python3 ./tests/test-dc-build-graph.py
-python3 ./tests/test-huffman-tail.py
-python3 ./tests/test-normal-kernel-entry.py
 python3 ./tests/test-dvd-wait-wiring.py
 python3 ./tests/test-completion-observer.py
 python3 ./tests/test-completion-wiring.py
@@ -175,3 +172,7 @@ python3 ./tests/test-lc-pair-host.py --empty-rel
 python3 ./tests/test-empty-rel-resolution.py
 bash ./tests/test-lc-default.sh
 bash ./tests/test-native-diagnostics.sh
+
+if [[ "$with_private_evidence" == true ]]; then
+  bash scripts/check-private-evidence.sh
+fi

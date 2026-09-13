@@ -98,7 +98,7 @@
     choice.spacing = 12;
     [stack addArrangedSubview:choice];
     [stack addArrangedSubview:[self labelWithText:
-      @"Off by default. The log adds recent app events and audio/performance context, with paths and common secrets removed. Review it, then use Share Log → Save to Files and attach it on GitHub. The browser cannot attach it automatically. Game files, saves, screenshots and raw inputs are not collected."]];
+      @"Off by default. The log adds recent app events and audio/performance context, with paths and common secrets removed. Review it, then use Share Log → Save to Files and attach it on GitHub. The browser cannot attach it automatically. Game files, saves, screenshots and raw inputs are not included in the report."]];
     _shareLog = [self buttonWithTitle:@"Share Log…" action:@selector(share)];
     _shareLog.accessibilityIdentifier = @"galaxypad.report.share";
     _shareLog.enabled = NO;

@@ -28,7 +28,15 @@ static const unsigned plane_size[3]={640*368,320*184,320*184};
 static uint32_t be32(const uint8_t *p) {
     return (uint32_t)p[0]<<24 | (uint32_t)p[1]<<16 | (uint32_t)p[2]<<8 | p[3];
 }
+static void write_external(CPUState *s,uint32_t a,uint64_t v,uint8_t n);
 static void unsupported(CPUState *s, uint32_t value, uint32_t pc) {
+    if(value==0x9421fff0u && pc==0x80452398u) {
+        uint32_t old_sp=s->gpr[1],address=old_sp-16;
+        write_external(s,address,old_sp,4);
+        s->gpr[1]=address;s->pc=pc+4;
+        // Offline accounting only; the real chassis charges its own clock.
+        s->downcount-=1;return;
+    }
     unsigned spr=((value>>16)&31)|((value>>6)&992);
     if(value>>26==31 && ((value>>1)&1023)==467 && (spr==922 || spr==923)) {
         uint32_t v=s->gpr[(value>>21)&31];

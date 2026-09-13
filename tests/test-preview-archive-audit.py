@@ -36,4 +36,26 @@ with tempfile.TemporaryDirectory() as temporary:
         pass
     else:
         raise AssertionError('Accepted escaping symlink')
-print('Preview archive privacy audit passed.')
+    # Outputs may appear while packaging/signing runs after the preflight check.
+    # Publishing must preserve either competing artifact and clean only its own.
+    candidate = root / 'candidate.zip'
+    candidate.write_bytes(b'synthetic archive')
+    output = root / 'release.zip'
+    sidecar = root / 'release.zip.manifest.json'
+    for competing in (output, sidecar):
+        competing.write_bytes(b'other run evidence')
+        try:
+            module.publish_archive(candidate, output, {})
+        except FileExistsError:
+            pass
+        else:
+            raise AssertionError('Overwrote competing output')
+        assert competing.read_bytes() == b'other run evidence'
+        assert not (sidecar if competing == output else output).exists()
+        competing.unlink()
+    module.publish_archive(candidate, output, {})
+    assert output.read_bytes() == candidate.read_bytes()
+    import hashlib
+    import json
+    assert json.loads(sidecar.read_text())['archive_sha256'] == hashlib.sha256(candidate.read_bytes()).hexdigest()
+print('Preview archive privacy and concurrent output preservation checks passed.')

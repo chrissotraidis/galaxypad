@@ -49,6 +49,7 @@ public:
     if (sysctlbyname("hw.nperflevels",&levels,&bytes,nullptr,0)) levels = 0;
     if (mach_timebase_info(&tb)) tb = {};
     Configure(path,reader,levels,tb.numer,tb.denom);
+    if (reader && (levels == 0 || levels > 8)) config_error_ = ENOTSUP;
   }
   template<class Clock> void Record(std::uint64_t vi_ns, Clock clock) noexcept {
     if (!samples_ || finished_) return;
@@ -64,6 +65,15 @@ public:
     if (reader_(4,sample.levels.data(),levels_*sizeof(Counts))) {
       sample.error = errno ? errno : EIO;
       sample.levels = {}; // Never expose partially written failed results as valid.
+    } else {
+      // Virtualized hosts can succeed without exposing instruction/cycle counts.
+      // Idle performance levels may be zero; require counts across the sample.
+      bool instructions = false, cycles = false;
+      for (unsigned i=0; i<levels_; ++i) {
+        instructions = instructions || sample.levels[i].instructions != 0;
+        cycles = cycles || sample.levels[i].cycles != 0;
+      }
+      if (!instructions || !cycles) sample.error = ENOTSUP;
     }
     sample.after_ns = clock();
   }
