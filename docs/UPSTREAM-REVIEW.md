@@ -14,6 +14,7 @@ established in this pass.
 | --- | --- | --- |
 | Bootstrap accepted an unrelated compiler definition appended to a file already touched by a reviewed patch. A path whitelist could not verify its contents. | Reconstruct the expected patched source in a temporary Git index and compare the checkout. | Original bootstrap accepted the mutation; repaired bootstrap rejects it. Clean, repeated, and Simulator-overlay replays pass. |
 | Bootstrap treated an existing checkout with a `.git` file as a missing clone. | Accept the Git metadata file used by submodules and worktrees. | Real temporary worktree regression passes. |
+| A queued import/extraction progress block referenced a C++ worker capture after that worker was released. Hosted ASan exposed an intermittent use-after-free. | Copy the progress callback into an independently owned local block before enqueueing it. | A serial-worker/delayed-main-queue regression deterministically reproduces the original ASan failure; repeated sanitized runs pass after repair. |
 | Packager accepted an unrelated ARM64 dylib under the AOT module filename and produced a successful archive. | Require the StaticRecomp loader export before signing the copy. | Original script packaged a synthetic unrelated library. Repaired script rejects it; a synthetic interface fixture still signs/packages. No library is loaded during inspection. |
 | Packaging could write its output inside the input app, overwrite an existing manifest, or overwrite another job's output created after preflight. | Reject output paths inside inputs; require new archive and sidecar; create final outputs exclusively. | Input preservation, existing sidecar, and competing-output regressions pass. |
 | Exported diagnostics retained raw controller snapshots and touch samples despite the report UI promising their omission. | Remove the actual producer formats, preserving CPU/memory/thermal summaries; distinguish local logs from exported reports. | Controller and asynchronous touch-log regressions failed before the repairs and pass under ASan/UBSan afterward. |
@@ -106,7 +107,7 @@ history. GalaxyPad tracks ModernGekko as a Git submodule; its nested gitlinks pi
 RecompCore and DolRecomp. Bootstrap checks out these commits without applying or
 recovering a production patch stack. Existing dirty dependency trees are preserved.
 
-| Fork | Pinned integration commit |
+| Fork | Initial migration commit |
 | --- | --- |
 | [ModernGekko](https://github.com/chrissotraidis/ModernGekko) | `ab9044b7ce4b8f859423029b05e1ecc398723efc` |
 | [RecompCore](https://github.com/chrissotraidis/RecompCore) | `5d535c77501148c58511a82a13fd678e89615502` |
@@ -140,6 +141,38 @@ A fresh default bootstrap also initialized the required Apple build dependencies
 Clang 21.0.0, with dependency sources verified clean afterward. This is a desktop
 runtime/tool build, not generated-game-module or physical gameplay acceptance,
 and it does not close the historical iOS release provenance gap.
+
+## iPad source reconciliation after the migration
+
+A reinstall audit found that the deployed build 13 iOS host used the later frozen
+v8 audio implementation, while the old production patch stack reconstructed the
+older Apple resampling path. The migration faithfully preserved that stack, but
+it did not make it equivalent to the installed iOS binary.
+
+The maintained RecompCore fork now contains the exact preserved iOS Mixer/Tempo
+sources. CMake selects that variant only for iOS; the public header selects the
+same layout from the iPhoneOS/Simulator SDK. Desktop keeps its prior implementation.
+All consumers must be rebuilt together; swapping a single Mixer object is unsafe.
+The source hashes and deployed-core linkage evidence are retained in the fork's
+`Source/Core/AudioCommon/IOS/README.md`.
+
+A source-only regression checks source identities, CMake selection, all three SDK
+header paths and compiled frozen-tempo accounting/state behavior with sanitizers.
+The separate offline mixer suite covers pitch, latency bounds, pause, restore,
+stalls and unsupported input rate. This iOS policy supports the game's 32 kHz DMA
+input; it is not a general audio-policy change for other games or desktop builds.
+
+The full device app build also exposed a missing `GraphicsSettings.aspect_ratio_mode`
+field/application path used by the app. The exact prior implementation is restored
+in ModernGekko, with a compiled sanitizer regression for unset, standard, wide,
+stretch and invalid values. CI now builds the iOS runtime and host without private
+game inputs, in addition to the source suite, so this API mismatch cannot recur
+without a build failure.
+
+The reinstall retains the module from the actual build 13 installation receipt.
+An older prepared folder with the same build number contains different code;
+file-backed Mach-O section comparison distinguishes those artifacts. Source/build
+checks do not substitute for physical playback or gameplay acceptance.
 
 ## Remaining engineering work, in order
 

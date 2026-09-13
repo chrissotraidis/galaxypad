@@ -8,7 +8,7 @@
     },
     "modernGekko": {
       "url": "https://github.com/chrissotraidis/ModernGekko.git",
-      "revision": "ab9044b7ce4b8f859423029b05e1ecc398723efc",
+      "revision": "e98ae7ee1e76b3a0447eccdc86c313f9866bb3b1",
       "upstreamUrl": "https://github.com/ExpansionPak/ModernGekko.git",
       "upstreamRevision": "0514d9f03f8602809f66fc92fdca87d30e752997"
     },
@@ -28,13 +28,13 @@
     },
     "recompCore": {
       "url": "https://github.com/chrissotraidis/RecompCore.git",
-      "revision": "5d535c77501148c58511a82a13fd678e89615502",
+      "revision": "1a25df2187e86531f4d25fa11ed98855b6af1665",
       "upstreamUrl": "https://github.com/ExpansionPak/RecompCore.git",
       "upstreamRevision": "13e492094902644b0d113c586300d358640f9e19"
     }
   },
   "vendorRevisions": {
-    "modernGekkoRecompCoreDolphin": "5d535c77501148c58511a82a13fd678e89615502"
+    "modernGekkoRecompCoreDolphin": "1a25df2187e86531f4d25fa11ed98855b6af1665"
   },
   "tools": {
     "wit": {

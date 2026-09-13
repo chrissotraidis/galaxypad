@@ -26,6 +26,8 @@ python3 tests/test-ipad-install-assistant.py
 python3 tests/test-preview-module-interface.py
 python3 tests/test-dependency-lock.py
 python3 scripts/dependency-lock.py
+python3 tests/test-ios-audio-selection.py
+python3 tests/test-runtime-aspect-ratio.py
 
 for script in scripts/*.sh tests/*.sh; do
   [[ -e "$script" ]] || continue

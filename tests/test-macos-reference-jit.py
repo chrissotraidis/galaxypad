@@ -8,7 +8,7 @@ import tempfile
 root = Path(__file__).resolve().parents[1]
 source = root/'ref/ModernGekko/src/runtime/dolphin_runtime.cpp'
 original = source.read_bytes()
-assert hashlib.sha256(original).hexdigest() == '4d6a94340dce60254990d9ec7010fe267ba9ff3f366b5e7eef49499f8026e72d'
+assert hashlib.sha256(original).hexdigest() == '15e272f44a455223e11db1ccc09470b9255414935017dfa9e8e0a14d8da4fdb8'
 patch = root/'patches/experiments/macos-reference-jit.patch'
 powerpc = (root/'ref/ModernGekko/vendor/dolphin/Source/Core/Core/PowerPC/PowerPC.h').read_text()
 enum_start = powerpc.index('enum class CPUCore\n')

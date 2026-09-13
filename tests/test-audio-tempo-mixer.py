@@ -115,7 +115,9 @@ def run(candidate,out):
    body+=method(c,'u32 Mixer::MixerFifo::GetInputSampleRateDivisor(','\nvoid Mixer::MixerFifo::SetVolume(')
    body+=method(c,'std::pair<s32, s32> Mixer::MixerFifo::GetVolume(','\nvoid Mixer::MixerFifo::Enqueue(')
    harness=HARNESS.replace('FIXTURE_RESTORE','').replace('FIXTURE_UNSUPPORTED','').replace('FIXTURE_STATS','std::cout<<"{}\\n";')
-  unit=PREFIX+'\n#include "'+str(candidate/'AudioTempo.h')+'"\n'+extra+h+'\n'+body+'\n'+harness
+  tempo_header = candidate/'AudioTempo.h'
+  if not tempo_header.exists(): tempo_header = candidate.parent/'AudioTempo.h'
+  unit=PREFIX+'\n#include "'+str(tempo_header)+'"\n'+extra+h+'\n'+body+'\n'+harness
   (out/(variant+'.cpp')).write_text(unit)
   for label,flags in [('release',['-O3']),('sanitized',['-O1','-fsanitize=address,undefined','-fno-omit-frame-pointer'])]:
    if variant!='candidate' and label=='sanitized':continue
