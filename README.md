@@ -48,8 +48,10 @@ assets, or saves. Supply the supported image yourself. Read the
 ## Current status
 
 Development build 15 is installed on the physical iPad Pro. Its in-place update
-preserved saves and settings, and startup/title rendering was verified; hands-on
-gameplay and audio checks for this exact build remain pending. The public preview
+preserved saves and settings. The owner tested this build with a hardware
+controller and reported movement, jump/spin, pointer aiming, sound, and
+Pause → Resume all working. This is a focused gameplay check, not full-game
+validation. The public preview
 IPA still uses the build 13 host, and the iPhone 14 remains on build 7. The preview
 has not had equivalent physical iPhone acceptance. In earlier owner
 playtesting, the iPad generally holds 60 FPS with occasional dips, while the
