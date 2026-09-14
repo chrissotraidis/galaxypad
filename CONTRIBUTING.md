@@ -21,7 +21,7 @@ upstream proposal; a GalaxyPad change does not imply upstream endorsement.
 
 ## What a code review needs
 
-`main` requires a pull request and an up-to-date passing `source-checks` status,
+`main` requires a pull request and up-to-date passing `source-checks` and `ios-build` statuses,
 including for administrators. Automated checks support the review requirements
 below; they do not establish gameplay or performance acceptance.
 
