@@ -35,8 +35,9 @@ these forks, selected through pinned submodules. See the
 
 ## Experimental preview
 
-[Download the preview](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1):
-one IPA for iPhone and iPad, plus a separate Apple silicon macOS app archive.
+[Download Preview 2 for iPhone and iPad](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.2)
+(build 15). The [macOS Preview 1](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1)
+remains available separately; it has not been rebuilt for this update.
 The repository and preview downloads are public.
 
 The IPA requires signing with your own Apple account before installation; it is
@@ -51,8 +52,9 @@ Development build 15 is installed on the physical iPad Pro. Its in-place update
 preserved saves and settings. The owner tested this build with a hardware
 controller and reported movement, jump/spin, pointer aiming, sound, and
 Pause → Resume all working. This is a focused gameplay check, not full-game
-validation. The public preview
-IPA still uses the build 13 host, and the iPhone 14 remains on build 7. The preview
+validation. The public Preview 2 IPA repackages this build with updated notices
+and requires recipient signing; that newly signed archive has not separately been
+installed. The iPhone 14 remains on build 7. The preview
 has not had equivalent physical iPhone acceptance. In earlier owner
 playtesting, the iPad generally holds 60 FPS with occasional dips, while the
 iPhone 14 runs around 32 FPS in the reported scenes and needs substantial
@@ -123,8 +125,9 @@ automatically compatible. See the import instructions below.
 <details>
 <summary><strong>Can I install it now?</strong></summary>
 
-The [preview release](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1)
-provides an IPA for iPhone/iPad and an Apple silicon Mac app archive. The IPA needs
+[Preview 2](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.2)
+provides the latest iPhone/iPad IPA; the separate Apple silicon Mac app remains in
+[Preview 1](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1). The IPA needs
 your own Apple signing. Configured targets are iOS/iPadOS 16 and macOS 14; these
 are not verified minimum-device recommendations.
 
