@@ -48,6 +48,7 @@ Validation completed locally:
   files match SHA-256 byte-for-byte. The original input hash remains unchanged.
   This tests container independence, not the reporter's unavailable conversion.
 - A private wrong-revision variant is rejected before creating extraction output.
+- The complete default repository suite passes with prepared pinned dependencies.
 - Both changed Objective-C++ units compile for ARM64/iPhoneOS 26.5 against the
   pinned dependency headers. This alone is not a complete app build.
 
