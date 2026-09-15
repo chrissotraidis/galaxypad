@@ -139,8 +139,9 @@ are not verified minimum-device recommendations.
 Lighter scenes reach 60 FPS. Heavy scenes still slow down, and users still report
 audio underruns. The current depth-enabled heavy-scene Simulator result is about
 45–49 frame events/s. See [performance evidence](docs/PERFORMANCE-2026-09-12.md)
-for the measurement limits. A screenshot at 60 does not establish a consistent
-60 FPS experience.
+for the measurement limits and the [current refinement pass](docs/REFINEMENT-2026-09-15.md)
+for device findings and the next experiments. A screenshot at 60 does not establish
+a consistent 60 FPS experience.
 
 </details>
 

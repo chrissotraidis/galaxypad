@@ -60,6 +60,7 @@ bash ./tests/test-mobile-controller.sh
 bash ./tests/test-controller-pause-events.sh
 bash ./tests/test-import-activation.sh
 bash ./tests/test-import-transaction.sh
+bash ./tests/test-import-image-policy.sh
 python3 ./tests/test-runner-background-input.py
 python3 ./tests/test-psq-scale.py
 python3 ./tests/test-psq-scale-patch.py

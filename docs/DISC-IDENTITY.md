@@ -2,6 +2,22 @@
 
 Status: **exact input identified; G1 evidence complete**
 
+## Import compatibility
+
+The development reference below identifies one reproducible input, not every
+valid WBFS conversion. The importer now verifies a single-disc WBFS header,
+USA RMGE01 revision 0 in both disc and game-partition headers, the exact main
+DOL, and the home-menu RSO and symbol data. Different container sizes/layouts
+are accepted within a 5 GiB bound. ISO, split WBFS, other regions and revisions
+remain unsupported. The executable checks do not certify every asset byte.
+
+The private copy and extraction stay in staging until verification completes
+and the runtime stops. Save/NAND paths are separate. At least 9 GiB free is
+required, with additional capacity for larger containers. The developer command
+`scripts/verify-disc.sh` intentionally still checks the exact reference container
+for reproducible code generation; it is not the user-import compatibility test.
+These source changes are not in the already-published Preview 2 binary.
+
 ## Immutable source image
 
 | Field | Value |
