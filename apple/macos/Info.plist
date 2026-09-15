@@ -16,6 +16,10 @@
     <string>GalaxyPad</string>
     <key>CFBundleIconFile</key>
     <string>GalaxyPad.icns</string>
+    <key>LSApplicationCategoryType</key><string>public.app-category.adventure-games</string>
+    <key>LSSupportsGameMode</key><true/>
+    <!-- Compatibility with systems using the earlier Game Mode key. -->
+    <key>GCSupportsGameMode</key><true/>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
