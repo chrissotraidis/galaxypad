@@ -108,7 +108,7 @@ static bool ExportChecked(const DiscIO::Volume& volume, const DiscIO::Partition&
             return @"Unsupported or damaged game system data.";
           auto filesystem=volume->GetFileSystem(partition);
           if (!filesystem || !filesystem->IsValid() || filesystem->GetRoot().GetTotalChildren()>10000)
-            return @"Could not read a bounded Wii data partition.";
+            return @"Game data is damaged or unsupported.";
           if (!fs::create_directory(root,error) || error) return @"A new private extraction directory is required.";
           if (!DiscIO::ExportSystemData(*volume,partition,root.string())) return @"System-data extraction failed.";
           if (SHA256(root/"sys/main.dol",cancelled)!=GalaxyPadDOLSHA256) return @"Extracted DOL does not match the supported module identity.";
