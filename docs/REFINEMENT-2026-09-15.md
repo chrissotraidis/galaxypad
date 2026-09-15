@@ -116,6 +116,10 @@ regressions and ABI/module validation.
 
 ## Next performance loop
 
+The [follow-up timing experiment](PERFORMANCE-ITERATION-2026-09-15.md) rules out
+substantial precision waiting in the measured slow Observatory scene and records
+a fresh depth-readback lead. Its physical-phone checks remain title-screen only.
+
 Do not repeat the rejected Simulator changes unchanged: direct-copy batching
 underperformed both controls, reduced resolution barely changed the measured
 Observatory workload, and fused vertex conversion's microbenchmark gain did not

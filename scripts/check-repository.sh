@@ -43,6 +43,7 @@ bash ./tests/test-mobile-input.sh
 bash ./tests/test-thp-patch.sh
 bash ./tests/test-movement-trace.sh
 bash ./tests/test-simulator-input.sh
+bash ./tests/test-simulator-game-ini.sh
 python3 ./tests/test-pointer-reacquisition.py
 python3 ./tests/test-pointer-camera.py
 bash ./tests/test-pointer-context.sh
