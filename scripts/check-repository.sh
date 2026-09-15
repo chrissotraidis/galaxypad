@@ -29,6 +29,7 @@ python3 scripts/dependency-lock.py
 python3 tests/test-ios-audio-selection.py
 python3 tests/test-audio-search-batching.py
 python3 tests/test-module-dispatch-outline.py
+python3 tests/test-region-feasibility.py
 python3 tests/test-runtime-aspect-ratio.py
 
 for script in scripts/*.sh tests/*.sh; do
