@@ -43,3 +43,10 @@ the most sampled `StaticRecompCore::Run` instructions around per-dispatch state,
 cycle accounting and eligibility/interrupt checks. Their weights are not proof
 that those checks can be removed. Preserve timing, exceptions, host calls and
 module invalidation semantics before testing a narrower fast path.
+
+The complete default repository suite passed. Candidate 7151 was subsequently
+installed in place on the physical iPhone and launched; its runtime log confirms
+the build number and QuickTime shows startup rendering. Save-file hashes match
+before/after. Configuration files match except `TimePlayed.ini`, whose elapsed
+play-time counter advanced. The slow-scene candidate CPU/FPS comparison is pending
+the user's return to the same platform; no physical efficiency gain is claimed yet.
