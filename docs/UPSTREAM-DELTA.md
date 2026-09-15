@@ -1,5 +1,9 @@
 # Upstream delta
 
+Historical experiment ledger. Since Preview 2, runtime/compiler changes live in
+[maintained forks with pinned submodules](DEPENDENCIES.md). Patch/bootstrap
+descriptions below record earlier work and are not the current build workflow.
+
 ## R544: preserve hidden state during pointer reacquisition
 
 ModernGekko-dolphin/0023-pointer-reacquisition.patch SHA256
