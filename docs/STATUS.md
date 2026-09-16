@@ -33,8 +33,10 @@ audio-energy cache passes 80 exact-output checks and reduces host processing tim
 The owner reported severe audio chopping on 7164. Logs showed 2,176 new audio
 underruns in 32.2 seconds at 57% input supply, below the old 60% stretch floor.
 The [7165 repair](AUDIO-SLOWDOWN-2026-09-16.md) passes 42 standalone and 58
-actual-mixer cases plus the full repository suite. Physical gameplay sound
-acceptance remains open; startup output alone does not close it. A separate
+actual-mixer cases plus the full repository suite. The owner has now rejected 7165
+physical audio acceptance: sound remains bad under heavy gameplay, and no
+perceptible speed gain is reported. Lower underrun counts do not establish
+acceptable sound. A separate
 [bulk register-restore cost probe](REGISTER-TRANSFER-PROBE-2026-09-16.md) shows
 large isolated savings for multi-register loads, but is not installed and has
 no measured gameplay benefit.

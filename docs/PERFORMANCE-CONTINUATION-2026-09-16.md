@@ -149,3 +149,28 @@ one checked span can reduce complete multi-register-load cost substantially,
 while single-register cases regress. This is evidence for selective memory-work
 fusion, not permission to blanket-rewrite loads. Dynamic attribution and complete
 restore/return-region equivalence remain the next gates before a module build.
+
+
+## Investigation reset after owner rejection
+
+The owner reports days of work have not produced a perceptibly faster iPhone game,
+and rejects 7165's audio quality under load. That is the current acceptance result.
+The register-transfer experiment is not promoted and does not justify another phone
+build. Stop presenting isolated speedups or lower diagnostic counters as user benefit.
+
+The strongest architectural evidence remains the historical R424/R427 execution
+comparison in PERF.md: about 16.68 ms AOT CPU work versus 6.83 ms reference execution
+in a retained Mac scene, even with reference arena Fastmem=False (BAT fast lookup
+still enabled). This is old, single-order, cross-engine evidence, not a controlled
+current-iPhone ratio or a guarantee of 60 FPS. It supports investigating execution
+contracts rather than repeating settings or dispatch-only changes.
+
+ARM64-DIRECT-LOAD-R798.md already records why the existing offline exporter loses:
+full callee-save prologues for tiny blocks, flushes at every memory instruction,
+and store/return helper calls. Calling it a native backend does not remove that
+work. Do not repeat its ten-instruction tuning. A meaningful successor needs a
+whole connected region with values retained across the ordinary RAM path and
+explicit slow-path state materialization, plus exact suffix/timing/callback exits.
+Whole-region cost and dynamic coverage must support enough total work reduction
+before another game-module/device candidate. This remains substantial unimplemented
+compiler/runtime work; there is currently no proven iPhone-14 60-FPS solution.

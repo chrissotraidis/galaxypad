@@ -82,3 +82,17 @@ and produces nonzero audio after the initial quiet startup. It is unpaused at
 these cumulative counters are not a steady-gameplay result. The prior redacted
 runtime error recurred without stopping the process. Demanding-gameplay audio
 and FPS acceptance remain open. No public release or default promotion.
+
+
+## Owner feedback supersedes counter-based acceptance
+
+After testing 7165, the owner reports audio remains bad during demanding gameplay
+and no noticeable performance improvement. Physical audio acceptance is **failed**.
+An observed 74.10-second post-transition interval had zero new unavailable windows,
+nonzero audio output and varied 30.39–60.00 frame-event rates. This proves only that
+one counted starvation mechanism stopped during that interval, not that audible
+quality improved. Stretch artifacts, rate changes and other mixer behavior remain
+unresolved. The owner reports sound becomes acceptable in less demanding areas.
+No further build should be presented as improved audio based only on this counter.
+The live-gameplay.json receipt preserves that distinction and the earlier transition
+underruns. The game-performance goal is not achieved.
