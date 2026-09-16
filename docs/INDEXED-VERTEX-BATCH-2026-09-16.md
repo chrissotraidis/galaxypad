@@ -82,3 +82,44 @@ is low, inspect its exact formats before expanding the kernel; do not attribute
 a title-screen reading to the optimization. Even strong decoding savings may
 leave the saturated game thread limiting FPS. Sustained gameplay speed, rendering
 and audio acceptance are not established by installation or the host benchmark.
+
+## Live demanding-hub follow-up
+
+The user loaded the demanding Observatory hub and reported approximately 40 FPS,
+with 60 FPS still required. QuickTime confirms the gameplay view and an initial
+39.1 FPS display without obvious corruption in that snapshot. Decoder coverage
+was initially approximately 55–57% in recent input intervals and later approximately
+92%; these intervals differ from the frame-rate windows and are not universal
+game coverage. Three new batch-kernel variants appear in actual device samples.
+
+A post-profiler six-window observation totals 3,922 frame events over 95.100061
+seconds, or 41.24 events/second. App logs report roughly 153% process CPU on the
+one-core=100% scale, thermal state 1 (fair), low-power mode off and render scale 1.
+This is not a matched control or a direct display-presentation measurement.
+
+A 45.897-second Time Profiler capture completed. Apple's CLI exporter crashed
+with EXC_BAD_ACCESS; an NSZombieEnabled diagnostic obtained the table of contents
+but sample export still failed. Instruments' GUI successfully opened the retained
+trace and supplied these rounded weights:
+
+| Thread | Sampled CPU time |
+| --- | ---: |
+| CPU/game | 43.59 s |
+| Video | 16.08 s |
+| AudioRemoteIO | 6.79 s |
+
+The game thread therefore remains approximately 95% busy on one core. Within it,
+StaticRecompCore::Run has 6.77 seconds self time and chassis_dispatch 3.19 seconds
+self time. Their combined self time is roughly 23% of that thread, not all guest
+execution: inclusive weights must not be added. The remaining game execution is
+substantial, so dispatcher cleanup alone should not be assumed sufficient either.
+
+The video thread shows new Run<false,true>, Run<false,false> and Run<true,true>
+batch kernels at 2.48, 0.407 and 0.196 seconds self time respectively, confirming
+that the installed implementation is executing. These are not before/after gains.
+Evidence is retained in `hub-profile/gui-summary.json`, the original cpu.trace,
+and `hub-observation.json` beneath the private experiment directory.
+
+Decision: leave 7161 installed for evaluation, retain the shared decoder as an
+opt-in candidate, and prioritize reducing substantial game-thread execution next.
+This candidate has not achieved the demanding hub's 60 FPS target.
