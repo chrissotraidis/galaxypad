@@ -29,6 +29,7 @@ python3 scripts/dependency-lock.py
 python3 tests/test-ios-audio-selection.py
 python3 tests/test-audio-search-batching.py
 python3 tests/test-module-dispatch-outline.py
+python3 tests/test-module-dispatch-void.py
 python3 tests/test-region-feasibility.py
 python3 tests/test-state-access-pass.py
 python3 tests/probe-indexed-vertex-batch.py --output "$(mktemp -d "${TMPDIR:-/tmp}/galaxypad-indexed.XXXXXX")/probe"
