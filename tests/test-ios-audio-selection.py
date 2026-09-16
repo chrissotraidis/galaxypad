@@ -12,7 +12,7 @@ AUDIO = CORE / 'AudioCommon'
 EXPECTED = {
     'IOS/Mixer.cpp': '102a876d8efe784e2c37c4cadae46eadc4479f0776797a8388d16d31215565e1',
     'IOS/Mixer.h': '4e14a7db9b84f372b65ac660c8653c1f7207f243d36e2bfe9b84b5ed81ee0c27',
-    'AudioTempo.h': '373a6a3c9db469a386e963c77c9d36060becf22da245a555b69b39444e7463ed',
+    'AudioTempo.h': '4830d3f0568cb8faf50c7c2fb7720f50b9958bbed37dc310fddbbd4898035871',
 }
 for relative, digest in EXPECTED.items():
     assert hashlib.sha256((AUDIO / relative).read_bytes()).hexdigest() == digest, relative

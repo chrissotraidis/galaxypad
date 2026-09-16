@@ -1,6 +1,40 @@
 # GalaxyPad status
 
-Last updated: 2026-09-13
+Last updated: 2026-09-16
+
+## September 16: current iPhone performance handoff
+
+The attached iPhone 14 is running private test build **7163**, installed in place
+with 54 save/configuration/preference files verified byte-identical before launch.
+The app has one + touch control, no duplicate Pause, and detailed performance
+logging enabled at 1x. This is a UI update over the 7162 runtime/module, not an
+additional performance optimization. Finger-to-cursor accuracy is still open.
+See [physical feedback and deployment](IPHONE-FEEDBACK-2026-09-16.md).
+
+The owner reports roughly **43 FPS** in light gameplay and no noticeable gain.
+The last saved 7162 live window averages 46.866 after-frame events/s over 157.6 s,
+with 155.8% process CPU and serious thermal state; varying live scenes prevent a
+causal comparison. No sustained 60 FPS or mid-range-iPhone acceptance is claimed.
+The older 7161 CPU profile has the game thread near one saturated core. Getting
+43 → 60 requires about 28% less frame time, not another marginal settings change.
+
+Current retained runtime experiments: batched audio search, indexed vertex
+batches, and optional void/tail dispatch. Their component gains are not whole-game
+FPS results. Ordinary state-access cleanup emitted identical optimized objects;
+aggressive machine outlining shrank code but regressed tested execution. Earlier
+scalar resident-FP batching, narrow FP-vector kernels and lookup caching also
+failed their benefit gates. Avoid repeating those unchanged.
+
+A fresh 7163 Observatory snapshot now shows 33 FPS; a 30-second profile has 29.33 s
+of game-thread CPU work, with runtime/dispatch self cost 23.84%. A new default-off
+audio-energy cache passes 80 exact-output checks and reduces host processing time by
+8.7% versus already-batched search. It is not installed and is not a game-FPS gain.
+
+Current work is documented in [the investigation log](PERFORMANCE-CONTINUATION-2026-09-16.md).
+Runtime/compiler changes belong in maintained forks and pinned dependencies;
+no bootstrap patch stack. The running 7163 installation remains untouched during
+offline experiments. The dated entries below are historical, not current build
+identity or acceptance evidence.
 
 ## September 13: public experimental preview
 
