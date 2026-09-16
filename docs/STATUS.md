@@ -2,6 +2,14 @@
 
 Last updated: 2026-09-16
 
+## Subsequent iPad test deployment
+
+At the owner's request, the same private **7166** app is now installed and running
+on the iPad Pro (iPad14,5), iPadOS 26.6.2, replacing build 15 in place. All 33
+protected files match before/after. Module/audio initialization and frame activity
+are verified; preserved render scale is 2x. [Deployment record](IPAD-7166-2026-09-16.md).
+Owner gameplay/audio testing is pending. The iPhone and public release are unchanged.
+
 ## Session close: owner assessment and release discussion
 
 The owner considers private build 7166 to be working decently well on iPhone 14

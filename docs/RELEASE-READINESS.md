@@ -10,7 +10,9 @@ is the owner's current usable checkpoint, with heavy-scene speed, audio and touc
 limitations still documented. A new experimental IPA is for discussion only;
 publication has not been authorized. See [candidate changes and remaining package
 work](SESSION-CLOSE-2026-09-16.md#proposed-next-ipa-discussion-not-publication-approval).
-No iPad acceptance for 7166 or stable/full-game acceptance is implied.
+The same 7166 app has subsequently been installed on the iPad with preservation
+and startup verified; [owner testing is pending](IPAD-7166-2026-09-16.md). No iPad
+gameplay acceptance for 7166 or stable/full-game acceptance is implied.
 
 ## Historical release evidence
 

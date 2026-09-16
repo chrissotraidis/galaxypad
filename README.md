@@ -55,7 +55,9 @@ and finger tracking remain open. Game Mode is confirmed enabled. No meaningful
 whole-game FPS gain from the latest experiments has been established.
 
 Public downloads remain **Preview 2 (build 15)**. That build received a focused
-physical iPad Pro controller/gameplay check; the iPad has not been updated to 7166.
+physical iPad Pro controller/gameplay check. The iPad subsequently received private
+build 7166 in place, with saves/settings preserved and startup verified; owner
+gameplay and audio testing of that update is pending.
 The newer private work includes simplified Plus controls, Game Mode packaging,
 audio processing changes and more flexible supported WBFS validation. It has not
 been published. See the [session-close research and proposed IPA scope](docs/SESSION-CLOSE-2026-09-16.md)

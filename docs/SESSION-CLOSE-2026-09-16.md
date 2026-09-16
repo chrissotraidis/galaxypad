@@ -5,6 +5,14 @@ performance plans. Work is paused at the owner's request; no new IPA is authoriz
 for publication. The latest public release remains Preview 2, build 15 (verified
 with GitHub on September 16). The latest private iPhone build is 7166.
 
+## Subsequent authorized iPad test
+
+The owner then requested a hardware iPad test. The same 7166 app is now installed
+and running on the iPad Pro, with all 33 protected files unchanged and startup
+frame activity verified. [Deployment and acceptance boundary](IPAD-7166-2026-09-16.md).
+This supersedes the iPad-not-updated statements in the original checkpoint below.
+Owner gameplay feedback is pending; no public release is authorized.
+
 ## Owner assessment and acceptance
 
 At session close the owner describes the iPhone 14 result as pretty good and
