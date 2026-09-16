@@ -4,11 +4,11 @@ Last updated: 2026-09-16
 
 ## September 16: current iPhone performance handoff
 
-The attached iPhone 14 is running private test build **7163**, installed in place
+The attached iPhone 14 is running private test build **7164**, installed in place
 with 54 save/configuration/preference files verified byte-identical before launch.
 The app has one + touch control, no duplicate Pause, and detailed performance
-logging enabled at 1x. This is a UI update over the 7162 runtime/module, not an
-additional performance optimization. Finger-to-cursor accuracy is still open.
+logging enabled at 1x. This adds the optional audio-energy cache over the 7163 app, retaining its
+generated game module and other runtime objects. Finger-to-cursor accuracy is still open.
 See [physical feedback and deployment](IPHONE-FEEDBACK-2026-09-16.md).
 
 The owner reports roughly **43 FPS** in light gameplay and no noticeable gain.
@@ -28,12 +28,11 @@ failed their benefit gates. Avoid repeating those unchanged.
 A fresh 7163 Observatory snapshot now shows 33 FPS; a 30-second profile has 29.33 s
 of game-thread CPU work, with runtime/dispatch self cost 23.84%. A new default-off
 audio-energy cache passes 80 exact-output checks and reduces host processing time by
-8.7% versus already-batched search. It is not installed and is not a game-FPS gain.
+8.7% versus already-batched search. It is now enabled in private test build 7164; no game-FPS gain is established.
 
 Current work is documented in [the investigation log](PERFORMANCE-CONTINUATION-2026-09-16.md).
 Runtime/compiler changes belong in maintained forks and pinned dependencies;
-no bootstrap patch stack. The running 7163 installation remains untouched during
-offline experiments. The dated entries below are historical, not current build
+no bootstrap patch stack. The previous 7163 artifact and the 7164 deployment receipts are retained. The dated entries below are historical, not current build
 identity or acceptance evidence.
 
 ## September 13: public experimental preview

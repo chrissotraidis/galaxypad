@@ -1,6 +1,6 @@
 # Performance continuation, September 16
 
-## Current acceptance boundary
+## Acceptance boundary before the 7164 deployment
 
 Build 7163 is on the iPhone 14 with the UI repair; its core and module are from7162.
 The user reports about 43FPS and no visible gain. Saves/settings were preserved.
@@ -99,3 +99,38 @@ The newer profile should guide selection rather than another unchanged FPS route
 Trace and source receipt: generated/iphone-7163-cpu-20260916/{cpu.trace,record.log,
 gui-summary.json}. The xctrace sample exporter previously crashed; this pass uses
 Instruments GUI values and makes no claim of exported per-instruction attribution.
+
+## Requested phone test: build 7164
+
+The owner explicitly requested deployment of the latest performance candidate.
+Build 7164 enables GALAXYPAD_AUDIO_CACHED_ENERGY=1 alongside the existing batched
+search. Recompiled the actual retained mixer recipe against the maintained header,
+replaced only Mixer.cpp.o in the 7162 core archive, and relinked the unchanged 7163
+host objects. The exact signed game module is unchanged. Flags, source/header,
+object/archive/module hashes and link map are recorded in the private receipt.
+The new Synthesize symbol is present in the linked host. This is build activation
+proof; no per-search runtime hit counter or demanding-gameplay speed gain is claimed.
+
+Verified baseline 7163 on the rediscovered iPhone 14; same signer/entitlements and
+profile compatibility; deep strict signature and iPhoneOS platform checks passed.
+Backed up 54 save/configuration/preference files and installed in place. Readback
+before launch found all 54 byte-identical. CoreDevice reads back build 7164.
+The title screen rendered with one + control; startup frame windows reached about
+60 events/s. Render scale1 and detailed logging1 remain enabled. This is startup
+proof, not gameplay acceptance. The prior redacted runtime error event recurred.
+
+Opening a fresh QuickTime mirror caused an audio interruption and runtime pause.
+Closed the newly opened preview without recording, then relaunched the app to
+clear that interruption. The existing 7163 artifacts and backups are preserved.
+The resumed process stayed unpaused through the 18:12:08 log window, reporting
+59.997 frame events/s with native_menu, ui_blocked and pause_requested all zero.
+This remains title-screen evidence rather than demanding-gameplay acceptance.
+Private evidence: generated/audio-energy-7164-20260916/ (build.py, receipt.json,
+link.map, signature/platform results, preservation.json, installed app readback,
+and initial/resumed device consoles). No release/default promotion.
+
+The next major performance work must address game-body execution: the latest
+profile's saturated thread and dispersed hot chunks make another small helper
+rewrite insufficient. A complete connected hot routine must first beat current
+native code under exact entry, timing and observer semantics; older scalar-state
+and narrow-vector candidates are not re-enabled by this audio deployment.
