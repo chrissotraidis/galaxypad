@@ -826,7 +826,7 @@ static double GalaxyPadResidentMiB(void) {
   NSArray *games=@[@"A", @"B", @"Spin", @"C", @"Z"];
   NSArray *physical=@[@"A", @"B", @"X", @"Y", @"Left Trigger"];
   UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"Controller Button Mapping"
-    message:@"Assignments swap to keep every action reachable. Left stick moves; right stick aims; click right stick to recenter. Hold Left Shoulder for right-stick tilt. Right Shoulder is also A; Right Trigger is also B, so you can aim while using either action. Menu/Start or the on-screen Pause opens Galaxy’s original pause menu, including Return to Observatory when available. View/Select toggles app pause; press it again to resume. Touch Pause + also opens Galaxy’s original menu. D-pad controls the camera. Connect a controller to test."
+    message:@"Assignments swap to keep every action reachable. Left stick moves; right stick aims; click right stick to recenter. Hold Left Shoulder for right-stick tilt. Right Shoulder is also A; Right Trigger is also B, so you can aim while using either action. Menu/Start or the on-screen + opens Galaxy’s original pause menu, including Return to Observatory when available. View/Select toggles app pause; press it again to resume. D-pad controls the camera. Connect a controller to test."
     preferredStyle:UIAlertControllerStyleAlert];
   __weak GalaxyPadGameViewController *weakSelf=self;
   for (unsigned i=0;i<5;++i) {

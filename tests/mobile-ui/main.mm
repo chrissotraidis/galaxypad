@@ -218,18 +218,17 @@ static NSUInteger CountViews(UIView *root, Class type) {
   overlay.gameplayAvailable = NO;
   [overlay layoutIfNeeded];
   Check(Find(overlay,@"A",YES).hidden,"idle hides gameplay buttons");
-  Check(Find(overlay,@"galaxypad.pause",YES).hidden,"idle hides game pause");
+  Check(Find(overlay,@"galaxypad.pause",YES)==nil,"redundant pause control is absent");
   Check(!Find(overlay,@"galaxypad.menu",YES).hidden,"idle retains native menu access");
   [overlay refreshControllerVisibility]; [overlay layoutIfNeeded];
   Check(Find(overlay,@"A",YES).hidden,"controller refresh cannot reveal idle gameplay buttons");
   overlay.gameplayAvailable = YES; [overlay layoutIfNeeded];
   Check(!Find(overlay,@"A",YES).hidden,"running restores gameplay buttons");
-  Check(!Find(overlay,@"galaxypad.pause",YES).hidden,"running exposes game pause");
+  Check(!Find(overlay,@"Plus",YES).hidden,"running exposes guest Plus");
+  Check([[(UIButton *)Find(overlay,@"Plus",YES) titleForState:UIControlStateNormal] isEqual:@"+"],
+        "guest pause uses the Plus label");
   UIView *menuControl=Find(overlay,@"galaxypad.menu",YES);
-  UIView *pauseControl=Find(overlay,@"galaxypad.pause",YES);
   CGRect topSafe=UIEdgeInsetsInsetRect(overlay.bounds,overlay.safeAreaInsets);
-  Check(fabs(CGRectGetMinY(menuControl.frame)-CGRectGetMinY(pauseControl.frame))<0.5,
-        "top controls share the same vertical alignment");
   Check(CGRectGetMinY(menuControl.frame)>=CGRectGetMinY(topSafe)+19.5,
         "top controls keep the lowered iPad-safe inset");
   Check(rootMenu.children.count==8,"root menu includes the main Audio group");
@@ -375,9 +374,10 @@ static NSUInteger CountViews(UIView *root, Class type) {
   UIControl *b=(UIControl *)Find(overlay,@"B",YES);
   Check(a && b,"A and B controls exist");
   [a sendActionsForControlEvents:UIControlEventTouchDown];
-  [(UIControl *)Find(overlay,@"galaxypad.pause",YES) sendActionsForControlEvents:UIControlEventTouchUpInside];
+  [(UIControl *)Find(overlay,@"Plus",YES) sendActionsForControlEvents:UIControlEventTouchDown];
+  [(UIControl *)Find(overlay,@"Plus",YES) sendActionsForControlEvents:UIControlEventTouchUpInside];
   Check((state.buttons & (galaxypad::A | galaxypad::Plus)) == (galaxypad::A | galaxypad::Plus),
-        "visible Pause sends original Plus while preserving held touch A");
+        "visible + sends original Plus while preserving held touch A");
   Check(!overlay.blocksGameplay && !overlay.nativePauseVisible,"game Pause leaves runtime and input live");
   [NSRunLoop.mainRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.8]];
   Check(state.buttons==galaxypad::A,"game Pause pulse releases without clearing held touch");
@@ -392,9 +392,9 @@ static NSUInteger CountViews(UIView *root, Class type) {
   UIControl *pauseActivation=(UIControl *)Find(overlay,@"Plus",YES);
   [pauseActivation sendActionsForControlEvents:UIControlEventTouchDown];
   [pauseActivation sendActionsForControlEvents:UIControlEventTouchUpInside];
-  Check(state.buttons & galaxypad::Plus,"quick Pause + tap survives finger release like top Pause");
+  Check(state.buttons & galaxypad::Plus,"quick Plus tap survives finger release");
   [NSRunLoop.mainRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.8]];
-  Check(state.buttons==0,"quick Pause + tap releases its guest pulse");
+  Check(state.buttons==0,"quick Plus tap releases its guest pulse");
   Check([pauseActivation accessibilityActivate],"visible pause supports accessibility activation");
   Check(state.buttons & galaxypad::Plus,"accessibility activation presses Plus");
   [pauseActivation sendActionsForControlEvents:UIControlEventTouchDown];
@@ -442,7 +442,7 @@ static NSUInteger CountViews(UIView *root, Class type) {
     }
     Check(Find(overlay,@"Plus",YES).bounds.size.width>=100,
           "iPad Start has a readable labeled target");
-    Check([[(UIButton *)Find(overlay,@"Plus",YES) titleForState:UIControlStateNormal] isEqual:@"Pause +"],
+    Check([[(UIButton *)Find(overlay,@"Plus",YES) titleForState:UIControlStateNormal] isEqual:@"+"],
           "Pause identifies the guest plus button consistently");
 
   }
