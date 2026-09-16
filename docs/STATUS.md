@@ -4,11 +4,11 @@ Last updated: 2026-09-16
 
 ## September 16: current iPhone performance handoff
 
-The attached iPhone 14 is running private test build **7164**, installed in place
+The attached iPhone 14 is running private test build **7165**, installed in place
 with 54 save/configuration/preference files verified byte-identical before launch.
 The app has one + touch control, no duplicate Pause, and detailed performance
-logging enabled at 1x. This adds the optional audio-energy cache over the 7163 app, retaining its
-generated game module and other runtime objects. Finger-to-cursor accuracy is still open.
+logging enabled at 1x. This retains the audio-energy cache and adds an opt-in low-speed audio continuity
+repair over the 7163 app, retaining its generated game module and other runtime objects. Finger-to-cursor accuracy is still open.
 See [physical feedback and deployment](IPHONE-FEEDBACK-2026-09-16.md).
 
 The owner reports roughly **43 FPS** in light gameplay and no noticeable gain.
@@ -30,9 +30,18 @@ of game-thread CPU work, with runtime/dispatch self cost 23.84%. A new default-o
 audio-energy cache passes 80 exact-output checks and reduces host processing time by
 8.7% versus already-batched search. It is now enabled in private test build 7164; no game-FPS gain is established.
 
+The owner reported severe audio chopping on 7164. Logs showed 2,176 new audio
+underruns in 32.2 seconds at 57% input supply, below the old 60% stretch floor.
+The [7165 repair](AUDIO-SLOWDOWN-2026-09-16.md) passes 42 standalone and 58
+actual-mixer cases plus the full repository suite. Physical gameplay sound
+acceptance remains open; startup output alone does not close it. A separate
+[bulk register-restore cost probe](REGISTER-TRANSFER-PROBE-2026-09-16.md) shows
+large isolated savings for multi-register loads, but is not installed and has
+no measured gameplay benefit.
+
 Current work is documented in [the investigation log](PERFORMANCE-CONTINUATION-2026-09-16.md).
 Runtime/compiler changes belong in maintained forks and pinned dependencies;
-no bootstrap patch stack. The previous 7163 artifact and the 7164 deployment receipts are retained. The dated entries below are historical, not current build
+no bootstrap patch stack. The previous artifacts and all 7163–7165 deployment receipts are retained. The dated entries below are historical, not current build
 identity or acceptance evidence.
 
 ## September 13: public experimental preview

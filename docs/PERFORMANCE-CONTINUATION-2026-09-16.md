@@ -134,3 +134,18 @@ profile's saturated thread and dispersed hot chunks make another small helper
 rewrite insufficient. A complete connected hot routine must first beat current
 native code under exact entry, timing and observer semantics; older scalar-state
 and narrow-vector candidates are not re-enabled by this audio deployment.
+
+
+## Owner's 7164 audio report and 7165 repair
+
+The reported chopping was confirmed by new underrun deltas, not dismissed as
+subjective. Measured input supply was below the minimum permitted stretch rate.
+[Reproduction, rejected variants, repaired controller and 7165 deployment](AUDIO-SLOWDOWN-2026-09-16.md)
+record the fix and its limits. The installed app preserves all 54 protected files.
+No gameplay-FPS improvement is claimed from the audio repair.
+
+The larger CPU pass also produced an [executed register-transfer cost probe](REGISTER-TRANSFER-PROBE-2026-09-16.md):
+one checked span can reduce complete multi-register-load cost substantially,
+while single-register cases regress. This is evidence for selective memory-work
+fusion, not permission to blanket-rewrite loads. Dynamic attribution and complete
+restore/return-region equivalence remain the next gates before a module build.
