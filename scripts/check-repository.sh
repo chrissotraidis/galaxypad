@@ -22,6 +22,7 @@ bash tests/test-repository-safety.sh
 python3 tests/test-public-content.py
 python3 tests/test-preview-archive-audit.py
 python3 tests/test-ios-icons.py
+python3 tests/test-ios-game-mode.py
 python3 tests/test-ipad-install-assistant.py
 python3 tests/test-preview-module-interface.py
 python3 tests/test-dependency-lock.py

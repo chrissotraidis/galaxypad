@@ -4,8 +4,10 @@ Last updated: 2026-09-16
 
 ## September 16: current iPhone performance handoff
 
-The attached iPhone 14 is running private test build **7165**, installed in place
+The attached iPhone 14 is running private test build **7166**, installed in place
 with 54 save/configuration/preference files verified byte-identical before launch.
+7166 restores Game Mode metadata missing from the incremental app package;
+[eligibility is verified, active state and FPS benefit are not](GAME-MODE-2026-09-16.md).
 The app has one + touch control, no duplicate Pause, and detailed performance
 logging enabled at 1x. This retains the audio-energy cache and adds an opt-in low-speed audio continuity
 repair over the 7163 app, retaining its generated game module and other runtime objects. Finger-to-cursor accuracy is still open.
@@ -43,7 +45,7 @@ no measured gameplay benefit.
 
 Current work is documented in [the investigation log](PERFORMANCE-CONTINUATION-2026-09-16.md).
 Runtime/compiler changes belong in maintained forks and pinned dependencies;
-no bootstrap patch stack. The previous artifacts and all 7163–7165 deployment receipts are retained. The dated entries below are historical, not current build
+no bootstrap patch stack. The previous artifacts and all 7163–7166 deployment receipts are retained. The dated entries below are historical, not current build
 identity or acceptance evidence.
 
 ## September 13: public experimental preview
