@@ -1,5 +1,24 @@
 # GalaxyPad journal
 
+## Preview 3 release authorization and iPad feedback
+
+The owner subsequently reported build 7166 working great on the iPad and explicitly
+authorized a new IPA, README update, publication and main-branch merge. This
+supersedes earlier publication-pending and iPad-feedback-pending statements below.
+[Preview 3 notes](PREVIEW-2026-09-16.md) define the approved tested-build scope and
+remaining limitations. The release workflow retains the tested app/module rather
+than silently rebuilding gameplay code. Historical evidence below is unchanged.
+
+
+## September 16: session closed at private build 7166
+
+The owner reports the iPhone result works decently well and is ready to stop for
+today. Documented concrete UI, Game Mode, audio and importer changes separately
+from unproven whole-game FPS gains. Research, rejected hypotheses, exact dependency
+pins, artifact locations and prospective IPA scope are in the
+[session-close handoff](SESSION-CLOSE-2026-09-16.md). No new release was made.
+
+
 ## September 13 build 4
 
 See [build 4 handoff](RELEASE-PREP-2026-09-13.md) for current signed hashes,

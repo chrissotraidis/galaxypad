@@ -4,3 +4,6 @@
 inline constexpr const char* GalaxyPadImageSHA256="@GALAXYPAD_IMAGE_SHA256@";
 inline constexpr const char* GalaxyPadDOLSHA256="@GALAXYPAD_DOL_SHA256@";
 inline constexpr unsigned long long GalaxyPadImageBytes=@GALAXYPAD_IMAGE_BYTES@ULL;
+inline constexpr const char* GalaxyPadRSOSHA256="@GALAXYPAD_RSO_SHA256@";
+inline constexpr const char* GalaxyPadSymbolSHA256="@GALAXYPAD_SYMBOL_SHA256@";
+inline constexpr unsigned long long GalaxyPadDOLBytes=@GALAXYPAD_DOL_BYTES@ULL;

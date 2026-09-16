@@ -99,6 +99,8 @@ def main():
         expected_id = 'org.galaxypad.GalaxyPad' if args.platform == 'ios' else 'com.galaxypad.GalaxyPad.macos'
         if info.get('CFBundleIdentifier') != expected_id:
             raise ValueError('Unexpected bundle identifier')
+        if args.platform == 'ios':
+            run('python3', Path(__file__).with_name('check-ios-game-mode.py'), app / 'Info.plist')
         module = app / ('Frameworks/gRMGE01_recomp.dylib' if args.platform == 'ios' else 'Contents/MacOS/gRMGE01_recomp.dylib')
         if not module.is_file():
             raise ValueError('Missing AOT module')

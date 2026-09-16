@@ -1,6 +1,80 @@
 # GalaxyPad status
 
-Last updated: 2026-09-13
+## Preview 3 release authorization and iPad feedback
+
+The owner subsequently reported build 7166 working great on the iPad and explicitly
+authorized a new IPA, README update, publication and main-branch merge. This
+supersedes earlier publication-pending and iPad-feedback-pending statements below.
+[Preview 3 notes](PREVIEW-2026-09-16.md) define the approved tested-build scope and
+remaining limitations. The release workflow retains the tested app/module rather
+than silently rebuilding gameplay code. Historical evidence below is unchanged.
+
+
+Last updated: 2026-09-16
+
+## Subsequent iPad test deployment
+
+At the owner's request, the same private **7166** app is now installed and running
+on the iPad Pro (iPad14,5), iPadOS 26.6.2, replacing build 15 in place. All 33
+protected files match before/after. Module/audio initialization and frame activity
+are verified; preserved render scale is 2x. [Deployment record](IPAD-7166-2026-09-16.md).
+Owner gameplay/audio testing is pending. The iPhone and public release are unchanged.
+
+## Session close: owner assessment and release discussion
+
+The owner considers private build 7166 to be working decently well on iPhone 14
+and a good stopping point for today. This updates the overall assessment without
+establishing an absolute hardware ceiling, sustained 60 FPS or resolution of the
+earlier heavy-scene audio complaint. Work is paused. Public Preview 2/build 15
+remains unchanged; no new IPA has been produced or authorized for publication.
+Read the [complete handoff and proposed IPA changes](SESSION-CLOSE-2026-09-16.md)
+before resuming. The technical evidence and earlier feedback below remain valid.
+
+## September 16: current iPhone performance handoff
+
+The attached iPhone 14 is running private test build **7166**, installed in place
+with 54 save/configuration/preference files verified byte-identical before launch.
+7166 restores Game Mode metadata missing from the incremental app package;
+[the owner confirms Game Mode is enabled, with no established meaningful performance gain](GAME-MODE-2026-09-16.md).
+The app has one + touch control, no duplicate Pause, and detailed performance
+logging enabled at 1x. This retains the audio-energy cache and adds an opt-in low-speed audio continuity
+repair over the 7163 app, retaining its generated game module and other runtime objects. Finger-to-cursor accuracy is still open.
+See [physical feedback and deployment](IPHONE-FEEDBACK-2026-09-16.md).
+
+The owner reports roughly **43 FPS** in light gameplay and no noticeable gain.
+The last saved 7162 live window averages 46.866 after-frame events/s over 157.6 s,
+with 155.8% process CPU and serious thermal state; varying live scenes prevent a
+causal comparison. No sustained 60 FPS or mid-range-iPhone acceptance is claimed.
+The older 7161 CPU profile has the game thread near one saturated core. Getting
+43 → 60 requires about 28% less frame time, not another marginal settings change.
+
+Current retained runtime experiments: batched audio search, indexed vertex
+batches, and optional void/tail dispatch. Their component gains are not whole-game
+FPS results. Ordinary state-access cleanup emitted identical optimized objects;
+aggressive machine outlining shrank code but regressed tested execution. Earlier
+scalar resident-FP batching, narrow FP-vector kernels and lookup caching also
+failed their benefit gates. Avoid repeating those unchanged.
+
+A fresh 7163 Observatory snapshot now shows 33 FPS; a 30-second profile has 29.33 s
+of game-thread CPU work, with runtime/dispatch self cost 23.84%. A new default-off
+audio-energy cache passes 80 exact-output checks and reduces host processing time by
+8.7% versus already-batched search. It is now enabled in private test build 7164; no game-FPS gain is established.
+
+The owner reported severe audio chopping on 7164. Logs showed 2,176 new audio
+underruns in 32.2 seconds at 57% input supply, below the old 60% stretch floor.
+The [7165 repair](AUDIO-SLOWDOWN-2026-09-16.md) passes 42 standalone and 58
+actual-mixer cases plus the full repository suite. The owner has now rejected 7165
+physical audio acceptance: sound remains bad under heavy gameplay, and no
+perceptible speed gain is reported. Lower underrun counts do not establish
+acceptable sound. A separate
+[bulk register-restore cost probe](REGISTER-TRANSFER-PROBE-2026-09-16.md) shows
+large isolated savings for multi-register loads, but is not installed and has
+no measured gameplay benefit.
+
+Current work is documented in [the investigation log](PERFORMANCE-CONTINUATION-2026-09-16.md).
+Runtime/compiler changes belong in maintained forks and pinned dependencies;
+no bootstrap patch stack. The previous artifacts and all 7163–7166 deployment receipts are retained. The dated entries below are historical, not current build
+identity or acceptance evidence.
 
 ## September 13: public experimental preview
 

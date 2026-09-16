@@ -215,7 +215,6 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
 
 @implementation GalaxyPadGameOverlay {
     UIButton *_menuButton;          // the three-dot menu
-    UIButton *_pauseButton;
     UIView *_pauseOverlay;
     UIView *_pauseCard;
     UILabel *_pauseTitleLabel;
@@ -317,18 +316,6 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     _menuButton.backgroundColor = UIColor.clearColor;
     _menuButton.layer.borderWidth = 0.0;
     [self addSubview:_menuButton];
-    _pauseButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    UIButtonConfiguration *pause = [UIButtonConfiguration filledButtonConfiguration];
-    pause.title = @"Pause";
-    pause.image = [UIImage systemImageNamed:@"pause.fill"];
-    pause.imagePadding = 6;
-    pause.baseBackgroundColor = [UIColor colorWithWhite:0.06 alpha:0.72];
-    pause.baseForegroundColor = UIColor.whiteColor;
-    _pauseButton.configuration = pause;
-    _pauseButton.accessibilityIdentifier = @"galaxypad.pause";
-    _pauseButton.accessibilityLabel = @"Pause game";
-    [_pauseButton addTarget:self action:@selector(pressGamePause) forControlEvents:UIControlEventTouchUpInside];
-    [self addSubview:_pauseButton];
 }
 
 - (void)buildPauseMenu {
@@ -353,7 +340,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     [_pauseCard addSubview:_pauseTitleLabel];
 
     _pauseDetailLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    _pauseDetailLabel.text = @"Press controller View / Select again, or Back to Game, to resume.\nUse Pause or controller Menu / Start for Galaxy’s original pause screen. Choose Return to Observatory there to leave a level.";
+    _pauseDetailLabel.text = @"Press controller View / Select again, or Back to Game, to resume.\nUse + or controller Menu / Start for Galaxy’s original pause screen. Choose Return to Observatory there to leave a level.";
     _pauseDetailLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.78];
     _pauseDetailLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     _pauseDetailLabel.numberOfLines = 0;
@@ -373,10 +360,6 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     [_pauseBackButton addTarget:self action:@selector(dismissPauseMenu) forControlEvents:UIControlEventTouchUpInside];
     [_pauseCard addSubview:_pauseBackButton];
     [self addSubview:_pauseOverlay];
-}
-
-- (void)pressGamePause {
-    [self activateGameButton:[self buttonWithMask:galaxypad::Plus]];
 }
 
 - (void)presentPause {
@@ -748,7 +731,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     [self addButton:@"X" mask:galaxypad::Spin];
     [self addButton:@"Y" mask:galaxypad::C];
     [self addButton:@"Z" mask:galaxypad::Z];
-    [self addButton:@"Pause +" mask:galaxypad::Plus];
+    [self addButton:@"+" mask:galaxypad::Plus];
     [self addButton:@"1" mask:galaxypad::One];
     [self addButton:@"2" mask:galaxypad::Two];
     [self addButton:@"−" mask:galaxypad::Minus];
@@ -865,7 +848,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
 - (void)buttonDown:(GalaxyPadGameButton *)button {
     if (_editingLayout || !_settingsPanel.hidden) return;
     _touchState.buttons |= button.inputMask;
-    // Match the top Pause button: a quick tap must survive guest polling at
+    // A quick Plus tap must survive guest polling at
     // low frame rates. Physical contact remains independent of the pulse.
     if (button.inputMask == galaxypad::Plus) [self activateGameButton:button];
     button.transform = CGAffineTransformMakeScale(0.92, 0.92);
@@ -1082,9 +1065,6 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     _menuButton.frame = CGRectMake(CGRectGetMaxX(safe) - settingsSide - menuInset,
                                    CGRectGetMinY(safe) + menuInset,
                                    settingsSide, settingsSide);
-    _pauseButton.frame = CGRectMake(CGRectGetMinX(_menuButton.frame) - 108,
-                                   CGRectGetMinY(_menuButton.frame), 100, 44);
-    _pauseButton.hidden = !self.gameplayAvailable || _editingLayout;
 
     _pauseOverlay.frame = self.bounds;
     CGFloat pauseWidth = MIN(560.0, CGRectGetWidth(safe) - 80.0);
@@ -1913,7 +1893,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     UIAlertController *guide = [UIAlertController alertControllerWithTitle:@"Touch Controls"
       message:@"Left stick: move. A: jump / use / swim / grab Pull Stars. B: shoot Star Bits. X: spin. Y: reset camera. Z: crouch / dive. D-pad: camera view.\n\n"
                "Drag on the game to aim; press A or B separately. Hold A + B at the title screen. Touch aim currently drives a virtual Wii Remote and may not align with your finger.\n\n"
-               "Pause and Pause + send the same Wii + button to open Galaxy’s original pause screen when the game allows it. Controller Menu / Start does the same. Point at Return to Observatory and press A to leave a level. View / Select pauses the app; press it again to resume.\n\n"
+               "The + control sends the Wii + button to open Galaxy’s original pause screen when the game allows it. Controller Menu / Start does the same. Point at Return to Observatory and press A to leave a level. View / Select pauses the app; press it again to resume.\n\n"
                "Ball / ray: enable Show Tilt Stick in Controls, then drag the yellow stick to steer. It simulates Wii Remote tilt (not device motion) for ball and ray levels; it does not move Mario or aim the Star Pointer during ordinary play."
       preferredStyle:UIAlertControllerStyleAlert];
     [guide addAction:[UIAlertAction actionWithTitle:@"Done" style:UIAlertActionStyleCancel handler:nil]];

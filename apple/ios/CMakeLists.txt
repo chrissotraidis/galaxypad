@@ -17,6 +17,9 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${ROOT}/config/g
 string(JSON GALAXYPAD_IMAGE_SHA256 GET "${DISC_IDENTITY}" container sha256)
 string(JSON GALAXYPAD_IMAGE_BYTES GET "${DISC_IDENTITY}" container sizeBytes)
 string(JSON GALAXYPAD_DOL_SHA256 GET "${DISC_IDENTITY}" executables 0 sha256)
+string(JSON GALAXYPAD_DOL_BYTES GET "${DISC_IDENTITY}" executables 0 sizeBytes)
+string(JSON GALAXYPAD_RSO_SHA256 GET "${DISC_IDENTITY}" executables 1 sha256)
+string(JSON GALAXYPAD_SYMBOL_SHA256 GET "${DISC_IDENTITY}" executableMetadata 0 sha256)
 configure_file(../shared/GalaxyPadDiscIdentity.h.in GalaxyPadDiscIdentity.h @ONLY)
 add_executable(GalaxyPad MACOSX_BUNDLE main.mm GalaxyPadCoreHost.mm GalaxyPadMetalView.mm
   ../shared/GalaxyPadInputDevice.cpp GalaxyPadGameOverlay.mm ../shared/GalaxyPadSettings.mm

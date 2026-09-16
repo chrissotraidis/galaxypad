@@ -1,6 +1,33 @@
 # GalaxyPad release readiness
 
-Updated 2026-09-13. **Public experimental preview available; stable release not accepted.**
+## Preview 3 release authorization and iPad feedback
+
+The owner subsequently reported build 7166 working great on the iPad and explicitly
+authorized a new IPA, README update, publication and main-branch merge. This
+supersedes earlier publication-pending and iPad-feedback-pending statements below.
+[Preview 3 notes](PREVIEW-2026-09-16.md) define the approved tested-build scope and
+remaining limitations. The release workflow retains the tested app/module rather
+than silently rebuilding gameplay code. Historical evidence below is unchanged.
+
+
+Updated 2026-09-16. **Public experimental preview available; stable release not accepted.**
+
+
+## Current decision
+
+Public Preview 2/build 15 remains the latest release. Private iPhone build 7166
+is the owner's current usable checkpoint, with heavy-scene speed, audio and touch
+limitations still documented. A new experimental IPA is for discussion only;
+publication has not been authorized. See [candidate changes and remaining package
+work](SESSION-CLOSE-2026-09-16.md#proposed-next-ipa-discussion-not-publication-approval).
+The same 7166 app has subsequently been installed on the iPad with preservation
+and startup verified; [owner testing is pending](IPAD-7166-2026-09-16.md). No iPad
+gameplay acceptance for 7166 or stable/full-game acceptance is implied.
+
+## Historical release evidence
+
+The following September 13 and earlier records preserve their original scope;
+older candidate identities and pending steps are not the current handoff.
 
 See the [public-preview sanity check](PUBLIC-RELEASE-SANITY-2026-09-13.md) for
 current repository, history and published-archive audit results.

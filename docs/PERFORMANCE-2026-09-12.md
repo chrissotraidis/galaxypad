@@ -1,5 +1,9 @@
 # September 12 performance and hardware handoff
 
+> Current checkpoint: [September 16 session close](SESSION-CLOSE-2026-09-16.md).
+> The dated evidence below is retained; older build identities and next steps are historical.
+
+
 This is an unreleased development candidate. The user reports that the new iPad
 build is stable and promising, but still slows down and does not reliably respond
 to Xbox Start/Menu. Physical gameplay acceptance remains open.

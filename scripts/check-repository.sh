@@ -22,11 +22,20 @@ bash tests/test-repository-safety.sh
 python3 tests/test-public-content.py
 python3 tests/test-preview-archive-audit.py
 python3 tests/test-ios-icons.py
+python3 tests/test-ios-game-mode.py
 python3 tests/test-ipad-install-assistant.py
 python3 tests/test-preview-module-interface.py
 python3 tests/test-dependency-lock.py
 python3 scripts/dependency-lock.py
 python3 tests/test-ios-audio-selection.py
+python3 tests/test-audio-search-batching.py
+python3 tests/test-audio-energy-cache.py
+python3 tests/test-audio-low-speed.py
+python3 tests/test-module-dispatch-outline.py
+python3 tests/test-module-dispatch-void.py
+python3 tests/test-region-feasibility.py
+python3 tests/test-state-access-pass.py
+python3 tests/probe-indexed-vertex-batch.py --output "$(mktemp -d "${TMPDIR:-/tmp}/galaxypad-indexed.XXXXXX")/probe"
 python3 tests/test-runtime-aspect-ratio.py
 
 for script in scripts/*.sh tests/*.sh; do
@@ -43,6 +52,7 @@ bash ./tests/test-mobile-input.sh
 bash ./tests/test-thp-patch.sh
 bash ./tests/test-movement-trace.sh
 bash ./tests/test-simulator-input.sh
+bash ./tests/test-simulator-game-ini.sh
 python3 ./tests/test-pointer-reacquisition.py
 python3 ./tests/test-pointer-camera.py
 bash ./tests/test-pointer-context.sh
@@ -60,6 +70,7 @@ bash ./tests/test-mobile-controller.sh
 bash ./tests/test-controller-pause-events.sh
 bash ./tests/test-import-activation.sh
 bash ./tests/test-import-transaction.sh
+bash ./tests/test-import-image-policy.sh
 python3 ./tests/test-runner-background-input.py
 python3 ./tests/test-psq-scale.py
 python3 ./tests/test-psq-scale-patch.py
@@ -148,6 +159,7 @@ python3 ./tests/test-thp-policy-wiring.py
 python3 ./tests/test-dcbz-policy-wiring.py
 python3 ./tests/test-fprf-regions.py
 python3 ./tests/test-ps-fprf-chain.py
+python3 ./tests/test-native-leaf-regions.py
 python3 ./tests/test-ps-vector-addsub.py
 python3 ./tests/test-fp-single-facts.py
 python3 ./tests/test-fp-island-ranking.py

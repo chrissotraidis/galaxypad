@@ -17,6 +17,15 @@ static void TestImportDispatchAsync(dispatch_queue_t queue, dispatch_block_t blo
 #undef dispatch_async
 
 static int extractorMode=0, extractorCalls=0;
+static uint64_t fixtureBytes=GalaxyPadImageBytes;
+static std::array<unsigned char,512> fixtureHeader(uint64_t bytes) {
+  std::array<unsigned char,512> header{};
+  memcpy(header.data(),"WBFS",4);
+  uint32_t sectors=static_cast<uint32_t>(bytes>>9);
+  for (int i=0;i<4;++i) header[4+i]=sectors>>(24-i*8);
+  header[8]=9; header[9]=21; header[12]=1;
+  return header;
+}
 
 @interface TestSpaceImport : GalaxyPadImportTransaction
 @end
@@ -42,7 +51,7 @@ static int extractorMode=0, extractorCalls=0;
   assert(extractorMode!=0 && NSThread.isMainThread);
   assert(!cancelled());
   ++extractorCalls;
-  assert([NSFileManager.defaultManager attributesOfItemAtPath:image error:nil].fileSize==GalaxyPadImageBytes);
+  assert([NSFileManager.defaultManager attributesOfItemAtPath:image error:nil].fileSize==fixtureBytes);
   assert([NSFileManager.defaultManager createDirectoryAtPath:destination withIntermediateDirectories:NO attributes:nil error:nil]);
   assert([[@"synthetic extracted marker" dataUsingEncoding:NSUTF8StringEncoding]
     writeToFile:[destination stringByAppendingPathComponent:@"marker"] atomically:YES]);
@@ -83,10 +92,10 @@ int main() {
       assert([NSFileManager.defaultManager contentsOfDirectoryAtURL:root
         includingPropertiesForKeys:nil options:0 error:nil].count==1);
     }
-    // Test-only 32 MiB sparse source; production identity and extractor unchanged.
+    // Test-only 32 MiB sparse source; controlled extractor checks copy/activation only.
     NSURL *image=[root URLByAppendingPathComponent:@"copy-fixture.wbfs"];
     int fd=open(image.fileSystemRepresentation,O_CREAT|O_EXCL|O_RDWR,0600);
-    assert(fd>=0 && ftruncate(fd,GalaxyPadImageBytes)==0 && close(fd)==0);
+    assert(fd>=0 && ftruncate(fd,fixtureBytes)==0 && write(fd,fixtureHeader(fixtureBytes).data(),512)==512 && close(fd)==0);
     // A busy UI may deliver progress only after the worker's enclosing block
     // has died. The queued callback must own its values, not lambda references.
     extractorMode=1;
@@ -126,6 +135,11 @@ int main() {
     NSURL *save=[root URLByAppendingPathComponent:@"save-sentinel"];
     assert([sentinel writeToURL:save atomically:YES]);
     for (int mode=0;mode<4;++mode) {
+      // Same supported container type at different lengths must reach the
+      // content verifier. Whole-container size is not a revision identity.
+      fixtureBytes=GalaxyPadImageBytes+(mode>=2?512:0);
+      fd=open(image.fileSystemRepresentation,O_RDWR);
+      assert(fd>=0 && ftruncate(fd,fixtureBytes)==0 && write(fd,fixtureHeader(fixtureBytes).data(),512)==512 && close(fd)==0);
       extractorMode=mode>=2?2:mode;
       extractorCalls=0;
       GalaxyPadImportTransaction *transaction=[[TestSpaceImport alloc] initWithRoot:root];
@@ -183,11 +197,12 @@ int main() {
       for (NSString *entry in [NSFileManager.defaultManager contentsOfDirectoryAtPath:root.path error:nil])
         assert(![entry hasPrefix:@"GameData.import-"]);
       assert([[NSData dataWithContentsOfURL:save] isEqualToData:sentinel]);
-      assert([NSFileManager.defaultManager attributesOfItemAtPath:image.path error:nil].fileSize==GalaxyPadImageBytes);
+      assert([NSFileManager.defaultManager attributesOfItemAtPath:image.path error:nil].fileSize==fixtureBytes);
       NSData *unchanged=[NSData dataWithContentsOfURL:image];
-      assert(unchanged.length==GalaxyPadImageBytes);
+      assert(unchanged.length==fixtureBytes);
       const unsigned char *bytes=(const unsigned char *)unchanged.bytes;
-      for (NSUInteger i=0;i<unchanged.length;++i) assert(bytes[i]==0);
+      assert(memcmp(bytes,fixtureHeader(fixtureBytes).data(),512)==0);
+      for (NSUInteger i=512;i<unchanged.length;++i) assert(bytes[i]==0);
     }
     assert([NSFileManager.defaultManager removeItemAtURL:root error:nil]);
     puts("Import storage threshold, rejection, copy cancellation, extraction failure cleanup and activation gates passed");

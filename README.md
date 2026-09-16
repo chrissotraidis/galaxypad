@@ -35,8 +35,8 @@ these forks, selected through pinned submodules. See the
 
 ## Experimental preview
 
-[Download Preview 2 for iPhone and iPad](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.2)
-(build 15). The [macOS Preview 1](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1)
+[Download Preview 3 for iPhone and iPad](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.3)
+(build 7166). The [macOS Preview 1](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1)
 remains available separately; it has not been rebuilt for this update.
 The repository and preview downloads are public.
 
@@ -44,24 +44,22 @@ The IPA requires signing with your own Apple account before installation; it is
 not a TestFlight or App Store build. The Mac app is ad-hoc signed and not notarized.
 Both packages contain the AOT game-code module but no game image, extracted game
 assets, or saves. Supply the supported image yourself. Read the
-[preview notes](docs/PREVIEW-2026-09-13.md) for installation and known limitations.
+[preview notes](docs/PREVIEW-2026-09-16.md) for installation and known limitations.
 
 ## Current status
 
-Development build 15 is installed on the physical iPad Pro. Its in-place update
-preserved saves and settings. The owner tested this build with a hardware
-controller and reported movement, jump/spin, pointer aiming, sound, and
-Pause → Resume all working. This is a focused gameplay check, not full-game
-validation. The public Preview 2 IPA repackages this build with updated notices
-and requires recipient signing; that newly signed archive has not separately been
-installed. The iPhone 14 remains on build 7. The preview
-has not had equivalent physical iPhone acceptance. In earlier owner
-playtesting, the iPad generally holds 60 FPS with occasional dips, while the
-iPhone 14 runs around 32 FPS in the reported scenes and needs substantial
-optimization. These are gameplay reports, not matched benchmark results.
-Sustained performance, audio, touch accuracy, and full-game validation remain
-work in progress. The HUD counts frame events rather than guaranteeing
-displayed frames.
+**Preview 3 is based on build 7166**, tested on the owner's iPad Pro and iPhone 14.
+The owner reports it is working great on iPad. It improves supported WBFS import
+compatibility, simplifies the Plus control, corrects Game Mode packaging and
+includes audio/runtime processing refinements. See the [complete changes and
+validation boundaries](docs/PREVIEW-2026-09-16.md).
+
+Demanding scenes on iPhone 14 can still slow down, with remaining audio chopping
+and finger-tracking limitations. No meaningful whole-game FPS gain from the latest
+experiments or sustained iPhone 60 FPS is claimed. The release IPA repackages the
+iPad-tested app for recipient signing; that newly signed archive has not separately
+been tested. Saves/settings were preserved during both private device updates.
+The HUD counts frame events rather than guaranteeing displayed frames.
 
 | Area | Current result |
 | --- | --- |
@@ -139,8 +137,9 @@ are not verified minimum-device recommendations.
 Lighter scenes reach 60 FPS. Heavy scenes still slow down, and users still report
 audio underruns. The current depth-enabled heavy-scene Simulator result is about
 45–49 frame events/s. See [performance evidence](docs/PERFORMANCE-2026-09-12.md)
-for the measurement limits. A screenshot at 60 does not establish a consistent
-60 FPS experience.
+for the measurement limits and the [current refinement pass](docs/REFINEMENT-2026-09-15.md)
+for device findings and the next experiments. A screenshot at 60 does not establish
+a consistent 60 FPS experience.
 
 </details>
 
@@ -187,9 +186,12 @@ community discussion.
 
 ## Supported game data
 
-The current pipeline accepts only the pinned **RMGE01, revision 0** input described
-in [disc identity](config/galaxypad-disc.json). Another region, revision, modified
-image, or even a different container hash is not automatically supported.
+The supported game remains **USA RMGE01, revision 0**. Preview 3 validates supported executable content in bounded single-disc
+WBFS containers, allowing compatible differences in container layout. The canonical
+development image remains pinned in [disc identity](config/galaxypad-disc.json). Other
+regions/revisions, ISO and split/multidisc WBFS remain unsupported. See the
+[validation policy](docs/DISC-IDENTITY.md); a different hash alone proves neither
+compatibility nor incompatibility in the newer importer.
 
 Supply your own authorized local image. GalaxyPad does not download games.
 Keep images in ignored `ref/` and extractions, generated modules, saves and runtime

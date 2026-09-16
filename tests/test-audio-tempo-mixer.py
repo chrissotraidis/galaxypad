@@ -27,7 +27,7 @@ int main(int argc,char** argv) {
   double t=frame/48000.;bool pause=scenario=="pause"&&t>=3&&t<4;
   bool stall=scenario=="stall"&&t>=3&&t<4;
   Core::state=pause?Core::State::Paused:Core::State::Running;
-  double speed=scenario=="changing"?(t<2?1:(t<5?.67:.85)):ratio;
+  double speed=scenario=="changing"?(t<2?1:(t<5?ratio:.85)):ratio;
   owed+=(pause||stall)?0:callback*32000.*speed/48000.;
   int burst=scenario=="bursty6"?6:(scenario=="bursty"?3:1);
   size_t count=(frame/callback)%burst==burst-1?size_t(owed):0;
@@ -57,7 +57,7 @@ int main(int argc,char** argv) {
 }
 '''
 
-def run(candidate,out):
+def run(candidate,out,low_speed=False):
  out.mkdir(parents=True,exist_ok=False)
  original=(gap.experiment.SOURCE/'Mixer.cpp').read_text();oh=(gap.experiment.SOURCE/'Mixer.h').read_text()
  commands=[];results=[]
@@ -122,9 +122,14 @@ def run(candidate,out):
   for label,flags in [('release',['-O3']),('sanitized',['-O1','-fsanitize=address,undefined','-fno-omit-frame-pointer'])]:
    if variant!='candidate' and label=='sanitized':continue
    exe=out/(variant+'-'+label)
-   cmd=[shutil.which('clang++'),'-std=c++20',*flags,str(out/(variant+'.cpp')),'-o',str(exe)];commands.append(cmd);subprocess.run(cmd,check=True)
+   feature_flags = ['-DGALAXYPAD_AUDIO_LOW_SPEED=1','-DGALAXYPAD_AUDIO_BATCHED_SEARCH=1','-DGALAXYPAD_AUDIO_CACHED_ENERGY=1'] if low_speed and variant=='candidate' else []
+   cmd=[shutil.which('clang++'),'-std=c++20',*flags,*feature_flags,str(out/(variant+'.cpp')),'-o',str(exe)];commands.append(cmd);subprocess.run(cmd,check=True)
    cases=[(1,512,'steady',997)]
    if variant=='candidate':cases +=[(r,512,'steady',f) for r in (.67,.74,.85) for f in (55,997)]+[(.67,512,'bursty6',55),(.67,1024,'bursty',997),(.67,512,'changing',997),(.67,512,'stall',997),(.67,512,'pause',997),(.67,512,'restore',997),(.67,512,'unsupported',997)]
+   if low_speed and variant=='candidate':
+    cases += [(r,cb,sc,f) for r in (.55,.57,.60) for cb,sc,f in
+      ((512,'steady',55),(512,'steady',997),(512,'bursty6',55),
+       (1024,'bursty',997),(512,'changing',997))]
    for ratio,callback,scenario,freq in cases:
     stem=f'{variant}-{label}-{ratio}-{callback}-{scenario}-{freq}';path=out/(stem+'.s16')
     cmd=[str(exe),str(ratio),str(callback),scenario,str(path),str(freq)];p=subprocess.run(cmd,text=True,capture_output=True);assert p.returncode==0,(cmd,p.stdout,p.stderr)
@@ -134,7 +139,7 @@ def run(candidate,out):
      power=np.abs(np.fft.rfft(x*np.hanning(len(x))))**2;f=np.fft.rfftfreq(len(x),1/48000);peak=f[np.argmax(power)];row['pitch_hz']=float(peak);row['tone_band_power']=float(power[abs(f-freq)<=5].sum()/power.sum())
      if variant=='candidate':assert abs(peak-freq)<=2 and row['tone_band_power']>.85,row
     if variant=='candidate':
-     assert row['max_wall_age_ms']<=120,row
+     assert row['max_wall_age_ms'] <= (160 if low_speed and ratio < .67 else 120),row
      if scenario not in ('stall','unsupported'):assert row['underruns']==0,row
      if scenario=='stall':assert row['underruns']>0 and np.max(np.abs(pcm[int(3.8*48000):int(3.95*48000)]))<=1,row
      if scenario in ('pause','restore'):assert np.max(abs(pcm[int(4.4*48000):int(4.9*48000)]))>1000,row
@@ -151,4 +156,4 @@ def run(candidate,out):
  assert comparison['aligned_rms_s16_error'] <= 1 and comparison['aligned_max_s16_error'] <= 3, comparison
  (out/'reference-comparison.json').write_text(json.dumps(comparison,indent=2)+'\n');print(comparison)
 if __name__=='__main__':
- p=argparse.ArgumentParser();p.add_argument('--candidate',type=Path,required=True);p.add_argument('--output',type=Path,required=True);a=p.parse_args();run(a.candidate.resolve(),a.output.resolve())
+ p=argparse.ArgumentParser();p.add_argument('--candidate',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--low-speed',action='store_true',help='Also test opt-in 55-60% supply with a separate 160 ms wall-age budget');a=p.parse_args();run(a.candidate.resolve(),a.output.resolve(),a.low_speed)

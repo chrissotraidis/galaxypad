@@ -25,6 +25,7 @@ system_trace_seconds="${GALAXYPAD_SIMULATOR_SYSTEM_TRACE_SECONDS:-20}"
 llvm_profile_file="${GALAXYPAD_SIMULATOR_LLVM_PROFILE_FILE:-}"
 stop_after_scene="${GALAXYPAD_SIMULATOR_STOP_AFTER_SCENE:-NO}"
 log_stream_pid=""
+source "$root/scripts/simulator-game-ini.sh"
 
 die() { echo "galaxypad-unattended-simulator-loop: $*" >&2; exit 1; }
 cleanup() {
@@ -40,6 +41,7 @@ cleanup() {
   if [[ -n "$llvm_profile_file" ]]; then
     xcrun simctl spawn "$simulator" launchctl unsetenv LLVM_PROFILE_FILE >/dev/null 2>&1 || true
   fi
+  galaxypad_restore_game_ini
 }
 on_exit() {
   local status=$?
@@ -66,7 +68,7 @@ on_exit() {
       fi
     } > "$output/failure-state.log" 2>&1
   fi
-  cleanup
+  cleanup || status=1
   exit "$status"
 }
 trap on_exit EXIT
@@ -155,8 +157,7 @@ mkdir -p "$support" "$data_container/Library/Preferences"
 # app container: the Simulator launch uses the explicit read-only host paths.
 rsync -a "$save_root/" "$support/Wii/"
 if [[ -n "$local_game_ini" ]]; then
-  mkdir -p "$support/Config/GameSettings"
-  cp "$local_game_ini" "$support/Config/GameSettings/RMG.ini"
+  galaxypad_stage_game_ini "$support" "$local_game_ini" "$output" || die "could not stage game INI"
 fi
 if [[ -f "$root/generated/runtime/ipad-iteration-1/preinstall/Preferences/org.galaxypad.GalaxyPad.plist" ]]; then
   cp "$root/generated/runtime/ipad-iteration-1/preinstall/Preferences/org.galaxypad.GalaxyPad.plist" \

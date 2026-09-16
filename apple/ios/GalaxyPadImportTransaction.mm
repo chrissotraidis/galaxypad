@@ -3,7 +3,7 @@
 #import "GalaxyPadImportTransaction.h"
 #import "GalaxyPadDiscExtractor.h"
 #include "../shared/GalaxyPadImportActivation.h"
-#include "GalaxyPadDiscIdentity.h"
+#include "../shared/GalaxyPadImportImagePolicy.h"
 #include <atomic>
 #include <array>
 #include <fstream>
@@ -62,13 +62,17 @@
           std::error_code ec;
           if (!fs::is_directory(fs::symlink_status(root,ec)) || ec)
             return @"Private game-data directory is unavailable.";
-          if (!fs::is_regular_file(input,ec) || ec || fs::file_size(input,ec)!=GalaxyPadImageBytes || ec)
-            return @"Select the supported exact Galaxy image.";
-          // Exact RMGE01 only: 3.51 GB WBFS + <=4.70 GB disc-sized extraction,
-          // with filesystem/headroom allowance. Existing data stays retained.
-          // Preflight is not a reservation; copy/extraction still handle ENOSPC.
-          if ([self availableImportBytes] < (9ULL << 30))
-            return @"Import needs at least 9 GiB of available storage for the verified copy, extraction and headroom. Free space and try again; existing game data and saves are unchanged.";
+          if (!fs::is_regular_file(input,ec) || ec)
+            return @"Select a local RMGE01 revision 0 WBFS image.";
+          const uint64_t imageBytes=fs::file_size(input,ec);
+          std::ifstream header(input,std::ios::binary);
+          if (ec || !galaxypad::supportedImportContainer(header,imageBytes))
+            return @"Select a single-disc WBFS image (up to 5 GiB). ISO and split WBFS imports are not supported.";
+          const uint64_t required=galaxypad::requiredImportBytes(imageBytes);
+          // Preflight is not a reservation; writes still check for ENOSPC.
+          if ([self availableImportBytes] < required)
+            return [NSString stringWithFormat:@"Import needs at least %llu GiB of available storage for the private copy, extraction and headroom. Existing game data and saves are unchanged.",
+              (unsigned long long)((required+(1ULL<<30)-1)>>30)];
           if (!fs::create_directory(stage.fileSystemRepresentation,ec) || ec)
             return @"Could not create private import staging.";
           ownsStage=YES;
@@ -80,11 +84,11 @@
           while (in.read(buffer.data(),buffer.size()) || in.gcount()) {
             if (self->_cancelled.load()) return @"Import cancelled.";
             copied+=in.gcount();
-            if (copied>GalaxyPadImageBytes) return @"Selected image changed during import.";
+            if (copied>imageBytes) return @"Selected image changed during import.";
             out.write(buffer.data(),in.gcount());
             if (!out) return @"Image copy failed; check available storage.";
             if (progress && copied%(16*1024*1024)==0) {
-              double fraction=0.25*(double)copied/GalaxyPadImageBytes;
+              double fraction=0.25*(double)copied/imageBytes;
               // Snapshot the lambda's reference before it escapes into a block.
               // Otherwise the callback reads the released worker's capture slot.
               void (^notify)(NSString *,double)=[progress copy];
@@ -92,7 +96,7 @@
             }
           }
           out.close();
-          if (!out || in.bad() || !in.eof() || copied!=GalaxyPadImageBytes)
+          if (!out || in.bad() || !in.eof() || copied!=imageBytes)
             return @"Image copy was incomplete.";
           return nil;
         };

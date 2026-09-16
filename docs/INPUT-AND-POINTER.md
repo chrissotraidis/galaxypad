@@ -1,10 +1,10 @@
 # Input and pointer
 
-## September 13: original game pause and separate app pause
+## September 16: one game pause control and separate controller app pause
 
-The visible Pause button, touch Start +, and Xbox Menu/Start send Wii Plus to
-Galaxy. This opens the original game pause menu; its available options depend on
+The touch + button and Xbox Menu/Start send Wii Plus to Galaxy. This opens the original game pause menu; its available options depend on
 the current scene, including returning to the Observatory from supported levels.
+The redundant top Pause button was removed; the touch button is labeled +.
 Xbox View/Select separately freezes/resumes the app runtime. The three-dot menu
 blocks gameplay input while leaving runtime/audio running.
 

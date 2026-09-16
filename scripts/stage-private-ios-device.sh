@@ -25,6 +25,7 @@ done
 for key in CFBundleIcons 'CFBundleIcons~ipad'; do
   [[ "$(/usr/libexec/PlistBuddy -c "Print :$key:CFBundlePrimaryIcon:CFBundleIconName" "$app/Info.plist")" == AppIcon ]]
 done
+python3 "$root/scripts/check-ios-game-mode.py" "$app/Info.plist"
 symbols="$(xcrun nm -gjU "$module")"
 rg -Fxq '_staticrecomp_get_module' <<<"$symbols"
 install_name="$(xcrun otool -D "$module")"
