@@ -30,7 +30,7 @@ There were real code fixes, component improvements and useful rejected hypothese
 
 ## Current code and artifact identity
 
-- Working checkout: `/Users/chrissotraidis/GitHub/galaxypad-refinement`, branch
+- Working checkout: sibling worktree `galaxypad-refinement`, branch
   `codex/refinement-20260915`. Preserve the separate original checkout and any
   concurrent changes. Root implementation checkpoint: `ec6c32d`; subsequent
   session-close documentation does not rebuild the app.
