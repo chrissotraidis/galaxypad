@@ -1,5 +1,15 @@
 # September 16 session close: iPhone performance and next IPA
 
+## Preview 3 release authorization and iPad feedback
+
+The owner subsequently reported build 7166 working great on the iPad and explicitly
+authorized a new IPA, README update, publication and main-branch merge. This
+supersedes earlier publication-pending and iPad-feedback-pending statements below.
+[Preview 3 notes](PREVIEW-2026-09-16.md) define the approved tested-build scope and
+remaining limitations. The release workflow retains the tested app/module rather
+than silently rebuilding gameplay code. Historical evidence below is unchanged.
+
+
 This is the current handoff for future agents. Read it before continuing older
 performance plans. Work is paused at the owner's request; no new IPA is authorized
 for publication. The latest public release remains Preview 2, build 15 (verified

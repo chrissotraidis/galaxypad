@@ -35,8 +35,8 @@ these forks, selected through pinned submodules. See the
 
 ## Experimental preview
 
-[Download Preview 2 for iPhone and iPad](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.2)
-(build 15). The [macOS Preview 1](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1)
+[Download Preview 3 for iPhone and iPad](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.3)
+(build 7166). The [macOS Preview 1](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1)
 remains available separately; it has not been rebuilt for this update.
 The repository and preview downloads are public.
 
@@ -44,25 +44,22 @@ The IPA requires signing with your own Apple account before installation; it is
 not a TestFlight or App Store build. The Mac app is ad-hoc signed and not notarized.
 Both packages contain the AOT game-code module but no game image, extracted game
 assets, or saves. Supply the supported image yourself. Read the
-[preview notes](docs/PREVIEW-2026-09-13.md) for installation and known limitations.
+[preview notes](docs/PREVIEW-2026-09-16.md) for installation and known limitations.
 
 ## Current status
 
-The latest private iPhone 14 test build is **7166**. At the September 16 session
-close, the owner described it as working decently well and a good current stopping
-point. Demanding scenes still slow down; sustained 60 FPS, consistent audio quality
-and finger tracking remain open. Game Mode is confirmed enabled. No meaningful
-whole-game FPS gain from the latest experiments has been established.
+**Preview 3 is based on build 7166**, tested on the owner's iPad Pro and iPhone 14.
+The owner reports it is working great on iPad. It improves supported WBFS import
+compatibility, simplifies the Plus control, corrects Game Mode packaging and
+includes audio/runtime processing refinements. See the [complete changes and
+validation boundaries](docs/PREVIEW-2026-09-16.md).
 
-Public downloads remain **Preview 2 (build 15)**. That build received a focused
-physical iPad Pro controller/gameplay check. The iPad subsequently received private
-build 7166 in place, with saves/settings preserved and startup verified; owner
-gameplay and audio testing of that update is pending.
-The newer private work includes simplified Plus controls, Game Mode packaging,
-audio processing changes and more flexible supported WBFS validation. It has not
-been published. See the [session-close research and proposed IPA scope](docs/SESSION-CLOSE-2026-09-16.md)
-for exact evidence and what remains experimental. The HUD counts frame events
-rather than guaranteeing displayed frames.
+Demanding scenes on iPhone 14 can still slow down, with remaining audio chopping
+and finger-tracking limitations. No meaningful whole-game FPS gain from the latest
+experiments or sustained iPhone 60 FPS is claimed. The release IPA repackages the
+iPad-tested app for recipient signing; that newly signed archive has not separately
+been tested. Saves/settings were preserved during both private device updates.
+The HUD counts frame events rather than guaranteeing displayed frames.
 
 | Area | Current result |
 | --- | --- |
@@ -189,10 +186,9 @@ community discussion.
 
 ## Supported game data
 
-The supported game remains **USA RMGE01, revision 0**. Public Preview 2 uses the
-pinned container identity in [disc identity](config/galaxypad-disc.json). The newer
-unreleased importer validates supported executable content in bounded single-disc
-WBFS containers, allowing compatible differences in container layout. Other
+The supported game remains **USA RMGE01, revision 0**. Preview 3 validates supported executable content in bounded single-disc
+WBFS containers, allowing compatible differences in container layout. The canonical
+development image remains pinned in [disc identity](config/galaxypad-disc.json). Other
 regions/revisions, ISO and split/multidisc WBFS remain unsupported. See the
 [validation policy](docs/DISC-IDENTITY.md); a different hash alone proves neither
 compatibility nor incompatibility in the newer importer.
