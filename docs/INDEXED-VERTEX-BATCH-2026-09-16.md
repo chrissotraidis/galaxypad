@@ -1,5 +1,9 @@
 # Indexed vertex batch candidate: iPhone build 7161
 
+> Session closed: [current build, owner assessment and research handoff](SESSION-CLOSE-2026-09-16.md).
+> This document retains the evidence and acceptance limits of its dated experiment.
+
+
 ## Implemented and installed
 
 RecompCore commit `4858407278` adds an opt-in whole-batch software decoder.

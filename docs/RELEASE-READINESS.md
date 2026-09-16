@@ -1,6 +1,21 @@
 # GalaxyPad release readiness
 
-Updated 2026-09-13. **Public experimental preview available; stable release not accepted.**
+Updated 2026-09-16. **Public experimental preview available; stable release not accepted.**
+
+
+## Current decision
+
+Public Preview 2/build 15 remains the latest release. Private iPhone build 7166
+is the owner's current usable checkpoint, with heavy-scene speed, audio and touch
+limitations still documented. A new experimental IPA is for discussion only;
+publication has not been authorized. See [candidate changes and remaining package
+work](SESSION-CLOSE-2026-09-16.md#proposed-next-ipa-discussion-not-publication-approval).
+No iPad acceptance for 7166 or stable/full-game acceptance is implied.
+
+## Historical release evidence
+
+The following September 13 and earlier records preserve their original scope;
+older candidate identities and pending steps are not the current handoff.
 
 See the [public-preview sanity check](PUBLIC-RELEASE-SANITY-2026-09-13.md) for
 current repository, history and published-archive audit results.

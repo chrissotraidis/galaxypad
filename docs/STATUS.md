@@ -2,12 +2,22 @@
 
 Last updated: 2026-09-16
 
+## Session close: owner assessment and release discussion
+
+The owner considers private build 7166 to be working decently well on iPhone 14
+and a good stopping point for today. This updates the overall assessment without
+establishing an absolute hardware ceiling, sustained 60 FPS or resolution of the
+earlier heavy-scene audio complaint. Work is paused. Public Preview 2/build 15
+remains unchanged; no new IPA has been produced or authorized for publication.
+Read the [complete handoff and proposed IPA changes](SESSION-CLOSE-2026-09-16.md)
+before resuming. The technical evidence and earlier feedback below remain valid.
+
 ## September 16: current iPhone performance handoff
 
 The attached iPhone 14 is running private test build **7166**, installed in place
 with 54 save/configuration/preference files verified byte-identical before launch.
 7166 restores Game Mode metadata missing from the incremental app package;
-[eligibility is verified, active state and FPS benefit are not](GAME-MODE-2026-09-16.md).
+[the owner confirms Game Mode is enabled, with no established meaningful performance gain](GAME-MODE-2026-09-16.md).
 The app has one + touch control, no duplicate Pause, and detailed performance
 logging enabled at 1x. This retains the audio-energy cache and adds an opt-in low-speed audio continuity
 repair over the 7163 app, retaining its generated game module and other runtime objects. Finger-to-cursor accuracy is still open.

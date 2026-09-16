@@ -1,5 +1,9 @@
 # Physical sustained run and dispatcher experiment
 
+> Session closed: [current build, owner assessment and research handoff](SESSION-CLOSE-2026-09-16.md).
+> This document retains the evidence and acceptance limits of its dated experiment.
+
+
 Build 7151 remained installed on iPhone 14, iOS 26.6.2. The user reported about
 40 FPS. A 90-second Time Profiler capture and a subsequent unprofiled window
 show that this initial reading did not persist. QuickTime showed Luigi closer

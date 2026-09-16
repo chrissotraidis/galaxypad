@@ -1,5 +1,9 @@
 # Performance continuation, September 16
 
+> Current checkpoint: [September 16 session close](SESSION-CLOSE-2026-09-16.md).
+> The dated evidence below is retained; older build identities and next steps are historical.
+
+
 ## Acceptance boundary before the 7164 deployment
 
 Build 7163 is on the iPhone 14 with the UI repair; its core and module are from7162.

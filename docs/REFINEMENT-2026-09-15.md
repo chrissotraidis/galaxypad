@@ -1,5 +1,9 @@
 # GalaxyPad refinement pass — September 15, 2026
 
+> Current checkpoint: [September 16 session close](SESSION-CLOSE-2026-09-16.md).
+> The dated evidence below is retained; older build identities and next steps are historical.
+
+
 The maintenance criticism and the performance complaints have different status.
 The fork/attribution work shipped in Preview 2. Valid WBFS conversion rejection
 needed another repair. Sustained heavy-scene performance remains open.

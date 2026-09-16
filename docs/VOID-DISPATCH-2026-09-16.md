@@ -1,5 +1,9 @@
 # Optional tail-call dispatch experiment
 
+> Session closed: [current build, owner assessment and research handoff](SESSION-CLOSE-2026-09-16.md).
+> This document retains the evidence and acceptance limits of its dated experiment.
+
+
 This pass implements a runtime/module change, rather than another structural
 candidate census. It does not yet establish an iPhone gameplay speedup.
 

@@ -1,5 +1,9 @@
 # Native-function feasibility on slower iPhones
 
+> Session closed: [current build, owner assessment and research handoff](SESSION-CLOSE-2026-09-16.md).
+> This document retains the evidence and acceptance limits of its dated experiment.
+
+
 No additional iPhone speedup is established by this pass. Build 7161 remains
 installed. The new work is an executable structural audit of function-sized
 regions, not a runtime optimization or a new test build.

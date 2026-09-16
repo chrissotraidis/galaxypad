@@ -1,5 +1,9 @@
 # State-access pass implemented; standalone speed hypothesis rejected
 
+> Session closed: [current build, owner assessment and research handoff](SESSION-CLOSE-2026-09-16.md).
+> This document retains the evidence and acceptance limits of its dated experiment.
+
+
 The maintained DolRecomp fork now contains an explicitly invoked state-access
 pass, a ROM-free differential test and offline corpus/object probes. It is not
 called by normal C or LLVM generation. The installed iPhone uses the C backend

@@ -44,3 +44,11 @@ supply privately. Missing provenance is unfinished release work; an old binary
 cannot acquire a complete source history by updating today's checkout.
 
 Do not describe a change as merged, published or device-validated before it is.
+
+## Current performance handoff
+
+Before resuming performance work, read
+[the September 16 session-close handoff](docs/SESSION-CLOSE-2026-09-16.md) and
+[STATUS](docs/STATUS.md). They distinguish the latest private phone build, public
+release, owner feedback, rejected experiments and unresolved architectural work.
+Do not treat historical plans or component benchmarks as current gameplay gains.

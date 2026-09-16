@@ -1,5 +1,9 @@
 # Batched audio correlation experiment
 
+> Session closed: [current build, owner assessment and research handoff](SESSION-CLOSE-2026-09-16.md).
+> This document retains the evidence and acceptance limits of its dated experiment.
+
+
 The physical iPhone 14 slow-scene trace attributes 1.808 seconds of CPU samples
 in a 30-second window to `AudioTempo::Synthesize`, approximately 6% of one core.
 The game CPU thread separately accounts for 29.274 seconds: this audio change

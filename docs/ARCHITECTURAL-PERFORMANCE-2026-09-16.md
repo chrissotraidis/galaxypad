@@ -1,5 +1,9 @@
 # Architectural performance review — 16 September 2026
 
+> Current checkpoint: [September 16 session close](SESSION-CLOSE-2026-09-16.md).
+> The dated evidence below is retained; older build identities and next steps are historical.
+
+
 Research and source inspection only. No new gameplay comparisons, builds,
 installations, or performance claims. This changes the proposed investigation
 priority from the dispatcher-wrapper candidate to the compiler's execution model.

@@ -1,5 +1,9 @@
 # Performance iteration: September 15, 2026
 
+> Session closed: [current build, owner assessment and research handoff](SESSION-CLOSE-2026-09-16.md).
+> This document retains the evidence and acceptance limits of its dated experiment.
+
+
 Follow-up: the [game-INI harness repair](SIMULATOR-GAME-INI-2026-09-15.md)
 found that requested local settings were being staged in an ignored directory.
 The earlier precision-timing result uses launch flags and is unaffected.

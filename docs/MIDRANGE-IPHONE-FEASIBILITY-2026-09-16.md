@@ -1,5 +1,9 @@
 # Mid-range iPhone: implementation feasibility pass
 
+> Session closed: [current build, owner assessment and research handoff](SESSION-CLOSE-2026-09-16.md).
+> This document retains the evidence and acceptance limits of its dated experiment.
+
+
 This continues [the port architecture research](PORT-ARCHITECTURE-RESEARCH-2026-09-16.md).
 No installed app changed. The new result is a bounded CPU-cache equivalence
 experiment, not a frame-rate improvement.

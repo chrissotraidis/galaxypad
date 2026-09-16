@@ -1,5 +1,9 @@
 # iPhone audio starvation below 36 FPS
 
+> Session closed: [current build, owner assessment and research handoff](SESSION-CLOSE-2026-09-16.md).
+> This document retains the evidence and acceptance limits of its dated experiment.
+
+
 The owner reported severely choppy audio in build 7164. Its live iPhone 14 log
 confirms 2,176 new unavailable synthesis windows in 32.199 seconds. Real input
 supply, calculated from enqueue deltas, was 56.995% of full speed. Output callback

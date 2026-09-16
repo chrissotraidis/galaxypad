@@ -1,5 +1,9 @@
 # Whole register-transfer cost probe
 
+> Session closed: [current build, owner assessment and research handoff](SESSION-CLOSE-2026-09-16.md).
+> This document retains the evidence and acceptance limits of its dated experiment.
+
+
 This is a new isolated cost experiment, not an installed game optimization or a
 claim that it closes the iPhone's FPS gap. The installed audio repair is separate.
 

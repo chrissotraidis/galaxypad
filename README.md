@@ -48,20 +48,19 @@ assets, or saves. Supply the supported image yourself. Read the
 
 ## Current status
 
-Development build 15 is installed on the physical iPad Pro. Its in-place update
-preserved saves and settings. The owner tested this build with a hardware
-controller and reported movement, jump/spin, pointer aiming, sound, and
-Pause → Resume all working. This is a focused gameplay check, not full-game
-validation. The public Preview 2 IPA repackages this build with updated notices
-and requires recipient signing; that newly signed archive has not separately been
-installed. The iPhone 14 remains on build 7. The preview
-has not had equivalent physical iPhone acceptance. In earlier owner
-playtesting, the iPad generally holds 60 FPS with occasional dips, while the
-iPhone 14 runs around 32 FPS in the reported scenes and needs substantial
-optimization. These are gameplay reports, not matched benchmark results.
-Sustained performance, audio, touch accuracy, and full-game validation remain
-work in progress. The HUD counts frame events rather than guaranteeing
-displayed frames.
+The latest private iPhone 14 test build is **7166**. At the September 16 session
+close, the owner described it as working decently well and a good current stopping
+point. Demanding scenes still slow down; sustained 60 FPS, consistent audio quality
+and finger tracking remain open. Game Mode is confirmed enabled. No meaningful
+whole-game FPS gain from the latest experiments has been established.
+
+Public downloads remain **Preview 2 (build 15)**. That build received a focused
+physical iPad Pro controller/gameplay check; the iPad has not been updated to 7166.
+The newer private work includes simplified Plus controls, Game Mode packaging,
+audio processing changes and more flexible supported WBFS validation. It has not
+been published. See the [session-close research and proposed IPA scope](docs/SESSION-CLOSE-2026-09-16.md)
+for exact evidence and what remains experimental. The HUD counts frame events
+rather than guaranteeing displayed frames.
 
 | Area | Current result |
 | --- | --- |
@@ -188,9 +187,13 @@ community discussion.
 
 ## Supported game data
 
-The current pipeline accepts only the pinned **RMGE01, revision 0** input described
-in [disc identity](config/galaxypad-disc.json). Another region, revision, modified
-image, or even a different container hash is not automatically supported.
+The supported game remains **USA RMGE01, revision 0**. Public Preview 2 uses the
+pinned container identity in [disc identity](config/galaxypad-disc.json). The newer
+unreleased importer validates supported executable content in bounded single-disc
+WBFS containers, allowing compatible differences in container layout. Other
+regions/revisions, ISO and split/multidisc WBFS remain unsupported. See the
+[validation policy](docs/DISC-IDENTITY.md); a different hash alone proves neither
+compatibility nor incompatibility in the newer importer.
 
 Supply your own authorized local image. GalaxyPad does not download games.
 Keep images in ignored `ref/` and extractions, generated modules, saves and runtime

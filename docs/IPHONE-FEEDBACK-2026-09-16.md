@@ -1,5 +1,9 @@
 # iPhone feedback: build 7162
 
+> Current checkpoint: [September 16 session close](SESSION-CLOSE-2026-09-16.md).
+> The dated evidence below is retained; older build identities and next steps are historical.
+
+
 ## Installed identity and live evidence
 
 Read-only CoreDevice inspection confirmed the installed app is build 7162,
