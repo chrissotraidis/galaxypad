@@ -31,6 +31,7 @@ python3 tests/test-audio-search-batching.py
 python3 tests/test-module-dispatch-outline.py
 python3 tests/test-region-feasibility.py
 python3 tests/test-state-access-pass.py
+python3 tests/probe-indexed-vertex-batch.py --output "$(mktemp -d "${TMPDIR:-/tmp}/galaxypad-indexed.XXXXXX")/probe"
 python3 tests/test-runtime-aspect-ratio.py
 
 for script in scripts/*.sh tests/*.sh; do
