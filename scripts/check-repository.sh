@@ -155,6 +155,7 @@ python3 ./tests/test-thp-policy-wiring.py
 python3 ./tests/test-dcbz-policy-wiring.py
 python3 ./tests/test-fprf-regions.py
 python3 ./tests/test-ps-fprf-chain.py
+python3 ./tests/test-native-leaf-regions.py
 python3 ./tests/test-ps-vector-addsub.py
 python3 ./tests/test-fp-single-facts.py
 python3 ./tests/test-fp-island-ranking.py
