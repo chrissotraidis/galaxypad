@@ -9,6 +9,7 @@
 #import "GalaxyPadReportViewController.h"
 #import "GalaxyPadAboutViewController.h"
 #import "GalaxyPadControllers.h"
+#import "GalaxyPadGyroPointer.h"
 #import "GalaxyPadImportTransaction.h"
 #include "../shared/GalaxyPadImportActivation.h"
 #include "../shared/GalaxyPadMovementTrace.h"
@@ -53,6 +54,7 @@ static double GalaxyPadResidentMiB(void) {
   NSTimer *_startupTimer;
   GalaxyPadGameOverlay *_overlay;
   GalaxyPadControllers *_controllers;
+  GalaxyPadGyroPointer *_gyro;
   BOOL _applicationActive;
   NSTimer *_uiTimer;
   UILabel *_fpsLabel;
@@ -132,13 +134,47 @@ static double GalaxyPadResidentMiB(void) {
     if (view && !view->_menuPresented) {
       static galaxypad::MovementTrace trace("touch");
       trace.record(input.moveX,input.moveY);
+      [view->_gyro acceptTouch:input];
       [view->_host publishInput:input source:galaxypad::InputSource::Touch];
     }
   };
   __weak GalaxyPadGameOverlay *weakOverlay = _overlay;
+  _overlay.tiltModeChanged = ^(galaxypad::TiltMode mode) {
+    GalaxyPadGameViewController *view=weakSelf;
+    if (view) [view->_host setTiltMode:mode];
+  };
   _controllers = [[GalaxyPadControllers alloc] init];
   __weak GalaxyPadControllers *weakControllers = _controllers;
+  _gyro=[GalaxyPadGyroPointer new];
+  __weak GalaxyPadGyroPointer *weakGyro=_gyro;
+  _gyro.inputAllowed=^BOOL {
+    GalaxyPadGameViewController *view=weakSelf;
+    return view && view->_applicationActive && view->_host.busy && !view->_host.paused &&
+      !view->_menuPresented && view->_overlay.rideTiltMode==galaxypad::TiltMode::Normal &&
+      !view->_controllers.motionController.extendedGamepad.leftShoulder.isPressed;
+  };
+  _gyro.orientation=^UIInterfaceOrientation { return weakSelf.view.window.windowScene.interfaceOrientation; };
+  _gyro.controller=^GCController * { return weakControllers.motionController; };
+  _gyro.inputChanged=^(galaxypad::InputState state) {
+    GalaxyPadGameViewController *view=weakSelf;
+    if (view) [view->_host publishInput:state source:galaxypad::InputSource::Gyro];
+  };
+  _gyro.statusChanged=^(NSString *status) {
+    weakOverlay.gyroStatus=status;
+    GalaxyPadLog(@"gyro cursor: %@",status);
+  };
+  _controllers.aimChanged=^(float x,float y,BOOL recenter) { [weakGyro setStickX:x y:y recenter:recenter]; };
+  _overlay.gyroSettingsChanged=^{
+    GalaxyPadSettings *settings=GalaxyPadSettings.sharedSettings;
+    GalaxyPadLog(@"gyro cursor settings: source=%ld sensitivity=%.2f invert_y=%d",
+      (long)settings.gyroPointerSource,(double)settings.gyroPointerSensitivity,settings.gyroPointerInvertY);
+    GalaxyPadGameViewController *view=weakSelf;
+    if (view) [view->_host clearInput];
+  };
+  _overlay.gyroRecenterRequested=^{ [weakGyro recenter]; };
+  [_gyro start];
   _host.onInputReset = ^{
+    [weakGyro reset];
     [weakOverlay reset]; [weakControllers reset];
 #if TARGET_OS_SIMULATOR
     GalaxyPadGameViewController *view=weakSelf;
@@ -826,7 +862,7 @@ static double GalaxyPadResidentMiB(void) {
   NSArray *games=@[@"A", @"B", @"Spin", @"C", @"Z"];
   NSArray *physical=@[@"A", @"B", @"X", @"Y", @"Left Trigger"];
   UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"Controller Button Mapping"
-    message:@"Assignments swap to keep every action reachable. Left stick moves; right stick aims; click right stick to recenter. Hold Left Shoulder for right-stick tilt. Right Shoulder is also A; Right Trigger is also B, so you can aim while using either action. Menu/Start or the on-screen + opens Galaxy’s original pause menu, including Return to Observatory when available. View/Select toggles app pause; press it again to resume. D-pad controls the camera. Connect a controller to test."
+    message:@"Assignments swap to keep every action reachable. Left stick moves; right stick aims; click right stick to recenter. Choose Controls → Stick Mode for Ray Surfing or Star Ball: left stick tilts, with the correct remote pose. Return to Normal for walking and aiming. Hold Left Shoulder for optional right-stick tilt. Right Shoulder is also A; Right Trigger is also B, so you can aim while using either action. Menu/Start or the on-screen + opens Galaxy’s original pause menu, including Return to Observatory when available. View/Select toggles app pause; press it again to resume. D-pad controls the camera. Connect a controller to test."
     preferredStyle:UIAlertControllerStyleAlert];
   __weak GalaxyPadGameViewController *weakSelf=self;
   for (unsigned i=0;i<5;++i) {

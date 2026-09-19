@@ -33,6 +33,7 @@ public:
          {"Plus", Plus}, {"Minus", Minus}, {"Spin", Spin}, {"Up", Up},
          {"Down", Down}, {"Left", Left}, {"Right", Right}, {"One", One}, {"Two", Two}})
       add(name, [bit](const InputState& s) { return (s.buttons & bit) ? 1.0 : 0.0; });
+    add("Upright", [](const InputState& s) { return s.upright ? 1.0 : 0.0; });
     axis("MoveX", &InputState::moveX);
     axis("MoveY", &InputState::moveY);
     axis("TiltX", &InputState::tiltX);
@@ -100,6 +101,8 @@ IR/Hide = `PointerHidden`
 Shake/X = `Spin`
 Shake/Y = `Spin`
 Shake/Z = `Spin`
+Hotkeys/Upright Hold = `Upright`
+Tilt/Angle = 85
 Tilt/Left = `TiltX-`
 Tilt/Right = `TiltX+`
 Tilt/Forward = `TiltY+`

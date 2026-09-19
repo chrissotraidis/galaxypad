@@ -23,7 +23,7 @@ string(JSON GALAXYPAD_SYMBOL_SHA256 GET "${DISC_IDENTITY}" executableMetadata 0 
 configure_file(../shared/GalaxyPadDiscIdentity.h.in GalaxyPadDiscIdentity.h @ONLY)
 add_executable(GalaxyPad MACOSX_BUNDLE main.mm GalaxyPadCoreHost.mm GalaxyPadMetalView.mm
   ../shared/GalaxyPadInputDevice.cpp GalaxyPadGameOverlay.mm ../shared/GalaxyPadSettings.mm
-  ../shared/GalaxyPadDiagnostics.mm GalaxyPadReportViewController.mm GalaxyPadAboutViewController.mm GalaxyPadControllers.mm
+  ../shared/GalaxyPadDiagnostics.mm GalaxyPadReportViewController.mm GalaxyPadAboutViewController.mm GalaxyPadControllers.mm GalaxyPadGyroPointer.mm
   ../shared/GalaxyPadControllerMappingStore.mm GalaxyPadDiscExtractor.mm GalaxyPadImportTransaction.mm)
 option(GALAXYPAD_ENABLE_NATIVE_THP "Compile private opt-in native THP candidate" OFF)
 if(GALAXYPAD_ENABLE_NATIVE_THP)

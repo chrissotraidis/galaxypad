@@ -14,6 +14,12 @@ typedef NS_ENUM(NSInteger, GalaxyPadAspectRatioMode) {
     GalaxyPadAspectRatioFillScreen = 2,
 };
 
+typedef NS_ENUM(NSInteger, GalaxyPadGyroPointerSource) {
+    GalaxyPadGyroPointerOff = 0,
+    GalaxyPadGyroPointerDevice = 1,
+    GalaxyPadGyroPointerController = 2,
+};
+
 /* Persisted GalaxyPad settings shared by macOS, iOS, and iPadOS. Stored in
  * NSUserDefaults so each platform keeps the same user-facing options.
  */
@@ -43,6 +49,11 @@ typedef NS_ENUM(NSInteger, GalaxyPadAspectRatioMode) {
 /* Touch tilt only; movement and physical-controller axes remain unchanged. */
 @property(nonatomic, assign) CGFloat touchTiltSensitivity; // 0.5..1.5, default 1
 @property(nonatomic, assign) BOOL touchTiltInvertY;
+
+/* Gyro cursor aiming is independent of ride tilt. Off by default. */
+@property(nonatomic, assign) GalaxyPadGyroPointerSource gyroPointerSource;
+@property(nonatomic, assign) CGFloat gyroPointerSensitivity;
+@property(nonatomic, assign) BOOL gyroPointerInvertY;
 
 /* Per-control size overrides (1.0 = default), keyed by control identifier. */
 - (CGFloat)sizeScaleForControl:(NSString *)identifier;

@@ -1,5 +1,6 @@
 #include "../apple/shared/GalaxyPadInput.h"
 #include <cassert>
+#include <array>
 #include <limits>
 #include <cstdio>
 using namespace galaxypad;
@@ -91,5 +92,59 @@ int main() {
   s=mixer.consume();assert(observedButtons==Spin && s.pointerX==.9f);
   mixer.clearAll();s=mixer.consume();assert(!s.pointerVisible && !s.buttons);
   assert(calls>=5); // Hidden/cleared input cannot be resurrected by mapper output.
+  // Settled Wii gravity from Dolphin's Rx(upright) * Ry(roll) * Rx(-pitch).
+  // Check the game's tutorial predicates, not just that axes were reassigned.
+  auto gravity=[](const InputState& state) {
+    constexpr float radians=3.14159265358979323846f/180;
+    float roll=state.tiltX*85*radians, pitch=state.tiltY*85*radians;
+    float x=std::sin(roll)*std::cos(pitch), y=std::sin(pitch);
+    float z=std::cos(roll)*std::cos(pitch);
+    return state.upright ? std::array<float,3>{x,-z,y} : std::array<float,3>{x,y,z};
+  };
+  // Mode changes clear held axes and unconsumed presses from both sources.
+  touch={};touch.buttons=A;touch.moveX=1;touch.pointerVisible=true;
+  mixer.set(InputSource::Touch,touch);
+  mixer.setTiltMode(TiltMode::RaySurfing);
+  s=mixer.consume();assert(!s.buttons && s.tiltX==0 && !s.upright);
+  mixer.set(InputSource::Touch,touch);s=mixer.consume();
+  assert(s.buttons==A && s.moveX==0 && s.moveY==0 && !s.pointerVisible);
+  assert(std::abs(s.tiltX-60.f/85)<1e-6 && s.tiltY==0);
+  auto g=gravity(s);assert(g[0]>=.65f && g[1]>=-.5f);
+  controller={};controller.moveX=-1;controller.moveY=1;controller.buttons=Spin;
+  mixer.clear(InputSource::Touch);mixer.set(InputSource::Controller,controller);
+  s=mixer.consume();assert(s.tiltX<0 && s.tiltY==0 && s.buttons==Spin);
+  g=gravity(s);assert(g[0]<=-.65f && g[1]>=-.5f);
+  mixer.setTiltMode(TiltMode::StarBall);
+  s=mixer.consume();assert(s.upright && s.tiltX==0 && !s.buttons);
+  assert(std::abs(s.tiltY-10.f/85)<1e-6); // calibrated resting pose, not forward drift
+  g=gravity(s);
+  assert(-g[1]>std::cos(30.f*3.14159265f/180)); // upright tutorial within 30 degrees
+  assert(std::abs(std::atan2(g[2],-g[1])*180/3.14159265f-10)<.001f);
+  mixer.set(InputSource::Controller,controller);s=mixer.consume();
+  assert(s.upright && std::abs(s.tiltX+25.f/85)<1e-6);
+  assert(std::abs(s.tiltY-35.f/85)<1e-6 && !s.pointerVisible);
+  mixer.clearAll();s=mixer.consume();
+  assert(s.upright && s.tiltX==0 && !s.buttons); // clearing keeps resting pose
+  mixer.setTiltMode(TiltMode::Normal);s=mixer.consume();
+  assert(!s.upright && s.tiltY==0);
+  mixer.set(InputSource::Controller,controller);s=mixer.consume();
+  assert(s.moveX==-1 && s.moveY==1 && s.tiltX==0);
+  mixer.clearAll();
+  InputState gyro;gyro.pointerVisible=true;gyro.pointerX=.8;gyro.pointerY=.3;
+  gyro.buttons=A;gyro.moveX=1; // gyro source is strictly pointer-only
+  mixer.set(InputSource::Gyro,gyro);
+  controller={};controller.buttons=B;controller.pointerVisible=true;controller.pointerX=.2;
+  mixer.set(InputSource::Controller,controller);s=mixer.consume();
+  assert(s.pointerX==gyro.pointerX && s.buttons==B && s.moveX==0);
+  touch={};touch.pointerVisible=true;touch.pointerContact=true;touch.pointerX=.6;
+  mixer.set(InputSource::Touch,touch);s=mixer.consume();
+  assert(std::abs(s.pointerX-.3f)<1e-6); // existing mapper still owns touch coordinates
+  touch.pointerContact=false;mixer.set(InputSource::Touch,touch);s=mixer.consume();
+  assert(s.pointerX==gyro.pointerX); // remembered finger position cannot mask gyro
+  mixer.clear(InputSource::Gyro);s=mixer.consume();assert(s.pointerX==controller.pointerX);
+  mixer.set(InputSource::Gyro,gyro);mixer.clearAll();s=mixer.consume();
+  assert(!s.pointerVisible && !s.buttons);
+  mixer.setTiltMode(TiltMode::StarBall);mixer.set(InputSource::Gyro,gyro);s=mixer.consume();
+  assert(!s.pointerVisible && s.upright && !s.buttons);
   puts("Galaxy mobile input: latches, axes, ownership, consumption-time mapping expiry and clear pass");
 }

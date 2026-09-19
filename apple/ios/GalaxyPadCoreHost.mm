@@ -107,6 +107,7 @@ void RuntimeLog(moderngekko::RuntimeLogLevel level, const char *category,
   std::shared_ptr<Session> _session;
   dispatch_queue_t _worker;
   NSTimer *_lifecycleTimer;
+  galaxypad::TiltMode _tiltMode;
   BOOL _busy, _paused, _active, _nativeUIBlocked, _pauseRequested, _interrupted, _audioActive;
 }
 - (instancetype)initWithLayer:(CAMetalLayer *)layer {
@@ -133,6 +134,12 @@ void RuntimeLog(moderngekko::RuntimeLogLevel level, const char *category,
   if (!_busy || !_session || !_active || _nativeUIBlocked || _interrupted) return;
   std::lock_guard lock(_session->mutex);
   if (!_session->stopping) _session->mixer->set(source, input);
+}
+- (void)setTiltMode:(galaxypad::TiltMode)mode {
+  NSAssert(NSThread.isMainThread, @"Host API requires main thread");
+  _tiltMode=mode;
+  if (_session) _session->mixer->setTiltMode(mode);
+  [self clearInput];
 }
 - (void)clearInput {
   NSAssert(NSThread.isMainThread, @"Host API requires main thread");
@@ -309,6 +316,7 @@ void RuntimeLog(moderngekko::RuntimeLogLevel level, const char *category,
     return NO;
   }
   _session = std::make_shared<Session>();
+  _session->mixer->setTiltMode(_tiltMode);
   auto session = _session;
   CAMetalLayer *layer = _layer;
   const int renderScale = (int)GalaxyPadSettings.sharedSettings.renderScale;

@@ -222,6 +222,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     UIButton *_pauseBackButton;
     GalaxyPadReferenceStickView *_moveStick;
     GalaxyPadReferenceStickView *_tiltStick;
+    galaxypad::TiltMode _rideTiltMode;
     GalaxyPadDPadEditorGroup *_experimentalDPadGroup;
     NSMutableArray<GalaxyPadGameButton *> *_buttons;
     NSMutableArray<UIGestureRecognizer *> *_editGestures;
@@ -516,6 +517,24 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     [tiltOptions addObject:[UIAction actionWithTitle:@"Recenter" image:nil identifier:nil
       handler:^(__kindof UIAction *action) { (void)action; [weakSelf clearTouchInput]; }]];
     UIMenu *tiltResponse = [UIMenu menuWithTitle:@"Ball / Ray Tilt Response" children:tiltOptions];
+    NSMutableArray<UIMenuElement *> *rideModes = [NSMutableArray array];
+    NSArray<NSString *> *rideNames = @[@"Normal", @"Ray Surfing", @"Star Ball"];
+    NSArray<NSString *> *rideHelp = @[@"Stick moves Mario; right stick aims",
+        @"Stick steers; hold A to accelerate; Spin to jump",
+        @"Stick tilts upright remote; A jumps"];
+    for (NSUInteger i=0; i<rideNames.count; ++i) {
+        const auto mode=static_cast<galaxypad::TiltMode>(i);
+        UIAction *choice=[UIAction actionWithTitle:rideNames[i] image:nil identifier:nil
+          handler:^(__kindof UIAction *action) {
+            (void)action;
+            [weakSelf selectRideTiltMode:mode];
+          }];
+        choice.subtitle=rideHelp[i];
+        choice.state=_rideTiltMode==mode ? UIMenuElementStateOn : UIMenuElementStateOff;
+        [rideModes addObject:choice];
+    }
+    UIMenu *rideMenu=[UIMenu menuWithTitle:@"Stick Mode (Touch / Controller)" children:rideModes];
+    UIMenu *gyroMenu=[self gyroMenu];
     UIMenu *controlsMenu = [UIMenu menuWithTitle:@"Controls"
                                            image:[UIImage systemImageNamed:@"gamecontroller"]
                                       identifier:nil
@@ -540,7 +559,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
             [weakSelf.window.rootViewController presentViewController:[weakSelf touchControlGuide]
                 animated:YES completion:nil];
         }],
-        touchAction, tiltAction, tiltResponse, auxiliaryAction,
+        gyroMenu, rideMenu, touchAction, tiltAction, tiltResponse, auxiliaryAction,
     ]];
 
     // These host adapters are not delivered yet. Do not present inert actions
@@ -1520,6 +1539,66 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     return YES;
 }
 
+- (galaxypad::TiltMode)rideTiltMode { return _rideTiltMode; }
+- (void)setGyroStatus:(NSString *)status {
+    if ([_gyroStatus isEqualToString:status]) return;
+    _gyroStatus=[status copy];
+    [self refreshMenuButton];
+}
+- (void)applyGyroSettings {
+    if (self.gyroSettingsChanged) self.gyroSettingsChanged();
+    [self refreshMenuButton];
+}
+- (UIMenu *)gyroMenu {
+    GalaxyPadSettings *settings=GalaxyPadSettings.sharedSettings;
+    __weak GalaxyPadGameOverlay *weakSelf=self;
+    NSMutableArray<UIMenuElement *> *choices=[NSMutableArray array];
+    NSArray<NSString *> *names=@[@"Off",@"This Device",@"Controller"];
+    for (NSInteger i=0;i<3;++i) {
+        UIAction *choice=[UIAction actionWithTitle:names[i] image:nil
+          identifier:[NSString stringWithFormat:@"galaxypad.gyro.source.%ld",(long)i]
+          handler:^(__kindof UIAction *action) {
+            (void)action;
+            settings.gyroPointerSource=(GalaxyPadGyroPointerSource)i;
+            [weakSelf applyGyroSettings];
+          }];
+        choice.state=settings.gyroPointerSource==i ? UIMenuElementStateOn : UIMenuElementStateOff;
+        [choices addObject:choice];
+    }
+    NSMutableArray<UIMenuElement *> *response=[NSMutableArray array];
+    for (NSNumber *scale in @[@.5,@1,@1.5]) {
+        UIAction *action=[UIAction actionWithTitle:[NSString stringWithFormat:@"Sensitivity %.1f×",scale.doubleValue]
+          image:nil identifier:nil handler:^(__kindof UIAction *choice) {
+            (void)choice; settings.gyroPointerSensitivity=scale.doubleValue; [weakSelf applyGyroSettings];
+          }];
+        action.state=fabs(settings.gyroPointerSensitivity-scale.doubleValue)<.001 ? UIMenuElementStateOn : UIMenuElementStateOff;
+        [response addObject:action];
+    }
+    UIAction *invert=[UIAction actionWithTitle:@"Invert Vertical Aim" image:nil identifier:nil
+      handler:^(__kindof UIAction *action) {
+        (void)action; settings.gyroPointerInvertY=!settings.gyroPointerInvertY; [weakSelf applyGyroSettings];
+      }];
+    invert.state=settings.gyroPointerInvertY ? UIMenuElementStateOn : UIMenuElementStateOff;
+    [response addObject:invert];
+    [choices addObject:[UIMenu menuWithTitle:@"Response" children:response]];
+    UIAction *recenter=[UIAction actionWithTitle:@"Recenter Gyro Cursor" image:[UIImage systemImageNamed:@"scope"]
+      identifier:@"galaxypad.gyro.recenter" handler:^(__kindof UIAction *action) {
+        (void)action; if (weakSelf.gyroRecenterRequested) weakSelf.gyroRecenterRequested();
+      }];
+    recenter.subtitle=@"Hold comfortably; this pose becomes your new center";
+    if (settings.gyroPointerSource==GalaxyPadGyroPointerOff) recenter.attributes=UIMenuElementAttributesDisabled;
+    [choices addObject:recenter];
+    UIMenu *menu=[UIMenu menuWithTitle:@"Gyro Cursor" children:choices];
+    menu.subtitle=self.gyroStatus ?: @"Device or supported controller motion";
+    return menu;
+}
+- (void)selectRideTiltMode:(galaxypad::TiltMode)mode {
+    [self clearTouchInput];
+    _rideTiltMode=mode;
+    _moveStick.accessibilityLabel=mode==galaxypad::TiltMode::Normal ? @"Movement stick" : @"Ride tilt stick";
+    if (self.tiltModeChanged) self.tiltModeChanged(mode);
+    [self refreshMenuButton];
+}
 - (void)toggleTiltStick {
     [self clearTouchInput];
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
@@ -1894,7 +1973,8 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
       message:@"Left stick: move. A: jump / use / swim / grab Pull Stars. B: shoot Star Bits. X: spin. Y: reset camera. Z: crouch / dive. D-pad: camera view.\n\n"
                "Drag on the game to aim; press A or B separately. Hold A + B at the title screen. Touch aim currently drives a virtual Wii Remote and may not align with your finger.\n\n"
                "The + control sends the Wii + button to open Galaxy’s original pause screen when the game allows it. Controller Menu / Start does the same. Point at Return to Observatory and press A to leave a level. View / Select pauses the app; press it again to resume.\n\n"
-               "Ball / ray: enable Show Tilt Stick in Controls, then drag the yellow stick to steer. It simulates Wii Remote tilt (not device motion) for ball and ray levels; it does not move Mario or aim the Star Pointer during ordinary play."
+               "Gyro Cursor: choose This Device or Controller in Controls. Move to aim, use the right stick to adjust, and recenter from the menu or by clicking the right stick. Touch takes priority while held. Ride modes suspend gyro aiming.\n\n"
+               "Ball / ray: choose Stick Mode → Ray Surfing or Star Ball in Controls. The movement stick now tilts the Wii Remote (not device motion). Ray: hold A to accelerate, Spin to jump. Ball: A jumps. Return to Normal for walking and pointer aim. The optional yellow tilt stick also uses the selected pose."
       preferredStyle:UIAlertControllerStyleAlert];
     [guide addAction:[UIAlertAction actionWithTitle:@"Done" style:UIAlertActionStyleCancel handler:nil]];
     return guide;

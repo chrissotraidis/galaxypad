@@ -35,8 +35,8 @@ these forks, selected through pinned submodules. See the
 
 ## Experimental preview
 
-[Download Preview 3 for iPhone and iPad](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.3)
-(build 7166). The [macOS Preview 1](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1)
+[Download Preview 4 for iPhone and iPad](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.4)
+(build 7168). The [macOS Preview 1](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1)
 remains available separately; it has not been rebuilt for this update.
 The repository and preview downloads are public.
 
@@ -44,28 +44,32 @@ The IPA requires signing with your own Apple account before installation; it is
 not a TestFlight or App Store build. The Mac app is ad-hoc signed and not notarized.
 Both packages contain the AOT game-code module but no game image, extracted game
 assets, or saves. Supply the supported image yourself. Read the
-[preview notes](docs/PREVIEW-2026-09-16.md) for installation and known limitations.
+[preview notes](docs/PREVIEW-2026-09-19.md) for installation and known limitations.
 
 ## Current status
 
-**Preview 3 is based on build 7166**, tested on the owner's iPad Pro and iPhone 14.
-The owner reports it is working great on iPad. It improves supported WBFS import
-compatibility, simplifies the Plus control, corrects Game Mode packaging and
-includes audio/runtime processing refinements. See the [complete changes and
-validation boundaries](docs/PREVIEW-2026-09-16.md).
+**Preview 4 (build 7168)** adds optional device/controller gyro cursor aiming and
+manual **Ray Surfing / Star Ball** stick modes for iPhone and iPad. Open **Controls**
+to select them; gyro defaults to Off. Return Stick Mode to **Normal** after a ride.
+Sensitivity, vertical inversion and recenter controls are included.
 
-Demanding scenes on iPhone 14 can still slow down, with remaining audio chopping
-and finger-tracking limitations. No meaningful whole-game FPS gain from the latest
-experiments or sustained iPhone 60 FPS is claimed. The release IPA repackages the
-iPad-tested app for recipient signing; that newly signed archive has not separately
-been tested. Saves/settings were preserved during both private device updates.
+This release keeps Preview 3's compatible WBFS importer, simplified Plus control,
+Game Mode metadata and tested runtime/audio refinements. The native host is rebuilt
+on current main. Automated input, sensor-adapter and menu checks pass; physical gyro
+feel and completion of the affected ride levels still need player validation.
+See the [release notes and validation limits](docs/PREVIEW-2026-09-19.md).
+
+Demanding scenes can still slow down, especially on iPhone. This is a controls
+update; no new FPS improvement or complete-game compatibility is claimed. The
+public IPA is prepared for recipient signing, which requires preserving the
+existing bundle/signing identity to update without losing app data.
 The HUD counts frame events rather than guaranteeing displayed frames.
 
 | Area | Current result |
 | --- | --- |
 | Game setup | Exact USA `RMGE01`, revision 0 input validation and local import |
 | Rendering | Metal gameplay; corrected depth access restores tested Pull Star activation and level entry |
-| Controls | Touch movement and pointer aim, Wii actions, controller input, and editable touch layouts |
+| Controls | Touch/controller input, optional gyro cursor, manual ride stick modes, and editable touch layouts |
 | Platforms | iPhone/iPad app targets and Apple silicon Mac development package; configured minimums are not verified device compatibility |
 | Release | Experimental public preview; iPhone performance and full-game acceptance remain open |
 
@@ -303,9 +307,29 @@ that Galaxy originally supports a GameCube controller.
 - Movement, pointer aim, A/B actions and Spin have distinct input paths.
 - Controls includes a Touch Control Guide, touch visibility, layout settings, controller mapping, and
   optional tilt and extra Wii buttons. Rarely used buttons need not stay visible.
+- **Controls → Stick Mode (Touch / Controller)** selects **Normal**, **Ray Surfing**,
+  or **Star Ball** for this app session. Ride modes route the controller left stick
+  and touch movement stick to Wii tilt and hide pointer aim. Select the mode when
+  boarding; return to Normal for walking and pointer menus. There is no automatic
+  stage detection. Ray uses A to accelerate and Spin to jump; Star Ball uses A to
+  jump and an upright remote pose. Releasing the stick returns to the resting tilt;
+  it does not override the game's momentum or braking physics.
 - Touch Tilt Stick offers 0.5× / 1× / 1.5× sensitivity, vertical inversion and
   recenter. These affect only touch tilt, not movement or controller input;
-  completing ball/ray stages with this route remains unverified.
+  the optional tilt stick also uses the selected ride pose. The new ride modes
+  still require physical gameplay validation; gyro ride tilt is not implemented.
+  See [ride-control investigation](docs/RIDE-CONTROLS.md).
+- **Controls → Gyro Cursor → This Device / Controller** enables gyro aiming for
+  the Star Pointer. Off is the default. This Device uses the iPhone/iPad's motion
+  sensors; Controller uses the active controller's motion profile when supported.
+  Sensitivity (0.5× / 1× / 1.5×), vertical inversion and Recenter are in the same
+  menu. Clicking the right stick also recenters. The right stick adjusts gyro aim;
+  a held touch takes priority, and gyro resumes from that touch position on release.
+  Gyro aiming suspends during ride modes, native menus, pause and backgrounding.
+  Sensor gaps freeze angular movement while preserving stick adjustment. Missing
+  motion support leaves touch/stick controls available and shows a status message.
+  These paths have synthetic Simulator coverage; physical sensor feel, drift and
+  retail pointer interactions still need validation. See [gyro details](docs/GYRO-CURSOR.md).
 - Display contains rendering options; unsupported aspect-ratio choices are
   currently disabled. Higher rendering resolution is not a CPU slowdown fix.
 - Audio contains main-volume presets and mute, preserving the chosen level when

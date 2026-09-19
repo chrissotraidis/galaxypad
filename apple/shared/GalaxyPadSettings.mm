@@ -85,6 +85,30 @@
     [NSUserDefaults.standardUserDefaults setBool:value forKey:@"GalaxyPadMainAudioMuted"];
 }
 
+- (GalaxyPadGyroPointerSource)gyroPointerSource {
+    id saved=[NSUserDefaults.standardUserDefaults objectForKey:@"GalaxyPadGyroPointerSource"];
+    NSInteger value=[saved isKindOfClass:NSNumber.class] ? [saved integerValue] : 0;
+    return value>=0 && value<=2 ? (GalaxyPadGyroPointerSource)value : GalaxyPadGyroPointerOff;
+}
+- (void)setGyroPointerSource:(GalaxyPadGyroPointerSource)value {
+    [NSUserDefaults.standardUserDefaults setInteger:value>=0 && value<=2 ? value : 0
+      forKey:@"GalaxyPadGyroPointerSource"];
+}
+- (CGFloat)gyroPointerSensitivity {
+    id saved=[NSUserDefaults.standardUserDefaults objectForKey:@"GalaxyPadGyroPointerSensitivity"];
+    double value=[saved isKindOfClass:NSNumber.class] ? [saved doubleValue] : 1;
+    return std::isfinite(value) ? MAX(.5,MIN(1.5,value)) : 1;
+}
+- (void)setGyroPointerSensitivity:(CGFloat)value {
+    [NSUserDefaults.standardUserDefaults setDouble:std::isfinite(value) ? MAX(.5,MIN(1.5,value)) : 1
+      forKey:@"GalaxyPadGyroPointerSensitivity"];
+}
+- (BOOL)gyroPointerInvertY {
+    return [NSUserDefaults.standardUserDefaults boolForKey:@"GalaxyPadGyroPointerInvertY"];
+}
+- (void)setGyroPointerInvertY:(BOOL)value {
+    [NSUserDefaults.standardUserDefaults setBool:value forKey:@"GalaxyPadGyroPointerInvertY"];
+}
 - (CGFloat)touchTiltSensitivity {
     id saved = [NSUserDefaults.standardUserDefaults objectForKey:@"GalaxyPadTouchTiltSensitivity"];
     double value = [saved isKindOfClass:NSNumber.class] ? [saved doubleValue] : 1.0;
