@@ -1,9 +1,10 @@
-# Gyro cursor — 2026-09-19 candidate
+# Gyro cursor — Preview 4
 
-Status: implemented locally; device and Simulator hosts compile/link. Headless
+Status: included in Preview 4; device and Simulator hosts compile/link. Headless
 Simulator tests execute real UIKit menu actions and production sensor-adapter
 logic with synthetic samples. No physical sensor or retail-game acceptance yet.
-No device install, IPA publication or save modification performed.
+The iPad update is performed in place with save/settings readback; startup does
+not establish sensor or full gameplay acceptance.
 
 ## Usage
 
@@ -72,7 +73,7 @@ Passed:
 - iOS host compile check; full device and Simulator app compile/link; full UIKit
   test-host build. The complete visual UIKit suite was not launched.
 
-Before release: physically test iPhone and iPad in both landscape orientations,
+Remaining player validation: physically test iPhone and iPad in both landscape orientations,
 stationary drift, slow/fast aiming, screen edges, sensitivity and inversion,
 A-hold Pull Stars, B shooting, touch release, stick adjustment/recenter, app
 pause/background/resume and controller disconnect/reconnect. Test each advertised

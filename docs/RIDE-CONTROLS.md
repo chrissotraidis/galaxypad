@@ -1,7 +1,7 @@
 # Ride controls investigation — 2026-09-19
 
-Status: local candidate, compiled and host-tested. No claim of passing a retail
-ride tutorial or completing a course on a physical device. No release published.
+Status: included in Preview 4, compiled and host-tested. No claim of passing a
+retail ride tutorial or completing a course on a physical device.
 
 ## Findings
 
@@ -34,7 +34,7 @@ the Meteor Storm** also contains a Star Ball section. See the
 [mission description](https://www.mariowiki.com/Melty_Molten_Galaxy). This is an
 additional reason not to switch input based on a four-galaxy name list.
 
-## Candidate behavior
+## Behavior
 
 Controls → Stick Mode (Touch / Controller):
 
@@ -72,9 +72,9 @@ Passed:
 The full UIKit regression host was built but not run. A new headless Simulator
 check did execute the real gyro/ride menu actions, selected-state persistence,
 recenter callback and return to Normal. It leaves other apps in the foreground.
-No physical app, save or game data was replaced.
+The iPad update uses an in-place install and save/settings readback.
 
-Before release, verify both Surfing 101 tilt directions, Rolling in the Clouds'
+Remaining player validation: verify both Surfing 101 tilt directions, Rolling in the Clouds'
 upright prompt, forward/back/left/right ball steering, jump, releasing the stick,
 death/retry, pause/resume, controller reconnect and returning to Normal. Complete
 Loopdeeloop, Loopdeeswoop, Rolling Green, Rolling Gizmo and Melty Molten's mixed

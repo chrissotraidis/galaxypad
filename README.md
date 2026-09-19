@@ -35,8 +35,8 @@ these forks, selected through pinned submodules. See the
 
 ## Experimental preview
 
-[Download Preview 3 for iPhone and iPad](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.3)
-(build 7166). The [macOS Preview 1](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1)
+[Download Preview 4 for iPhone and iPad](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.4)
+(build 7168). The [macOS Preview 1](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1)
 remains available separately; it has not been rebuilt for this update.
 The repository and preview downloads are public.
 
@@ -44,28 +44,32 @@ The IPA requires signing with your own Apple account before installation; it is
 not a TestFlight or App Store build. The Mac app is ad-hoc signed and not notarized.
 Both packages contain the AOT game-code module but no game image, extracted game
 assets, or saves. Supply the supported image yourself. Read the
-[preview notes](docs/PREVIEW-2026-09-16.md) for installation and known limitations.
+[preview notes](docs/PREVIEW-2026-09-19.md) for installation and known limitations.
 
 ## Current status
 
-**Preview 3 is based on build 7166**, tested on the owner's iPad Pro and iPhone 14.
-The owner reports it is working great on iPad. It improves supported WBFS import
-compatibility, simplifies the Plus control, corrects Game Mode packaging and
-includes audio/runtime processing refinements. See the [complete changes and
-validation boundaries](docs/PREVIEW-2026-09-16.md).
+**Preview 4 (build 7168)** adds optional device/controller gyro cursor aiming and
+manual **Ray Surfing / Star Ball** stick modes for iPhone and iPad. Open **Controls**
+to select them; gyro defaults to Off. Return Stick Mode to **Normal** after a ride.
+Sensitivity, vertical inversion and recenter controls are included.
 
-Demanding scenes on iPhone 14 can still slow down, with remaining audio chopping
-and finger-tracking limitations. No meaningful whole-game FPS gain from the latest
-experiments or sustained iPhone 60 FPS is claimed. The release IPA repackages the
-iPad-tested app for recipient signing; that newly signed archive has not separately
-been tested. Saves/settings were preserved during both private device updates.
+This release keeps Preview 3's compatible WBFS importer, simplified Plus control,
+Game Mode metadata and tested runtime/audio refinements. The native host is rebuilt
+on current main. Automated input, sensor-adapter and menu checks pass; physical gyro
+feel and completion of the affected ride levels still need player validation.
+See the [release notes and validation limits](docs/PREVIEW-2026-09-19.md).
+
+Demanding scenes can still slow down, especially on iPhone. This is a controls
+update; no new FPS improvement or complete-game compatibility is claimed. The
+public IPA is prepared for recipient signing, which requires preserving the
+existing bundle/signing identity to update without losing app data.
 The HUD counts frame events rather than guaranteeing displayed frames.
 
 | Area | Current result |
 | --- | --- |
 | Game setup | Exact USA `RMGE01`, revision 0 input validation and local import |
 | Rendering | Metal gameplay; corrected depth access restores tested Pull Star activation and level entry |
-| Controls | Touch movement and pointer aim, Wii actions, controller input, and editable touch layouts |
+| Controls | Touch/controller input, optional gyro cursor, manual ride stick modes, and editable touch layouts |
 | Platforms | iPhone/iPad app targets and Apple silicon Mac development package; configured minimums are not verified device compatibility |
 | Release | Experimental public preview; iPhone performance and full-game acceptance remain open |
 
