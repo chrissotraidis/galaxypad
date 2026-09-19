@@ -24,6 +24,11 @@
 @property(nonatomic, copy) CGRect (^viewportProvider)(void);
 @property(nonatomic, copy) void (^nativeUIChanged)(void);
 @property(nonatomic, copy) void (^stopRequested)(void);
+@property(nonatomic, copy) void (^gyroSettingsChanged)(void);
+@property(nonatomic, copy) void (^gyroRecenterRequested)(void);
+@property(nonatomic, copy) NSString *gyroStatus;
+@property(nonatomic, readonly) galaxypad::TiltMode rideTiltMode;
+@property(nonatomic, copy) void (^tiltModeChanged)(galaxypad::TiltMode mode);
 @property(nonatomic, readonly) BOOL blocksGameplay;
 @property(nonatomic, readonly) BOOL nativeMenuVisible;
 @property(nonatomic) BOOL gameplayAvailable;

@@ -50,6 +50,7 @@ python3 -m py_compile scripts/wii-pipe.py
 python3 ./tests/test-runtime-directories.py
 bash ./tests/test-mobile-input.sh
 bash ./tests/test-thp-patch.sh
+bash ./tests/test-gyro-aim.sh
 bash ./tests/test-movement-trace.sh
 bash ./tests/test-simulator-input.sh
 bash ./tests/test-simulator-game-ini.sh

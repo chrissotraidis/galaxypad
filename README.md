@@ -303,9 +303,29 @@ that Galaxy originally supports a GameCube controller.
 - Movement, pointer aim, A/B actions and Spin have distinct input paths.
 - Controls includes a Touch Control Guide, touch visibility, layout settings, controller mapping, and
   optional tilt and extra Wii buttons. Rarely used buttons need not stay visible.
+- **Controls → Stick Mode (Touch / Controller)** selects **Normal**, **Ray Surfing**,
+  or **Star Ball** for this app session. Ride modes route the controller left stick
+  and touch movement stick to Wii tilt and hide pointer aim. Select the mode when
+  boarding; return to Normal for walking and pointer menus. There is no automatic
+  stage detection. Ray uses A to accelerate and Spin to jump; Star Ball uses A to
+  jump and an upright remote pose. Releasing the stick returns to the resting tilt;
+  it does not override the game's momentum or braking physics.
 - Touch Tilt Stick offers 0.5× / 1× / 1.5× sensitivity, vertical inversion and
   recenter. These affect only touch tilt, not movement or controller input;
-  completing ball/ray stages with this route remains unverified.
+  the optional tilt stick also uses the selected ride pose. The new ride modes
+  still require physical gameplay validation; gyro ride tilt is not implemented.
+  See [ride-control investigation](docs/RIDE-CONTROLS.md).
+- **Controls → Gyro Cursor → This Device / Controller** enables gyro aiming for
+  the Star Pointer. Off is the default. This Device uses the iPhone/iPad's motion
+  sensors; Controller uses the active controller's motion profile when supported.
+  Sensitivity (0.5× / 1× / 1.5×), vertical inversion and Recenter are in the same
+  menu. Clicking the right stick also recenters. The right stick adjusts gyro aim;
+  a held touch takes priority, and gyro resumes from that touch position on release.
+  Gyro aiming suspends during ride modes, native menus, pause and backgrounding.
+  Sensor gaps freeze angular movement while preserving stick adjustment. Missing
+  motion support leaves touch/stick controls available and shows a status message.
+  These paths have synthetic Simulator coverage; physical sensor feel, drift and
+  retail pointer interactions still need validation. See [gyro details](docs/GYRO-CURSOR.md).
 - Display contains rendering options; unsupported aspect-ratio choices are
   currently disabled. Higher rendering resolution is not a CPU slowdown fix.
 - Audio contains main-volume presets and mute, preserving the chosen level when

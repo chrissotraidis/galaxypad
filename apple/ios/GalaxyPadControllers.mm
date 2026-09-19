@@ -80,7 +80,9 @@
   _owner.playerIndex=GCControllerPlayerIndexUnset;
   [NSNotificationCenter.defaultCenter removeObserver:self];
 }
+- (GCController *)motionController { return _owner; }
 - (void)reset {
+  if (self.aimChanged) self.aimChanged(0,0,NO);
   _input.reset();
   _guestPlusHeld = NO;
   _guestPlusUntil = 0;
@@ -259,6 +261,8 @@
   snapshot.moveX=pad.leftThumbstick.xAxis.value; snapshot.moveY=pad.leftThumbstick.yAxis.value;
   snapshot.rightX=pad.rightThumbstick.xAxis.value; snapshot.rightY=pad.rightThumbstick.yAxis.value;
   auto state=_input.update(snapshot,seconds);
+  if (self.aimChanged) self.aimChanged(state.connected && !snapshot.leftShoulder ? snapshot.rightX : 0,
+    state.connected && !snapshot.leftShoulder ? snapshot.rightY : 0,state.connected && snapshot.recenter);
   if (!_reportedReadiness || _lastReady != state.connected) {
     GalaxyPadLog(@"controller input ready=%d raw_buttons=%u move=(%.3f,%.3f) aim=(%.3f,%.3f) profile=%@",
       state.connected, rawButtons, snapshot.moveX, snapshot.moveY,

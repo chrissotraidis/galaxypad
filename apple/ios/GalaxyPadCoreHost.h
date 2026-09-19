@@ -53,6 +53,7 @@ struct GalaxyPadAudioCounters {
 @property(nonatomic, copy, nullable) void (^onInputReset)(void);
 - (void)publishInput:(galaxypad::InputState)input source:(galaxypad::InputSource)source;
 - (void)clearInput;
+- (void)setTiltMode:(galaxypad::TiltMode)mode;
 - (instancetype)initWithLayer:(CAMetalLayer *)layer;
 - (BOOL)startWithGameRoot:(NSString *)root discImage:(NSString *)disc
                   module:(NSString *)module userDirectory:(NSString *)user;
