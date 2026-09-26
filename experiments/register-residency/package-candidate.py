@@ -9,6 +9,7 @@ import argparse, hashlib, json, plistlib, shutil, subprocess
 
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--baseline-app', type=Path, required=True)
+p.add_argument('--signer-app', type=Path, help='Installed app whose certificate/entitlements to reuse (default: baseline)')
 p.add_argument('--module', type=Path, required=True)
 p.add_argument('--build', required=True, help='New CFBundleVersion')
 p.add_argument('--output', type=Path, required=True, help='New directory for the signed app and receipt')
@@ -18,12 +19,13 @@ sha = lambda f: hashlib.sha256(Path(f).read_bytes()).hexdigest()
 run = lambda *c, **k: subprocess.run(list(map(str, c)), check=True, **k)
 out_of = lambda *c: subprocess.check_output(list(map(str, c)), stderr=subprocess.DEVNULL)
 
-run('codesign', '--verify', '--deep', '--strict', a.baseline_app)
-run('codesign', '-d', '--extract-certificates=' + str(out/'certificate'), a.baseline_app,
+signer = a.signer_app or a.baseline_app
+run('codesign', '--verify', '--deep', '--strict', signer)
+run('codesign', '-d', '--extract-certificates=' + str(out/'certificate'), signer,
     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 identity = hashlib.sha1((out/'certificate0').read_bytes()).hexdigest().upper()
 assert identity in subprocess.check_output(['security', 'find-identity', '-v', '-p', 'codesigning'], text=True)
-entitlements = out_of('codesign', '-d', '--entitlements', ':-', a.baseline_app)
+entitlements = out_of('codesign', '-d', '--entitlements', ':-', signer)
 (out/'entitlements.plist').write_bytes(entitlements)
 
 app = out/'GalaxyPad.app'
