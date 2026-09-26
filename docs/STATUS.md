@@ -1,5 +1,16 @@
 # GalaxyPad status
 
+## September 26 performance review
+
+A new [iOS/iPadOS performance review](IOS-PERFORMANCE-REVIEW-2026-09-26.md)
+supersedes the performance priorities below. The phone remains limited by
+translated game code on the CPU thread. A register-resident form of one hot
+game loop ran in 47% fewer cycles with identical observable behaviour, while a
+RAM-map snapshot that cut static instructions did not change executed work.
+The recommended next step is a register-resident region emitter in the
+maintained DolRecomp fork, gated by differential checks and physical A/B.
+No app, module or release changed.
+
 ## Preview 3 release authorization and iPad feedback
 
 The owner subsequently reported build 7166 working great on the iPad and explicitly
