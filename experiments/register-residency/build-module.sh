@@ -13,7 +13,8 @@ if [[ -n "$profile" ]]; then
   flags="$flags -fprofile-instr-use=$profile -Wno-profile-instr-out-of-date -Wno-profile-instr-unprofiled"
   link="-fprofile-instr-use=$profile"
 fi
-cmake -S "$runtime/module-template" -B "$build" -G Ninja \
+template="${MODULE_TEMPLATE:-$runtime/module-template}"
+cmake -S "$template" -B "$build" -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE="$root/scripts/ios-device-toolchain.cmake" \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
   -DCMAKE_C_FLAGS="$flags" -DCMAKE_SHARED_LINKER_FLAGS="$link" \
