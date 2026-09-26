@@ -1,5 +1,9 @@
 # September 16 session close: iPhone performance and next IPA
 
+> Superseded for performance work by the
+> [September 26 iPhone handoff](IPHONE-PERFORMANCE-2026-09-26.md). The evidence
+> below is retained.
+
 ## Preview 3 release authorization and iPad feedback
 
 The owner subsequently reported build 7166 working great on the iPad and explicitly

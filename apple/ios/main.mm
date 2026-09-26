@@ -947,9 +947,5 @@ int main(int argc, char *argv[]) {
   // Guarded decoder byte stores: R647/R648/R650 mobile confirmation.
   // Set before runtime threads start; preserve explicit opt-out and other values.
   setenv("GALAXYPAD_LC_BYTE_FAST", "1", 0);
-  // Guarded direct calls between translated chunks. Requires a module that
-  // exports galaxypad_bind_direct_calls_v1; older modules keep normal dispatch.
-  // Launch with GALAXYPAD_GUARDED_DIRECT_CALLS=0 to opt out.
-  setenv("GALAXYPAD_GUARDED_DIRECT_CALLS", "1", 0);
   @autoreleasepool { return UIApplicationMain(argc, argv, nil, NSStringFromClass(GalaxyPadAppDelegate.class)); }
 }

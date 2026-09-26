@@ -25,12 +25,16 @@ retained Preview 3 core archive, the modified object was compiled with the
 recorded 7162 compile command and replaced in a copy of the archive; its
 external symbols matched the unmodified rebuild exactly.
 
-## Results so far (iPhone 14, 1x, thermal state 2)
+## Result (iPhone 14, 1x, thermal state 2, heavy Comet Observatory area)
 
-| Build | Direct calls | Heavy main-area windows |
-| --- | --- | --- |
-| 7203 | off | 35–38 FPS, 0.59–0.63x speed, ~152% CPU |
-| 7203 | on, original hook | 34–36 FPS, 0.59–0.62x speed, ~152% CPU |
-| 7204 | on, cheaper hook | 60 FPS, ~1.0x speed, ~100–115% CPU (scene match unconfirmed) |
+| Build | Direct calls | FPS | Game speed |
+| --- | --- | ---: | ---: |
+| 7203 | off | 35–38 | 0.59–0.63x |
+| 7203 | on, original hook | 34–36 | 0.59–0.62x |
+| 7204 | on, cheaper hook | 33–38 | 0.55–0.65x |
 
-The 7204 row still needs confirmation that it was the same scene.
+No gain. An earlier 60 FPS stretch in the 7204 session was a lighter scene.
+The host bookkeeping each transfer must do (cycle charge, timebase, exception,
+idle-loop and self-modifying-code checks) is the cost, wherever it runs.
+Direct calls stay off; the app does not enable them by default. Keep the patch
+for reference if a later design needs a cheaper boundary.

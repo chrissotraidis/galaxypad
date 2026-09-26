@@ -1,5 +1,11 @@
 # iOS/iPadOS performance review — 26 September 2026
 
+> Follow-up the same day: phone profiling, device builds and the results of the
+> plan below are in the [September 26 iPhone handoff](IPHONE-PERFORMANCE-2026-09-26.md).
+> Stage 2 (fewer dispatcher round trips via guarded direct calls) was measured
+> on the iPhone and gave no gain; the host bookkeeping moved into the boundary
+> check. Stage 1 remains the main project.
+
 This review re-reads the performance record since Preview 2, checks the build
 configuration that actually ships to phones, and runs two new compiler
 experiments. It changes no product source, module or installed app. The

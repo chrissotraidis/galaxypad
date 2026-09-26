@@ -83,3 +83,30 @@ python3 experiments/register-residency/run.py \
 The script refuses changed input chunks (SHA-256 pinned), writes only to the new
 output directory, and records commands, assembly and `report.json` there.
 Private receipt for the run above: `generated/register-residency-20260926/`.
+
+## Phone follow-up (same day)
+
+Whole-program tooling added after the first screen; results on the iPhone are
+in the [September 26 iPhone handoff](../../docs/IPHONE-PERFORMANCE-2026-09-26.md).
+
+- `promote.py` rewrites every generated function to keep GPRs, CR, XER, LR,
+  CTR and downcount in C locals with write-through to `CPUState`, reloading
+  after helpers that write promoted state. `--scope loops` converts only
+  outlined `loop_*` functions. All 2,275 functions convert; no unknown writes.
+- `verify.py` runs the whole-chunk differential for any chunk set under O2
+  and ASan/UBSan. `harness.c` gains `-DGP_CALLBACK_CONTRACT`: callbacks mutate
+  only state the runtime's MMIO hooks can touch (they never write integer
+  registers). 42 chunks (two hot, 40 random) pass for both the whole-program
+  and loop-only transforms.
+- Whole-function promotion is slower: the register allocator spilled most
+  locals (2,034 stack references vs 21) and every dispatch loads all of them.
+  Loop-only promotion keeps the 43% loop win (write-through 4.46 vs 7.83 cycles
+  per iteration) without touching chunk bodies.
+- `gp_lookup.h` / `make-lookup-template.py`: constant-folded chunk lookup in
+  the module's dispatch entry. Matches `dolrecomp_find_original` on 57.4
+  million addresses; 20–35% cheaper per lookup.
+- `build-module.sh`, `package-candidate.py`: 7162-recipe iPhone module build
+  and in-place-installable signed app. `summarize-profile.py` and
+  `summarize-log.py` read Instruments exports and the app's frame log.
+
+None of these changed the heavy-scene frame rate measurably on the phone.

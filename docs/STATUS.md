@@ -1,15 +1,17 @@
 # GalaxyPad status
 
-## September 26 performance review
+## September 26 iPhone session (current)
 
-A new [iOS/iPadOS performance review](IOS-PERFORMANCE-REVIEW-2026-09-26.md)
-supersedes the performance priorities below. The phone remains limited by
-translated game code on the CPU thread. A register-resident form of one hot
-game loop ran in 47% fewer cycles with identical observable behaviour, while a
-RAM-map snapshot that cut static instructions did not change executed work.
-The recommended next step is a register-resident region emitter in the
-maintained DolRecomp fork, gated by differential checks and physical A/B.
-No app, module or release changed.
+Read the [September 26 iPhone handoff](IPHONE-PERFORMANCE-2026-09-26.md) first;
+it supersedes the performance priorities below. On a hot iPhone 14 at 1x the
+heavy Comet Observatory area runs at 33–38 FPS (about 0.6x game speed); a cool
+phone reaches 45–53 FPS in busy areas. Phone profiling shows about half of the
+game thread in translated code and about 30% in switching between chunks.
+Loop register promotion, a faster chunk lookup and guarded direct calls were
+built, verified and measured on the phone; none moved the heavy-area frame
+rate. Touch aiming was recalibrated in source (pending player confirmation).
+The next project is a register-resident region compiler in the DolRecomp fork.
+No IPA or release changed; the phone has private build 7202.
 
 ## Preview 3 release authorization and iPad feedback
 
