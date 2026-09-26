@@ -14,6 +14,8 @@ p.add_argument('--output', type=Path, required=True)
 p.add_argument('--build', required=True)
 p.add_argument('--overlay-inputs', type=Path, required=True,
                help='Directory with the retained Mixer.cpp, Mixer.h and AudioTempo.h (release build records)')
+p.add_argument('--core-archive', type=Path,
+               help='Replacement core archive derived from the retained one (default: retained archive)')
 a = p.parse_args()
 root = Path(__file__).resolve().parents[2]
 old = a.retained.resolve(); out = a.output.resolve(); out.mkdir(parents=True, exist_ok=False)
@@ -22,6 +24,9 @@ archive = old/'generated/audio-slowdown-7165-20260916/libGalaxyPadCore.a'
 shell = old/'generated/game-mode-7166-20260916/GalaxyPad.app'
 sha = lambda f: hashlib.sha256(Path(f).read_bytes()).hexdigest()
 assert sha(archive) == json.loads((archive.parent/'receipt.json').read_text())['archive_sha256']
+retained_archive_sha256 = sha(archive)
+if a.core_archive:
+    archive = a.core_archive.resolve()
 app = out/'GalaxyPad.app'
 subprocess.run(['ditto', str(shell), str(app)], check=True)
 receipt = json.loads((base/'receipt.json').read_text())
@@ -60,7 +65,8 @@ info['NSMotionUsageDescription'] = plistlib.loads((root/'apple/ios/Info.plist.in
 (app/'Info.plist').write_bytes(plistlib.dumps(info))
 record = {'build': a.build, 'git': subprocess.check_output(['git', '-C', str(root), 'rev-parse', 'HEAD'], text=True).strip(),
           'dirty': bool(subprocess.check_output(['git', '-C', str(root), 'status', '--porcelain', 'apple'], text=True).strip()),
-          'core_sha256': sha(archive), 'unsigned_host_sha256': sha(app/'GalaxyPad'),
+          'core_sha256': sha(archive), 'retained_core_sha256': retained_archive_sha256,
+          'unsigned_host_sha256': sha(app/'GalaxyPad'),
           'overlay_sources': {e['external-contents']: sha(e['external-contents']) for e in overlay['roots']},
           'sources': {c[c.index('-c') + 1]: sha(c[c.index('-c') + 1]) for c in commands}}
 (out/'receipt.json').write_text(json.dumps(record, indent=1) + '\n')
