@@ -15,7 +15,12 @@ static void rec(CPUState* c, u32 ea, u32 size, u64 v, u32 kind) {
   Ev* e = &ev[side][nev[side]++]; memset(e, 0, sizeof *e);
   e->pc = c->pc; e->ea = ea; e->size = size; e->value = v; e->kind = kind; e->cr = c->cr; e->xer = c->xer;
   e->dc = c->downcount; e->rv = c->reserve_valid; e->ra = c->reserve_addr; memcpy(e->gpr, c->gpr, sizeof e->gpr);
+#ifdef GP_CALLBACK_CONTRACT
+  /* Runtime MMIO hooks never write guest integer registers; mutate only state they may touch. */
+  if (mutate && nev[side] % 5 == 0) { c->exception ^= 1; c->fpr[3] += 1.0; c->reserve_valid = !c->reserve_valid; c->reserve_addr = ea; }
+#else
   if (mutate && nev[side] % 5 == 0) { c->gpr[12] ^= 3; c->xer ^= 0x80000000u; c->reserve_valid = !c->reserve_valid; c->reserve_addr = ea; }
+#endif
 }
 static u64 xr(CPUState* c, u32 ea, u8 size) { u64 v = 0; for (unsigned i = 0; i < size; i++) v = (v << 8) | ext[(ea + i) & 0xFFFF]; rec(c, ea, size, v, 0); return v; }
 static void xw(CPUState* c, u32 ea, u64 v, u8 size) { rec(c, ea, size, v, 1); for (unsigned i = 0; i < size; i++) ext[(ea + i) & 0xFFFF] = (u8)(v >> (8 * (size - i - 1))); }
