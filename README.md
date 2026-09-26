@@ -145,6 +145,12 @@ for the measurement limits and the [current refinement pass](docs/REFINEMENT-202
 for device findings and the next experiments. A screenshot at 60 does not establish
 a consistent 60 FPS experience.
 
+On an iPhone 14 at 1x, the heavy Comet Observatory area measured 33–38 FPS when
+the phone was hot and 45–53 FPS in busy areas when cool; use 1x on iPhone and let
+the phone cool if it slows down. iPad Pro (M2) runs much closer to 60. The
+[September 26 iPhone handoff](docs/IPHONE-PERFORMANCE-2026-09-26.md) lists the
+open problems and the planned compiler work.
+
 </details>
 
 <details>
@@ -330,6 +336,10 @@ that Galaxy originally supports a GameCube controller.
   motion support leaves touch/stick controls available and shows a status message.
   These paths have synthetic Simulator coverage; physical sensor feel, drift and
   retail pointer interactions still need validation. See [gyro details](docs/GYRO-CURSOR.md).
+- Touch aiming in current source (after Preview 4, not yet released) uses a
+  recalibrated virtual pointer so a tap lands under the finger instead of above
+  and outside it. Player confirmation in gameplay is still pending; see
+  [Input and pointer](docs/INPUT-AND-POINTER.md).
 - Display contains rendering options; unsupported aspect-ratio choices are
   currently disabled. Higher rendering resolution is not a CPU slowdown fix.
 - Audio contains main-volume presets and mute, preserving the chosen level when

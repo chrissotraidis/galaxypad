@@ -1,5 +1,20 @@
 # Input and pointer
 
+## September 26: touch pointer calibration (source only, unreleased)
+
+A tap drives a virtual Wii Remote rotation that Dolphin's camera and the game's
+pointer calibration turn into a cursor. With Dolphin's defaults (IR total yaw
+25°, total pitch 20°, vertical offset 10 cm) the repository's pointer model puts
+the settled cursor a mean 81 logical points from the finger on the phone's
+16:9 viewport (151 at the edges): too high and too far sideways. The mobile
+Wii Remote template now sets yaw 18.75°, pitch 18.75° and offset 15 cm, fitted
+with `experiments/touch-calibration/fit.py` against the actual camera
+projection. Modeled error drops to a mean 3 points (worst 20 at the bottom
+corners). The model assumes neutral orientation; behavior after tilt or Spin
+and in gameplay is not yet confirmed by a player. Gyro aim uses the same IR
+ranges, so its movement per degree is about 25% smaller. Private builds
+7201–7205 carry it; no release does yet.
+
 ## September 16: one game pause control and separate controller app pause
 
 The touch + button and Xbox Menu/Start send Wii Plus to Galaxy. This opens the original game pause menu; its available options depend on

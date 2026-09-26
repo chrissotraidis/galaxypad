@@ -1,0 +1,91 @@
+--- a/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Run.cpp
++++ b/Source/Core/Core/PowerPC/StaticRecomp/StaticRecompCore_Run.cpp
+@@ -53,6 +53,11 @@
+ }
+ }
+ 
++// Cached for the guarded direct-call boundary while Run() executes guest code.
++// File-local so the StaticRecompCore layout is unchanged.
++static const CPU::State* s_direct_state_ptr = nullptr;
++static PowerPC::PowerPCState* s_direct_ppc = nullptr;
++
+ int StaticRecompCore::HookDirectCallBoundary(CPUState* cpu, u32 address)
+ {
+   if (!cpu || !cpu->external_user_data)
+@@ -62,28 +67,54 @@
+       !core->m_in_native_dispatch || core->m_direct_must_yield)
+     return 0;
+ 
+-  auto& ppc = core->m_system.GetPowerPC().GetPPCState();
++  auto& ppc = s_direct_ppc ? *s_direct_ppc : core->m_system.GetPowerPC().GetPPCState();
+   const s64 charge = -cpu->downcount;
+   cpu->downcount = 0;
+   const u64 effective_charge = charge > 0 ? static_cast<u64>(charge) :
+                                              (core->m_direct_segment_committed ? 0 : 1);
+   ppc.downcount -= static_cast<int>(effective_charge);
+   core->m_charged_cycles += effective_charge;
+-  core->AdvanceGuestTimebase(effective_charge);
++  // Same arithmetic as AdvanceGuestTimebase, inlined on this per-transfer path.
++  const u64 total_cycles = core->m_timebase_cycle_remainder + effective_charge;
++  core->m_guest.timebase += total_cycles / SystemTimers::TIMER_RATIO;
++  core->m_timebase_cycle_remainder = total_cycles % SystemTimers::TIMER_RATIO;
+   core->m_direct_segment_committed = true;
+   ++core->m_direct_boundary_checks;
+ 
+   // A failed check returns through all native callers. Do not let a matching
+   // outer continuation accidentally resume after an inner transfer was denied.
+   core->m_direct_must_yield = true;
++  const CPU::State state = s_direct_state_ptr ? *s_direct_state_ptr :
++                                                *core->m_system.GetCPU().GetStatePtr();
+   if (!core->m_module_active || core->m_has_rel_modules ||
+       core->m_lockstep_verifier->IsEnabled() || cpu->pc != address ||
+-      *core->m_system.GetCPU().GetStatePtr() != CPU::State::Running ||
++      state != CPU::State::Running ||
+       ppc.downcount <= 0 || cpu->exception ||
+       (ppc.Exceptions & SYNC_EXCEPTION_MASK) != 0 ||
+       ((ppc.Exceptions & ASYNC_EXCEPTION_MASK) != 0 && (cpu->msr & MSR_EE) != 0) ||
+-      (core->m_idle_pc != 0 && address == core->m_idle_pc) ||
+-      !core->FastDispatchableAt(address) || core->IsHostCallAddress(address))
++      (core->m_idle_pc != 0 && address == core->m_idle_pc))
++    return 0;
++
++  // Run()'s inlined dispatchability test. It never admits an address that
++  // FastDispatchableAt would reject; unfamiliar layouts use the original call.
++  bool dispatchable;
++  if (!core->m_forced_fallback_ranges.empty())
++  {
++    dispatchable = core->FastDispatchableAt(address);
++  }
++  else
++  {
++    int lookup_index = -1;
++    if (address >= 0x80000000u && address < 0x80000000u + core->m_lookup_ram_size)
++      lookup_index = static_cast<int>((address - 0x80000000u) >> 2);
++    else if (address >= 0x90000000u && address < 0x90000000u + core->m_lookup_exram_size)
++      lookup_index = static_cast<int>((core->m_lookup_ram_size >> 2) + ((address - 0x90000000u) >> 2));
++    dispatchable = !core->m_chunk_lookup_table.empty() && lookup_index >= 0 &&
++                   lookup_index < static_cast<int>(core->m_chunk_lookup_table.size()) &&
++                   core->m_chunk_lookup_table[lookup_index] >= 0 &&
++                   core->m_chunk_state[core->m_chunk_lookup_table[lookup_index]] == CHUNK_VERIFIED;
++  }
++  if (!dispatchable || (cpu->host_call && core->IsHostCallAddress(address)))
+     return 0;
+ 
+   // The target (callee or caller continuation) starts a new charged segment.
+@@ -92,6 +123,7 @@
+   ++core->m_direct_transfers;
+   return 1;
+ }
++
+ 
+ void StaticRecompCore::Run()
+ {
+@@ -101,6 +133,8 @@
+   auto& interpreter = m_system.GetInterpreter();
+   auto& memory = m_system.GetMemory();
+   const CPU::State* state_ptr = m_system.GetCPU().GetStatePtr();
++  s_direct_state_ptr = state_ptr;
++  s_direct_ppc = &ppc;
+ #if defined(GALAXYPAD_VOID_DISPATCH) && GALAXYPAD_VOID_DISPATCH
+   // The descriptor/CPU ABI has already been validated by LoadModule. Resolve
+   // once per Run lifetime; attached and older modules retain the ABI dispatch.

@@ -463,7 +463,7 @@ static double GalaxyPadResidentMiB(void) {
     _status.text = @"Starting Galaxy…";
     _activeRenderScale = GalaxyPadSettings.sharedSettings.renderScale;
     const NSInteger aspectRatioMode = GalaxyPadSettings.sharedSettings.aspectRatioMode;
-    GalaxyPadLog(@"Starting runtime: render_scale=%ld aspect_ratio_mode=%ld pointer_mode=virtual_wiimote_ir pointer_yaw=25 pointer_pitch=20 pointer_vertical_offset_cm=10 frame_logging=1 detailed_frame_logging=%d",
+    GalaxyPadLog(@"Starting runtime: render_scale=%ld aspect_ratio_mode=%ld pointer_mode=virtual_wiimote_ir pointer_yaw=18.75 pointer_pitch=18.75 pointer_vertical_offset_cm=15 frame_logging=1 detailed_frame_logging=%d",
       (long)_activeRenderScale, (long)aspectRatioMode, _logFrameRateWindows);
     if (![_host startWithGameRoot:root discImage:disc module:module userDirectory:user.path]) return;
     _restartButton.hidden = YES;

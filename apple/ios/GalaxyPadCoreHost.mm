@@ -302,8 +302,10 @@ void RuntimeLog(moderngekko::RuntimeLogLevel level, const char *category,
 #if TARGET_OS_SIMULATOR
     // Bounded R580 coverage experiment; normal/device profiles stay unchanged.
     if ([NSUserDefaults.standardUserDefaults boolForKey:@"GalaxyPadDevPointerPitch22"]) {
-      wiimoteConfig=[wiimoteConfig stringByReplacingOccurrencesOfString:@"IR/Hide ="
-        withString:@"IR/Total Pitch = 22\nIR/Hide ="];
+      // The R580 model assumes Dolphin's default yaw/offset with pitch 22.
+      wiimoteConfig=[wiimoteConfig stringByReplacingOccurrencesOfString:
+        @"IR/Total Yaw = 18.75\nIR/Total Pitch = 18.75\nIR/Vertical Offset = 15.00\n"
+        withString:@"IR/Total Pitch = 22\n"];
       NSLog(@"[GalaxyPad pointer experiment] configured total pitch=22 degrees");
     }
 #endif
