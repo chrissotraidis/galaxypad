@@ -1,5 +1,9 @@
 # Working on GalaxyPad
 
+## Releases paused
+
+No public releases until this repo is marked Clear in the maintainer's private release audit. Do not publish, re-publish, or restore any release, IPA, APK, or macOS build, and do not add download links, until then.
+
 Keep changes simple, focused and consistent with the existing application design.
 Recheck controls and navigation after changing their wiring. Do not suggest Figma.
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before implementation.
