@@ -1,6 +1,10 @@
 # Install GalaxyPad on iPhone or iPad — experimental preview
 
-Download the IPA from the [public preview release](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.3). It supports both device families and requires your own Apple signing. Skip the local export step below when using that release IPA. The installation assistant described here is a development helper; its export action remains pinned to an older local candidate.
+> [!IMPORTANT]
+> **Downloads retired.** Prebuilt builds are no longer published, and release
+> links on this page no longer work. A build-it-yourself version is in progress.
+
+Download the IPA from the public preview release (retired). It supports both device families and requires your own Apple signing. Skip the local export step below when using that release IPA. The installation assistant described here is a development helper; its export action remains pinned to an older local candidate.
 
 See [current preview notes](PREVIEW-2026-09-13.md) for build 13 and validation limits. Historical evidence below does not supersede that release record.
 
