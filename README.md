@@ -35,16 +35,7 @@ these forks, selected through pinned submodules. See the
 
 ## Experimental preview
 
-[Download Preview 4 for iPhone and iPad](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.4)
-(build 7168). The [macOS Preview 1](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1)
-remains available separately; it has not been rebuilt for this update.
-The repository and preview downloads are public.
-
-The IPA requires signing with your own Apple account before installation; it is
-not a TestFlight or App Store build. The Mac app is ad-hoc signed and not notarized.
-Both packages contain the AOT game-code module but no game image, extracted game
-assets, or saves. Supply the supported image yourself. Read the
-[preview notes](docs/PREVIEW-2026-09-19.md) for installation and known limitations.
+Previous builds have been retired; a new version is in progress.
 
 ## Current status
 
@@ -60,9 +51,7 @@ feel and completion of the affected ride levels still need player validation.
 See the [release notes and validation limits](docs/PREVIEW-2026-09-19.md).
 
 Demanding scenes can still slow down, especially on iPhone. This is a controls
-update; no new FPS improvement or complete-game compatibility is claimed. The
-public IPA is prepared for recipient signing, which requires preserving the
-existing bundle/signing identity to update without losing app data.
+update; no new FPS improvement or complete-game compatibility is claimed.
 The HUD counts frame events rather than guaranteeing displayed frames.
 
 | Area | Current result |
@@ -127,11 +116,7 @@ automatically compatible. See the import instructions below.
 <details>
 <summary><strong>Can I install it now?</strong></summary>
 
-[Preview 2](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.2)
-provides the latest iPhone/iPad IPA; the separate Apple silicon Mac app remains in
-[Preview 1](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1). The IPA needs
-your own Apple signing. Configured targets are iOS/iPadOS 16 and macOS 14; these
-are not verified minimum-device recommendations.
+Previous builds have been retired; a new version is in progress.
 
 </details>
 
