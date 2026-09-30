@@ -79,7 +79,7 @@ git -C ref/ModernGekko/vendor/dolphin merge-base --is-ancestor \
   13e492094902644b0d113c586300d358640f9e19
 ```
 
-The [Preview 1 release](https://github.com/chrissotraidis/galaxypad/releases/tag/v0.1.0-preview.1)
+The Preview 1 release (retired)
 source archive matches the published SHA-256
 `5996996e4e62491cb0c2cdc18b5c67afab3e693e7df75467a787569eb081c3f1`.
 Its Mac source includes the fallback linking guard, yield check and PC store.
