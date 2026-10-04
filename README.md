@@ -42,16 +42,19 @@ these forks, selected through pinned submodules. See the
 
 ## Experimental preview
 
-Previous builds have been retired; a new version is in progress.
+Previous builds have been retired; a new version is in progress. There is no
+download right now: you can [build GalaxyPad from source](#build-from-source) on
+an Apple Silicon Mac with your own game. [PadMint](https://github.com/chrissotraidis/padmint) lists GalaxyPad under **Not
+available yet** and links back here until a new download is ready.
 
 ## Current status
 
-**Preview 4 (build 7168)** adds optional device/controller gyro cursor aiming and
+**Preview 4 (build 7168)**, the last preview before downloads were retired, added optional device/controller gyro cursor aiming and
 manual **Ray Surfing / Star Ball** stick modes for iPhone and iPad. Open **Controls**
 to select them; gyro defaults to Off. Return Stick Mode to **Normal** after a ride.
 Sensitivity, vertical inversion and recenter controls are included.
 
-This release keeps Preview 3's compatible WBFS importer, simplified Plus control,
+It kept Preview 3's compatible WBFS importer, simplified Plus control,
 Game Mode metadata and tested runtime/audio refinements. The native host is rebuilt
 on current main. Automated input, sensor-adapter and menu checks pass; physical gyro
 feel and completion of the affected ride levels still need player validation.
@@ -67,7 +70,7 @@ The HUD counts frame events rather than guaranteeing displayed frames.
 | Rendering | Metal gameplay; corrected depth access restores tested Pull Star activation and level entry |
 | Controls | Touch/controller input, optional gyro cursor, manual ride stick modes, and editable touch layouts |
 | Platforms | iPhone/iPad app targets and Apple silicon Mac development package; configured minimums are not verified device compatibility |
-| Release | Experimental public preview; iPhone performance and full-game acceptance remain open |
+| Release | Previews retired while a new version is prepared; iPhone performance and full-game acceptance remain open |
 
 See [current status](docs/STATUS.md), [performance evidence](docs/PERFORMANCE-2026-09-12.md),
 [release readiness](docs/RELEASE-READINESS.md), and the [development journal](docs/JOURNAL.md)
