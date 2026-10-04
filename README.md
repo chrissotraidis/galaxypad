@@ -33,6 +33,13 @@ these forks, selected through pinned submodules. See the
 
 ![Mario exploring a grassy planet in GalaxyPad](docs/images/galaxypad-mario-planet.png)
 
+> [!NOTE]
+> **AI disclosure:** GalaxyPad uses substantial AI assistance for code, tests,
+> documentation, debugging and maintenance. Some support replies and maintenance
+> tasks are automated. There is no audited percentage of AI-generated code.
+> Build, test and device records describe what was checked. This disclosure
+> concerns GalaxyPad's workflow, not the authorship of its upstream projects.
+
 ## Experimental preview
 
 Previous builds have been retired; a new version is in progress.
@@ -399,6 +406,16 @@ does not prove game completion, smooth presentation, audio, or device readiness.
 | `docs/` | PRD, goal loop, evidence and handoffs |
 | `ref/ModernGekko/` | Pinned runtime fork, with nested RecompCore and DolRecomp dependencies |
 | Other `ref/` paths, `generated/` | Local references/data and build/runtime artifacts |
+
+## Community and support
+
+[Join the Discord](https://discord.gg/xwHfUD2bxW) for help and news. It is one
+community for GalaxyPad and its sibling projects, such as KartPad, BlueWake and
+MeleePad: ask about setup and installing, share how it runs on your device, and
+hear about new releases first.
+
+Found a bug? [Open an issue](https://github.com/chrissotraidis/galaxypad/issues)
+with your device, its OS version, and the steps that led to it.
 
 ## Credits, legal and contributing
 
