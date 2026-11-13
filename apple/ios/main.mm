@@ -923,6 +923,10 @@ static NSString *GalaxyPadOldEngineModule(void) {
 @implementation GalaxyPadSceneDelegate
 - (void)scene:(UIScene *)scene willConnectToSession:(UISceneSession *)session
     options:(UISceneConnectionOptions *)options {
+  // Only the app's own scene runs a game. An external display's scene gets no
+  // window (and is not handed to the New engine), so the system keeps mirroring
+  // or extending that display.
+  if (![session.role isEqualToString:UIWindowSceneSessionRoleApplication]) return;
   // The New engine runs the app (GALAXYPAD_ENGINE_HOST, set in main): its SDL
   // scene delegate takes this scene. Saved sessions always name this class, so
   // the Original engine finds its own delegate at the next launch.
