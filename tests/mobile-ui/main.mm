@@ -32,6 +32,7 @@ static NSArray<GCController *> *PauseTestControllerList(id, SEL) {
 - (void)toggleTiltStick;
 - (void)toggleAuxiliaryButtons;
 - (void)toggleTouchControls;
+- (void)showTouchControls;
 - (void)endLayoutEditing;
 - (UIMenu *)buildMenu;
 - (UIAlertController *)touchControlGuide;
@@ -134,6 +135,45 @@ static void CheckControllerPauseToggle(GalaxyPadGameOverlay *overlay) {
   [adapter publishWithSeconds:0];
   Check(toggles==4 && !overlay.blocksGameplay,"View resumes native pause");
   pauseTestControllers=@[]; [adapter reconcile];
+  method_setImplementation(enumeration,original);
+  pauseTestControllers=nil;
+}
+// Touch-control auto-hide counts only the controller GalaxyPadControllers made
+// player 1, and that is already true when ownershipChanged asks.
+static void CheckTouchPlayerOwnership(void) {
+  GCController *first=[GCController controllerWithExtendedGamepad];
+  GCController *second=[GCController controllerWithExtendedGamepad];
+  // Software controllers start as player 1; a real connection starts unset.
+  first.playerIndex=GCControllerPlayerIndexUnset;
+  second.playerIndex=GCControllerPlayerIndexUnset;
+  Method enumeration=class_getClassMethod(GCController.class,@selector(controllers));
+  IMP original=method_setImplementation(enumeration,(IMP)PauseTestControllerList);
+  GalaxyPadControllers *adapter=[GalaxyPadControllers new];
+  __block BOOL seenAtCallback=NO;
+  adapter.ownershipChanged=^{ seenAtCallback=GalaxyPadTouchPlayerHasController(GCController.controllers); };
+  pauseTestControllers=@[first];
+  [adapter reconcile];
+  Check(seenAtCallback && GalaxyPadTouchPlayerHasController(GCController.controllers),
+        "a connected controller is player 1 before visibility refreshes");
+  pauseTestControllers=@[first,second];
+  [adapter reconcile];
+  Check(GalaxyPadTouchPlayerHasController(GCController.controllers) &&
+        second.playerIndex!=GCControllerPlayerIndex1,"a second controller does not take player 1");
+  pauseTestControllers=@[first];
+  [adapter reconcile];
+  Check(GalaxyPadTouchPlayerHasController(GCController.controllers),
+        "removing the second controller keeps player 1's");
+  pauseTestControllers=@[first,second];
+  [adapter reconcile];
+  pauseTestControllers=@[second];
+  [adapter reconcile];
+  Check(seenAtCallback && second.playerIndex==GCControllerPlayerIndex1 &&
+        first.playerIndex!=GCControllerPlayerIndex1,
+        "when player 1's controller leaves, the remaining one becomes player 1");
+  pauseTestControllers=@[[GCController controllerWithMicroGamepad]];
+  Check(!GalaxyPadTouchPlayerHasController(GCController.controllers),"a menu-only remote never counts");
+  pauseTestControllers=@[]; [adapter reconcile];
+  Check(!GalaxyPadTouchPlayerHasController(GCController.controllers),"disconnect leaves no player 1 controller");
   method_setImplementation(enumeration,original);
   pauseTestControllers=nil;
 }
@@ -424,6 +464,7 @@ static NSUInteger CountViews(UIView *root, Class type) {
   [nativeResume sendActionsForControlEvents:UIControlEventTouchUpInside];
   Check(!overlay.blocksGameplay,"Back to Game releases the pause input gate");
   CheckControllerPauseToggle(overlay);
+  CheckTouchPlayerOwnership();
   UIControl *pauseActivation=(UIControl *)Find(overlay,@"Plus",YES);
   [pauseActivation sendActionsForControlEvents:UIControlEventTouchDown];
   [pauseActivation sendActionsForControlEvents:UIControlEventTouchUpInside];
@@ -553,6 +594,31 @@ static NSUInteger CountViews(UIView *root, Class type) {
   Check(!a.hidden && a.userInteractionEnabled,"manual enable restores controls");
   [overlay touchesBegan:[NSSet setWithObject:pointer] withEvent:nil];
   Check(state.pointerVisible,"pointer reacquires after manual enable");
+  Check(!GalaxyPadSettings.sharedSettings.hideTouchControlsWhenControllerConnected,
+        "bringing the controls back turns auto-hide off");
+  GalaxyPadSettings.sharedSettings.hideTouchControlsWhenControllerConnected=YES;
+  [overlay reset];
+  // Auto-hide with a controller, as applyControllerVisibility does on device.
+  [a sendActionsForControlEvents:UIControlEventTouchDown];
+  Check(state.buttons==galaxypad::A,"prepare held touch before controller auto-hide");
+  [overlay setTouchControlsHidden:YES animated:NO];
+  Check(state.buttons==0 && a.hidden,"controller auto-hide releases held touch input");
+  [a sendActionsForControlEvents:UIControlEventTouchDown];
+  Check(state.buttons==0,"hidden controls press nothing");
+  [a sendActionsForControlEvents:UIControlEventTouchUpInside];
+  UIMenu *autoHiddenMenu=[overlay buildMenu];
+  Check([autoHiddenMenu.children.firstObject.title isEqual:@"Show Touch Controls"],
+        "hidden controls put Show Touch Controls first in the menu");
+  [overlay showTouchControls];
+  Check(!a.hidden && a.userInteractionEnabled &&
+        !GalaxyPadSettings.sharedSettings.hideTouchControlsWhenControllerConnected &&
+        ![NSUserDefaults.standardUserDefaults boolForKey:@"GalaxyPadTouchControlsDisabled"],
+        "Show restores controls over auto-hide and turns auto-hide off");
+  Check([overlay buildMenu].children.count==4,"Show leaves the menu once the controls are back");
+  [a sendActionsForControlEvents:UIControlEventTouchDown];
+  Check(state.buttons==galaxypad::A,"restored controls send input");
+  [a sendActionsForControlEvents:UIControlEventTouchUpInside];
+  GalaxyPadSettings.sharedSettings.hideTouchControlsWhenControllerConnected=YES;
   [overlay reset];
   UIView *two=Find(overlay,@"2",YES);
   Check(two!=nil,"Wii2 is present");
