@@ -4,6 +4,7 @@
 // Galaxy-specific: normalized Wii input, tilt stick and viewport pointer;
 // no Sunshine timing patches, analog FLUDD trigger or GameCube camera mapping.
 #import "GalaxyPadGameOverlay.h"
+#import "GalaxyPadControllers.h"
 
 #import "../shared/GalaxyPadSettings.h"
 #import "../shared/GalaxyPadDiagnostics.h"
@@ -506,8 +507,17 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
         (void)action;
         [weakSelf toggleTouchControls];
     }];
-    touchAction.state = [NSUserDefaults.standardUserDefaults boolForKey:@"GalaxyPadTouchControlsDisabled"]
-        ? UIMenuElementStateOff : UIMenuElementStateOn;
+    // Checked while the controls are on screen, whether a manual hide or a
+    // controller took them away; tapping it then brings them back.
+    touchAction.state = _touchControlsHidden ? UIMenuElementStateOff : UIMenuElementStateOn;
+    UIAction *autoHideAction = [UIAction actionWithTitle:@"Auto-hide Touch Controls with Controller"
+        image:[UIImage systemImageNamed:@"gamecontroller"] identifier:nil handler:^(__kindof UIAction *action) {
+        (void)action;
+        [weakSelf setAutoHideTouchControls:
+            !GalaxyPadSettings.sharedSettings.hideTouchControlsWhenControllerConnected];
+    }];
+    autoHideAction.state = settings.hideTouchControlsWhenControllerConnected
+        ? UIMenuElementStateOn : UIMenuElementStateOff;
     NSMutableArray<UIMenuElement *> *tiltOptions = [NSMutableArray array];
     for (NSNumber *scale in @[@0.5, @1.0, @1.5]) {
         UIAction *response = [UIAction actionWithTitle:[NSString stringWithFormat:@"Sensitivity %.1f×", scale.doubleValue]
@@ -568,7 +578,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
     // Sections, so the long list reads as three short groups on a phone.
     NSMutableArray<UIMenuElement *> *controlSections = [@[
         [UIMenu menuWithTitle:@"Touch" image:nil identifier:@"galaxypad.menu.controls.touch"
-            options:UIMenuOptionsDisplayInline children:@[touchAction, touchSettingsAction, auxiliaryAction]],
+            options:UIMenuOptionsDisplayInline children:@[touchAction, autoHideAction, touchSettingsAction, auxiliaryAction]],
         [UIMenu menuWithTitle:@"Controller" image:nil identifier:@"galaxypad.menu.controls.controller"
             options:UIMenuOptionsDisplayInline children:@[mappingAction, gyroMenu]],
     ] mutableCopy];
@@ -657,6 +667,14 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
         helpMenu,
         stopAction,
     ] mutableCopy];
+    if (_touchControlsHidden) {
+        [menuItems insertObject:[UIAction actionWithTitle:@"Show Touch Controls"
+            image:[UIImage systemImageNamed:@"hand.tap"] identifier:@"galaxypad.menu.show-touch"
+            handler:^(__kindof UIAction *action) {
+              (void)action;
+              [weakSelf showTouchControls];
+            }] atIndex:0];
+    }
 #if TARGET_OS_SIMULATOR
     if ([NSUserDefaults.standardUserDefaults boolForKey:@"GalaxyPadDevCheckpoints"] &&
         [self.delegate respondsToSelector:@selector(gameOverlayRequestsDevelopmentCheckpoint:)]) {
@@ -931,7 +949,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
 }
 
 - (void)stickChanged:(GalaxyPadReferenceStickView *)stick x:(float)x y:(float)y {
-    if (_editingLayout || !_settingsPanel.hidden) return;
+    if (_editingLayout || !_settingsPanel.hidden || _touchControlsHidden) return;
     if (stick == _moveStick) {
         _touchState.moveX = x; _touchState.moveY = y;
     } else {
@@ -945,7 +963,8 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
 }
 
 - (void)buttonDown:(GalaxyPadGameButton *)button {
-    if (_editingLayout || !_settingsPanel.hidden) return;
+    // A touch that began before the controls hid presses nothing.
+    if (_editingLayout || !_settingsPanel.hidden || _touchControlsHidden) return;
     _touchState.buttons |= button.inputMask;
     // A quick Plus tap must survive guest polling at
     // low frame rates. Physical contact remains independent of the pulse.
@@ -1529,9 +1548,7 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
 }
 
 - (void)hideChanged:(UISwitch *)switcher {
-    [GalaxyPadSettings sharedSettings].hideTouchControlsWhenControllerConnected = switcher.on;
-    [[GalaxyPadSettings sharedSettings] synchronize];
-    [self applyControllerVisibility];
+    [self setAutoHideTouchControls:switcher.on];
 }
 
 
@@ -1744,13 +1761,40 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
 }
 
 - (void)toggleTouchControls {
+    // Hidden for any reason: bring them back. Shown: the manual hide.
+    if (_touchControlsHidden) {
+        [self showTouchControls];
+        return;
+    }
     [self clearTouchInput];
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-    [defaults setBool:![defaults boolForKey:@"GalaxyPadTouchControlsDisabled"]
-               forKey:@"GalaxyPadTouchControlsDisabled"];
+    [defaults setBool:YES forKey:@"GalaxyPadTouchControlsDisabled"];
     [self applyControllerVisibility];
     [self updateControlAppearance];
     _menuButton.menu = [self buildMenu];
+}
+
+// Recovery for both kinds of hiding, the manual one and auto-hide with a
+// controller: clears the manual hide and turns auto-hide off, so the controls
+// come back and work with the controller still connected until auto-hide is
+// turned on again.
+- (void)showTouchControls {
+    [NSUserDefaults.standardUserDefaults setBool:NO forKey:@"GalaxyPadTouchControlsDisabled"];
+    GalaxyPadLog(@"touch controls shown from the menu; auto-hide off");
+    [self setAutoHideTouchControls:NO];
+}
+
+// The saved "Auto-hide Touch Controls with Controller" choice, shared with the
+// settings panel's switch. Off shows the controls at once; on applies the
+// current controller at once.
+- (void)setAutoHideTouchControls:(BOOL)autoHide {
+    GalaxyPadSettings *settings = GalaxyPadSettings.sharedSettings;
+    settings.hideTouchControlsWhenControllerConnected = autoHide;
+    [settings synchronize];
+    _hideControlsSwitch.on = autoHide;
+    [self applyControllerVisibility];
+    [self updateControlAppearance];
+    [self refreshMenuButton];
 }
 
 // Optional controls remain visible while arranging them. Their gameplay visibility
@@ -1985,12 +2029,14 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
 }
 
 - (void)setTouchControlsHidden:(BOOL)hidden animated:(BOOL)animated {
+    const BOOL changed = hidden != _touchControlsHidden;
     if (hidden && !_touchControlsHidden) [self clearTouchInput];
     _touchControlsHidden = hidden;
     [UIView animateWithDuration:animated ? 0.25 : 0.0 animations:^{
         [self setNeedsLayout];
         [self layoutIfNeeded];
     }];
+    if (changed) [self refreshMenuButton];
 }
 
 - (void)setGameplayAvailable:(BOOL)available {
@@ -2005,19 +2051,13 @@ static CGFloat GalaxyPadDefaultSizeScaleForControl(UIView *view, NSString *ident
 #if !TARGET_OS_SIMULATOR
     // Only real hardware controllers hide the touch controls; the Simulator
     // can report virtual controllers that would hide them during testing.
-    for (GCController *controller in GCController.controllers) {
-        if (controller.extendedGamepad != nil) {
-            controllerConnected = YES;
-            break;
-        }
-    }
+    // GalaxyPadControllers decides which controller is player 1.
+    controllerConnected = GalaxyPadTouchPlayerHasController(GCController.controllers);
 #endif
     BOOL manuallyDisabled = [NSUserDefaults.standardUserDefaults boolForKey:@"GalaxyPadTouchControlsDisabled"];
     BOOL autoHide = [GalaxyPadSettings sharedSettings].hideTouchControlsWhenControllerConnected;
     BOOL shouldHide = !_editingLayout && (manuallyDisabled || (controllerConnected && autoHide));
     [self setTouchControlsHidden:shouldHide animated:YES];
-    if (controllerConnected)
-        [self clearTouchInput];
     GalaxyPadLog(@"controller visibility connected=%d auto_hide=%d manually_disabled=%d hidden=%d",
         controllerConnected, autoHide, manuallyDisabled, _touchControlsHidden);
 }
