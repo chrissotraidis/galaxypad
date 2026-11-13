@@ -19,3 +19,7 @@
 - (void)reconcile;
 - (void)reloadMapping;
 @end
+// Player 1, whom the touch controls also drive, has a controller: the one this
+// adapter owns, which it marks GCControllerPlayerIndex1 before reporting
+// ownershipChanged. A controller left in a later slot does not count.
+FOUNDATION_EXPORT BOOL GalaxyPadTouchPlayerHasController(NSArray<GCController *> *controllers);

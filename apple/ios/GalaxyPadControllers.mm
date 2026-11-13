@@ -9,6 +9,12 @@
 #import "../shared/GalaxyPadControllerMappingStore.h"
 #import "../shared/GalaxyPadDiagnostics.h"
 
+BOOL GalaxyPadTouchPlayerHasController(NSArray<GCController *> *controllers) {
+  for (GCController *controller in controllers)
+    if (controller.extendedGamepad && controller.playerIndex==GCControllerPlayerIndex1) return YES;
+  return NO;
+}
+
 @implementation GalaxyPadControllers {
   GalaxyPadControllerSlots _slots;
   galaxypad::ControllerInput _input;
@@ -143,11 +149,12 @@
   _optionsPressed=_owner.extendedGamepad.buttonOptions.isPressed;
   GalaxyPadLog(@"controller ownership: connected=%d extended_controllers=%lu right_stick=pointer speed=1.2x right_stick_click=recenter RB=A RT=B LB=tilt Menu=game_Plus View=app_pause",
     _owner != nil, (unsigned long)instances.size());
+  // Before ownershipChanged, so touch-control visibility reads the new owner.
+  _owner.playerIndex=GCControllerPlayerIndex1;
   [self reset];
   if (self.ownershipChanged) self.ownershipChanged();
   if (self.inputChanged) self.inputChanged({});
   if (!_owner) return;
-  _owner.playerIndex=GCControllerPlayerIndex1;
   _owner.handlerQueue=dispatch_get_main_queue();
   __weak GalaxyPadControllers *weakSelf=self;
   __weak GCController *weakOwner=_owner;
