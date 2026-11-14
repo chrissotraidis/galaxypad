@@ -2,7 +2,7 @@
 
 ## Playing the current release
 
-**GalaxyPad 0.2.2 (7218)** is the current iPhone/iPad release. Use **PadMint 0.5.2
+**GalaxyPad 0.2.3 (7219)** is the current iPhone/iPad release. Use **PadMint 0.5.2
 or newer** on an Apple silicon Mac to build your personal IPA, then import your
 own USA RMGE01 revision 0 WBFS image in the app. There is no public prebuilt IPA.
 

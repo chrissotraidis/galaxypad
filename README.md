@@ -68,9 +68,16 @@ start sooner and the rest finishes in the background.
 
 ## Current status
 
-**0.2.2 (build 7218)** makes the GalaxyPad folder appear in Files after first
-launch and provides a direct file picker from the empty-folder screen.
-You can import from Downloads or iCloud Drive without moving the WBFS first.
+**0.2.3 (build 7219)** brings the touch controls back on demand while a
+controller is connected: **Show Touch Controls** leads the ⋯ menu whenever they
+are hidden, and **Controls → Touch → Auto-hide Touch Controls with Controller**
+turns auto-hide on or off. Only the player 1 controller hides them. On an
+external display or TV, GalaxyPad now runs the game only in its own scene and
+leaves the external screen to iPadOS (mirroring or an extended display).
+Physical TV and controller checks are still pending.
+
+0.2.2's Files folder and direct file picker are included: you can import from
+Downloads or iCloud Drive without moving the WBFS first.
 
 The 0.2.1 menu repair is included: the New engine pauses the
 game and audio while GalaxyPad menus, sheets or alerts are open, then resumes.
@@ -87,7 +94,7 @@ are hidden with the New engine, which handles those rides through the main stick
 | Build verification | See the release notes for CI, fresh-install Files checks and PadMint player-build evidence |
 | Remaining checks | Full-game completion, hands-on verification of the menu repair, and an iPad Simulator overlap check involving the hidden 1 button |
 
-Read the [0.2.2 release notes](docs/RELEASE-0.2.2.md), [current status](docs/STATUS.md)
+Read the [0.2.3 release notes](docs/RELEASE-0.2.3.md), [current status](docs/STATUS.md)
 and [documentation index](docs/README.md). The local repository suite still stops
 at a host-counter probe on the maintainer's Mac; the complete suite passes in CI.
 Device installation and automated tests are not full gameplay acceptance.

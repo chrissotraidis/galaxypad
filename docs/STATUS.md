@@ -1,6 +1,17 @@
 # GalaxyPad status
 
-## October 16, 2026: GalaxyPad 0.2.2 Files-folder repair
+## November 14, 2026: GalaxyPad 0.2.3 touch controls and external displays
+
+**0.2.3 (7219)** adds **Show Touch Controls** to the top of the ⋯ menu whenever
+the touch controls are hidden, and an **Auto-hide Touch Controls with
+Controller** checkmark (#35). Auto-hide counts only the player 1 controller. The
+app's scene delegate gives a game only to the application scene (#34), and the
+New engine pin moves to galaxypad-engine 2a759adf, whose SDL leaves external
+display scenes to the system and follows the scene's orientation (#36).
+[0.2.3 release evidence](RELEASE-0.2.3.md) records the checks. Physical TV,
+external display and controller acceptance is pending.
+
+## October 16, 2026: GalaxyPad 0.2.2 Files-folder repair (historical)
 
 **0.2.2 (7218)** prepares a visible import guide in Documents before starting
 either engine or the import shell. Fresh installations can therefore find
