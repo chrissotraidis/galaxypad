@@ -429,7 +429,7 @@ static NSString *GalaxyPadOldEngineModule(void) {
   [self setNeedsUpdateOfSupportedInterfaceOrientations];
   UIWindowScene *scene = self.view.window.windowScene;
   [scene requestGeometryUpdateWithPreferences:[[UIWindowSceneGeometryPreferencesIOS alloc]
-      initWithInterfaceOrientations:UIInterfaceOrientationMaskLandscape]
+      initWithInterfaceOrientations:(UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskLandscape)]
       errorHandler:^(NSError *error) { NSLog(@"[GalaxyPad] landscape request: %@", error); }];
   if (_attemptedStart) return;
   _attemptedStart = YES;
@@ -911,8 +911,8 @@ static NSString *GalaxyPadOldEngineModule(void) {
     if (view) { [view->_controllers reloadMapping]; [view->_host clearInput]; }
   });
 }
-- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskLandscape; }
-- (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation { return UIInterfaceOrientationLandscapeLeft; }
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskLandscape; }
+- (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation { return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad ? [super preferredInterfaceOrientationForPresentation] : UIInterfaceOrientationLandscapeLeft; }
 // Match SunPad: permit rotation between the two supported landscape sides.
 // iOS 26 scene-orientation locking is not a landscape-only mask.
 @end

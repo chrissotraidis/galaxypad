@@ -40,7 +40,7 @@ static NSString *const GalaxyPadNewEngineRenderScaleKey = @"GalaxyPadNewEngineRe
 @interface GalaxyPadNewEngineControlsController : UIViewController
 @end
 @implementation GalaxyPadNewEngineControlsController
-- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskLandscape; }
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskLandscape; }
 - (BOOL)prefersStatusBarHidden { return YES; }
 - (BOOL)prefersHomeIndicatorAutoHidden { return YES; }
 @end
